@@ -1,0 +1,190 @@
+{
+  "name": "Seguimiento de Pagos Pendientes",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": ["monday"],
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM ingresos WHERE estado = 'pendiente' AND fecha_emision < NOW() - INTERVAL '30 days'",
+        "options": {}
+      },
+      "id": "supabase-query",
+      "name": "Consultar Pagos Pendientes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": "Supabase Postgres"
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-overdue",
+      "name": "Verificar Vencidos",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Crear mensaje para Telegram\nconst data = $input.all();\n\nif (data.length === 0) {\n  return [{ json: { has_overdue: false, count: 0 } }];\n}\n\nconst payments = data.map(item => item.json);\nconst totalAmount = payments.reduce((sum, p) => sum + parseFloat(p.monto), 0);\nconst formatCurrency = (amount) => {\n  return new Intl.NumberFormat('es-MX', {\n    style: 'currency',\n    currency: 'MXN'\n  }).format(amount);\n};\n\nlet message = `📊 **Reporte de Pagos Pendientes**\\n\\n`;\nmessage += `⏰ Clientes con pagos >30 dias:\\n\\n`;\n\n// Top 5 por monto\nconst topPayments = payments.slice(0, 5);\ntopPayments.forEach((p, i) => {\n  message += `${i + 1}. **${p.cliente}** - ${formatCurrency(p.monto)}\\n`;\n});\n\nmessage += `\\n💰 **Total pendiente:** ${formatCurrency(totalAmount)}`;\nmessage += `\\n📋 **Total facturas:** ${payments.length}`;\n\nreturn [{\n  json: {\n    telegram_message: message,\n    summary: {\n      count: payments.length,\n      total: totalAmount\n    }\n  }\n}];"
+      },
+      "id": "create-telegram-message",
+      "name": "Crear Mensaje Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.telegram_message }}",
+        "additionalFields": {
+          "parseMode": "Markdown"
+        }
+      },
+      "id": "send-telegram",
+      "name": "Enviar Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1050, 200],
+      "credentials": {
+        "telegramApi": "Telegram Bot"
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Crear alertas en base de datos\nconst data = $input.all();\nconst alerts = [];\n\nfor (const item of data) {\n  const payment = item.json;\n  alerts.push({\n    json: {\n      user_id: payment.user_id,\n      tipo_alerta: 'pago_pendiente_30dias',\n      referencia_id: payment.id,\n      fecha_ejecucion: new Date().toISOString().split('T')[0]\n    }\n  });\n}\n\nreturn alerts;"
+      },
+      "id": "create-alerts-db",
+      "name": "Crear Alertas en DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "alertas_programadas",
+        "columns": "user_id, tipo_alerta, referencia_id, fecha_ejecucion",
+        "options": {}
+      },
+      "id": "insert-alerts",
+      "name": "Insertar Alertas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [1050, 400],
+      "credentials": {
+        "postgres": "Supabase Postgres"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Consultar Pagos Pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Pagos Pendientes": {
+      "main": [
+        [
+          {
+            "node": "Verificar Vencidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Vencidos": {
+      "main": [
+        [
+          {
+            "node": "Crear Mensaje Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Crear Alertas en DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Mensaje Telegram": {
+      "main": [
+        [
+          {
+            "node": "Enviar Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Alertas en DB": {
+      "main": [
+        [
+          {
+            "node": "Insertar Alertas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

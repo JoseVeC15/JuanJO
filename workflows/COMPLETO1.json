@@ -1,0 +1,865 @@
+{
+  "name": "Seguimiento de Pagos Pendientes",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "hour": 9
+            }
+          ]
+        }
+      },
+      "id": "fe81c026-4a51-4318-b3fe-c8802865e251",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -800,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "operation": "getAll",
+        "tableId": "inventario_equipo",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "tipo_propiedad",
+              "condition": "eq",
+              "keyValue": "RENTADO"
+            },
+            {
+              "keyName": "fecha_fin_renta",
+              "condition": "gt",
+              "keyValue": "={{ $now.toISODate() }}"
+            }
+          ]
+        }
+      },
+      "id": "7073556a-eee8-4c2e-afe2-bbe8d3f692ce",
+      "name": "Consultar Equipos Rentados",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        112
+      ],
+      "operation": "select",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0HvEGPHNmHHicjB7",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Filtrar equipos que vencen mañana y hoy\nconst today = new Date();\nconst tomorrow = new Date(today);\ntomorrow.setDate(tomorrow.getDate() + 1);\n\nconst formatDate = (date) => date.toISOString().split('T')[0];\n\nconst equipment = $input.all().map(item => item.json);\n\n// Filtrar por fechas\nconst expiringTomorrow = equipment.filter(e => \n  e.tipo_propiedad === 'RENTADO' &&\n  e.fecha_fin_renta === formatDate(tomorrow) &&\n  !e.alerta_enviada &&\n  e.ubicacion !== 'en_stock'\n);\n\nconst expiringToday = equipment.filter(e => \n  e.tipo_propiedad === 'RENTADO' &&\n  e.fecha_fin_renta === formatDate(today) &&\n  e.ubicacion !== 'en_stock'\n);\n\nreturn [\n  { json: { type: 'tomorrow', equipment: expiringTomorrow } },\n  { json: { type: 'today', equipment: expiringToday } }\n];"
+      },
+      "id": "09f8ecd4-5fa4-46ea-938e-b6e6e1bab6ed",
+      "name": "Filtrar Equipos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.type }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "tomorrow"
+            },
+            {
+              "value2": "today",
+              "output": 1
+            }
+          ]
+        }
+      },
+      "id": "963b54d3-efeb-43e4-9fa5-a4d06d5a14b9",
+      "name": "Switch por Tipo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Procesar equipos que vencen mañana\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (equipment.length === 0) {\n  return [{ json: { alerts_created: 0 } }];\n}\n\nconst alerts = [];\nfor (const item of equipment) {\n  alerts.push({\n    user_id: item.user_id,\n    tipo_alerta: 'renta_vence_manana',\n    referencia_id: item.id,\n    fecha_ejecucion: new Date().toISOString().split('T')[0],\n    message: `⚠️ El ${item.nombre} rentado de ${item.proveedor_renta} vence mañana ${item.fecha_fin_renta}. ¿Ya lo devolviste?`\n  });\n}\n\nreturn alerts.map(alert => ({ json: alert }));"
+      },
+      "id": "3bd5284b-1149-4cf7-a94d-b1c6af7e1984",
+      "name": "Procesar Vencen Mañana",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "useCustomSchema": true,
+        "tableId": "alertas_programadas",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.user_id }}"
+            },
+            {
+              "fieldId": "tipo_alerta",
+              "fieldValue": "={{ $json.tipo_alerta }}"
+            },
+            {
+              "fieldId": "referencia_id",
+              "fieldValue": "={{ $json.referencia_id }}"
+            },
+            {
+              "fieldId": "fecha_ejecucion",
+              "fieldValue": "={{ $json.fecha_ejecucion }}"
+            },
+            {
+              "fieldId": "enviada",
+              "fieldValue": "false"
+            }
+          ]
+        }
+      },
+      "id": "598a5ac0-4eb3-4474-bdaa-6323bf33e3f4",
+      "name": "Insertar Alertas Mañana",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "operation": "insert",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0HvEGPHNmHHicjB7",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Actualizar equipos para marcar alerta enviada\nconst alerts = $input.all().map(item => item.json);\nconst equipmentIds = alerts.map(alert => alert.referencia_id);\n\nreturn [{\n  json: {\n    equipment_ids: equipmentIds,\n    alerts_created: alerts.length\n  }\n}];"
+      },
+      "id": "151492f2-6b36-4bef-92af-587ea01e19b0",
+      "name": "Preparar Actualización",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enviar notificaciones para equipos que vencen hoy\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (equipment.length === 0) {\n  return [{ json: { urgent_alerts: 0 } }];\n}\n\nconst urgentAlerts = [];\nfor (const item of equipment) {\n  urgentAlerts.push({\n    user_id: item.user_id,\n    tipo_alerta: 'renta_vence_hoy',\n    referencia_id: item.id,\n    fecha_ejecucion: new Date().toISOString().split('T')[0],\n    message: `🚨 HOY devuelve: ${item.nombre} a ${item.proveedor_renta}`\n  });\n}\n\nreturn urgentAlerts.map(alert => ({ json: alert }));"
+      },
+      "id": "19091743-672f-4dc5-bcc0-2ec36bd08e09",
+      "name": "Procesar Vencen Hoy",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        0,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "alertas_programadas",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $json.user_id }}"
+            },
+            {
+              "fieldId": "tipo_alerta",
+              "fieldValue": "={{ $json.tipo_alerta }}"
+            },
+            {
+              "fieldId": "referencia_id",
+              "fieldValue": "={{ $json.referencia_id }}"
+            },
+            {
+              "fieldId": "fecha_ejecucion",
+              "fieldValue": "={{ $json.fecha_ejecucion }}"
+            },
+            {
+              "fieldId": "enviada",
+              "fieldValue": "false"
+            }
+          ]
+        }
+      },
+      "id": "da444fb5-3782-4dce-a146-53f79a74a2d6",
+      "name": "Insertar Alertas Hoy",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        208,
+        208
+      ],
+      "operation": "insert",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0HvEGPHNmHHicjB7",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Preparar resumen para notificación\nlet tomorrowCount = 0;\nlet todayCount = 0;\n\ntry {\n  const tomorrowAlerts = $node[\"Insertar Alertas Mañana\"];\n  if (tomorrowAlerts && tomorrowAlerts.json) {\n    tomorrowCount = Array.isArray(tomorrowAlerts.json) ? tomorrowAlerts.json.length : 1;\n  }\n} catch (e) {}\n\ntry {\n  const todayAlerts = $node[\"Insertar Alertas Hoy\"];\n  if (todayAlerts && todayAlerts.json) {\n    todayCount = Array.isArray(todayAlerts.json) ? todayAlerts.json.length : 1;\n  }\n} catch (e) {}\n\nconst summary = {\n  date: new Date().toISOString().split('T')[0],\n  tomorrow_count: tomorrowCount,\n  today_count: todayCount,\n  total_alerts: tomorrowCount + todayCount\n};\n\nreturn [{ json: summary }];\n"
+      },
+      "id": "8f340e20-7755-4202-9ef4-69702c0e30ea",
+      "name": "Crear Resumen",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        608,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "{{$env.TELEGRAM_CHAT_ID}}",
+        "text": "📊 **Reporte Diario de Equipo Rentado**\n\n📅 Fecha: {{$json.date}}\n\n⏳ **Por vencer mañana:** {{$json.tomorrow_count}} equipo(s)\n🚨 **Vence HOY:** {{$json.today_count}} equipo(s)\n\nTotal alertas: {{$json.total_alerts}}",
+        "additionalFields": {}
+      },
+      "id": "39edc6b3-0004-4452-9a39-72d76f82463d",
+      "name": "Notificación Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        800,
+        112
+      ],
+      "webhookId": "13dedf84-3c7a-4cab-9eb2-4fc383d9fd66",
+      "credentials": {
+        "telegramApi": {
+          "id": null,
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "c9900166-2986-41b5-9113-8d87682964d4",
+        "options": {}
+      },
+      "id": "a4589363-57c1-4517-a2c5-c2ab82d594fd",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        512
+      ],
+      "webhook": "/process-invoice",
+      "httpMethod": "POST",
+      "responseMode": "responseNode",
+      "webhookId": "c9900166-2986-41b5-9113-8d87682964d4"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validar datos de entrada\nconst data = $input.first().json.body;\n\nif (!data.user_id || !data.image_base64) {\n  throw new Error('Faltan campos requeridos: user_id, image_base64');\n}\n\nreturn [{\n  json: {\n    user_id: data.user_id,\n    image_base64: data.image_base64,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "70b00090-3545-47f6-97d8-1e1660b66bdf",
+      "name": "Validar Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -608,
+        512
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "cba83034-797b-4d72-b7b1-a636708212f9",
+      "name": "Subir a Supabase Storage",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        512
+      ],
+      "operation": "upload",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0HvEGPHNmHHicjB7",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Convertir base64 a Buffer para Google Vision\nconst imageBuffer = Buffer.from($node[\"Validar Input\"].json.image_base64, 'base64');\n\nreturn [{\n  json: {\n    ...$node[\"Validar Input\"].json,\n    image_buffer: imageBuffer.toString('base64'),\n    storage_path: $node[\"Subir a Supabase Storage\"].json.path\n  }\n}];"
+      },
+      "id": "629f4c85-db5e-49d5-bba5-74c10c1e4b08",
+      "name": "Preparar OCR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -208,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "url": "https://vision.googleapis.com/v1/images:annotate",
+        "options": {}
+      },
+      "id": "9bed5593-035e-43a3-b614-cac3e0673743",
+      "name": "Google Vision API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Parsear respuesta de Google Vision\nconst response = $input.first().json;\nconst text = response.responses[0].fullTextAnnotation.text;\n\n// Funciones de extracción\nfunction extractAmount(text) {\n  // Buscar montos en formato MXN o USD\n  const patterns = [\n    /\\$\\s?([\\d,]+\\.\\d{2})/g,\n    /MXN\\s?([\\d,]+\\.\\d{2})/g,\n    /USD\\s?([\\d,]+\\.\\d{2})/g,\n    /TOTAL[:\\s]*([\\d,]+\\.\\d{2})/g,\n    /IMPORTE[:\\s]*([\\d,]+\\.\\d{2})/g\n  ];\n  \n  let amounts = [];\n  for (const pattern of patterns) {\n    let match;\n    while ((match = pattern.exec(text)) !== null) {\n      const amount = parseFloat(match[1].replace(/,/g, ''));\n      if (amount > 0 && amount < 1000000) {\n        amounts.push(amount);\n      }\n    }\n  }\n  \n  // Retornar el monto más común o el último encontrado\n  return amounts.length > 0 ? Math.max(...amounts) : null;\n}\n\nfunction extractDate(text) {\n  const patterns = [\n    /(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{2,4})/,\n    /(\\d{4})[\\/\\-](\\d{1,2})[\\/\\-](\\d{1,2})/,\n    /(\\d{1,2})\\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\\s+(\\d{2,4})/i\n  ];\n  \n  for (const pattern of patterns) {\n    const match = text.match(pattern);\n    if (match) {\n      let date;\n      if (pattern.source.includes('ene|feb')) {\n        // Formato con meses en español\n        const months = {\n          'ene': 0, 'feb': 1, 'mar': 2, 'abr': 3, 'may': 4, 'jun': 5,\n          'jul': 6, 'ago': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dic': 11\n        };\n        const day = parseInt(match[1]);\n        const month = months[match[2].toLowerCase()];\n        const year = parseInt(match[3]);\n        date = new Date(year, month, day);\n      } else {\n        date = new Date(match[0]);\n      }\n      \n      if (!isNaN(date.getTime())) {\n        return date.toISOString().split('T')[0];\n      }\n    }\n  }\n  return null;\n}\n\nfunction extractProvider(text) {\n  const lines = text.split('\\n').filter(line => line.trim().length > 3);\n  // Las primeras líneas suelen ser el proveedor\n  for (let i = 0; i < Math.min(5, lines.length); i++) {\n    const line = lines[i].trim();\n    if (line.length > 3 && line.length < 100 && !line.match(/^\\d/)) {\n      return line;\n    }\n  }\n  return 'Proveedor no identificado';\n}\n\nconst extractedData = {\n  monto: extractAmount(text),\n  fecha_factura: extractDate(text),\n  proveedor: extractProvider(text),\n  concepto_ocr: text\n};\n\nreturn [{\n  json: {\n    ...$node[\"Preparar OCR\"].json,\n    ...extractedData\n  }\n}];"
+      },
+      "id": "8f8e7fd1-99aa-44d0-926b-9f854e91bcc3",
+      "name": "Parsear OCR",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        192,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert"
+      },
+      "id": "6c4b66b1-e6b2-479e-ab25-90f3b9cf0461",
+      "name": "Insertar en Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        384,
+        512
+      ],
+      "operation": "insert",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0HvEGPHNmHHicjB7",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Preparar respuesta para el frontend\nconst data = $input.first().json;\nconst supabaseData = $node[\"Insertar en Supabase\"].json;\n\nreturn [{\n  json: {\n    success: true,\n    factura_id: supabaseData[0].id,\n    extracted_data: {\n      monto: data.monto,\n      fecha_factura: data.fecha_factura,\n      proveedor: data.proveedor\n    },\n    storage_url: data.storage_path,\n    message: 'Factura procesada exitosamente'\n  }\n}];"
+      },
+      "id": "3443749f-dae5-407f-a64f-0cce3c0532a8",
+      "name": "Preparar Respuesta",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        592,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}",
+        "options": {}
+      },
+      "id": "9d042f66-9389-4570-a1d3-6b29e7eb0c86",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        784,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM ingresos WHERE estado = 'pendiente' AND fecha_emision < NOW() - INTERVAL '30 days'",
+        "options": {}
+      },
+      "id": "34d3158c-7cb1-474b-826e-59cdf0b836a5",
+      "name": "Consultar Pagos Pendientes",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        896
+      ],
+      "credentials": {
+        "postgres": {
+          "id": null,
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": "0",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7c5c33c7-2380-4ff2-999e-159fedb3fb6e",
+      "name": "Verificar Vencidos",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Crear mensaje para Telegram\nconst data = $input.all();\n\nif (data.length === 0) {\n  return [{ json: { has_overdue: false, count: 0 } }];\n}\n\nconst payments = data.map(item => item.json);\nconst totalAmount = payments.reduce((sum, p) => sum + parseFloat(p.monto), 0);\nconst formatCurrency = (amount) => {\n  return new Intl.NumberFormat('es-MX', {\n    style: 'currency',\n    currency: 'MXN'\n  }).format(amount);\n};\n\nlet message = `📊 **Reporte de Pagos Pendientes**\\n\\n`;\nmessage += `⏰ Clientes con pagos >30 dias:\\n\\n`;\n\n// Top 5 por monto\nconst topPayments = payments.slice(0, 5);\ntopPayments.forEach((p, i) => {\n  message += `${i + 1}. **${p.cliente}** - ${formatCurrency(p.monto)}\\n`;\n});\n\nmessage += `\\n💰 **Total pendiente:** ${formatCurrency(totalAmount)}`;\nmessage += `\\n📋 **Total facturas:** ${payments.length}`;\n\nreturn [{\n  json: {\n    telegram_message: message,\n    summary: {\n      count: payments.length,\n      total: totalAmount\n    }\n  }\n}];"
+      },
+      "id": "d2da74a7-00bb-45f6-b460-1eade5e5d315",
+      "name": "Crear Mensaje Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.telegram_message }}",
+        "additionalFields": {}
+      },
+      "id": "dad8ad1e-f7f3-4b28-a72f-6f6d020398d9",
+      "name": "Enviar Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        784
+      ],
+      "webhookId": "6ea3bcf6-e33c-430b-a53a-28e5eb0301dd",
+      "credentials": {
+        "telegramApi": {
+          "id": null,
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Crear alertas en base de datos\nconst data = $input.all();\nconst alerts = [];\n\nfor (const item of data) {\n  const payment = item.json;\n  alerts.push({\n    json: {\n      user_id: payment.user_id,\n      tipo_alerta: 'pago_pendiente_30dias',\n      referencia_id: payment.id,\n      fecha_ejecucion: new Date().toISOString().split('T')[0]\n    }\n  });\n}\n\nreturn alerts;"
+      },
+      "id": "58984cc2-54c6-4ce3-be8e-0455e5dea179",
+      "name": "Crear Alertas en DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        992
+      ]
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": "alertas_programadas",
+        "options": {}
+      },
+      "id": "702b9eeb-cfae-41fc-93ac-068a39125220",
+      "name": "Insertar Alertas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        992
+      ],
+      "credentials": {
+        "postgres": {
+          "id": null,
+          "name": "Supabase Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                "monday"
+              ],
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "f985e9fc-e90a-4211-8385-397c1ece26a5",
+      "name": "Schedule Trigger1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -816,
+        896
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Consultar Equipos Rentados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Equipos Rentados": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Equipos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Equipos": {
+      "main": [
+        [
+          {
+            "node": "Switch por Tipo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch por Tipo": {
+      "main": [
+        [
+          {
+            "node": "Procesar Vencen Mañana",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Procesar Vencen Hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Vencen Mañana": {
+      "main": [
+        [
+          {
+            "node": "Insertar Alertas Mañana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Alertas Mañana": {
+      "main": [
+        [
+          {
+            "node": "Preparar Actualización",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Vencen Hoy": {
+      "main": [
+        [
+          {
+            "node": "Insertar Alertas Hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Alertas Hoy": {
+      "main": [
+        [
+          {
+            "node": "Crear Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Actualización": {
+      "main": [
+        [
+          {
+            "node": "Crear Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Resumen": {
+      "main": [
+        [
+          {
+            "node": "Notificación Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validar Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Input": {
+      "main": [
+        [
+          {
+            "node": "Subir a Supabase Storage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subir a Supabase Storage": {
+      "main": [
+        [
+          {
+            "node": "Preparar OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar OCR": {
+      "main": [
+        [
+          {
+            "node": "Google Vision API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Vision API": {
+      "main": [
+        [
+          {
+            "node": "Parsear OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parsear OCR": {
+      "main": [
+        [
+          {
+            "node": "Insertar en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar en Supabase": {
+      "main": [
+        [
+          {
+            "node": "Preparar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Respuesta": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Pagos Pendientes": {
+      "main": [
+        [
+          {
+            "node": "Verificar Vencidos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Vencidos": {
+      "main": [
+        [
+          {
+            "node": "Crear Mensaje Telegram",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Crear Alertas en DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Mensaje Telegram": {
+      "main": [
+        [
+          {
+            "node": "Enviar Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Alertas en DB": {
+      "main": [
+        [
+          {
+            "node": "Insertar Alertas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Consultar Pagos Pendientes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "1eba9f15-5526-4e38-a560-a2af6cb63499",
+  "meta": {
+    "instanceId": "3d043619958ed41b0f58c345a8634411eb07168700f1202c0af42a1db32910f4"
+  },
+  "id": "Sxs9TSggGj9lKwqJ",
+  "tags": [
+    {
+      "name": "alerts",
+      "id": "4qqzLNdtymH1cVEQ",
+      "updatedAt": "2026-03-22T14:24:31.634Z",
+      "createdAt": "2026-03-22T14:24:31.634Z"
+    },
+    {
+      "name": "supabase",
+      "id": "CFhigoaDRuXuUurg",
+      "updatedAt": "2026-03-22T14:24:41.917Z",
+      "createdAt": "2026-03-22T14:24:41.917Z"
+    },
+    {
+      "name": "ocr",
+      "id": "UAiMFaDEVOgooGqV",
+      "updatedAt": "2026-03-22T14:24:41.889Z",
+      "createdAt": "2026-03-22T14:24:41.889Z"
+    },
+    {
+      "name": "invoice",
+      "id": "Uc86gnlUsmwjuTie",
+      "updatedAt": "2026-03-22T14:24:41.909Z",
+      "createdAt": "2026-03-22T14:24:41.909Z"
+    },
+    {
+      "name": "rental",
+      "id": "YqlqIrWR5IxnAmjf",
+      "updatedAt": "2026-03-22T14:24:31.665Z",
+      "createdAt": "2026-03-22T14:24:31.665Z"
+    },
+    {
+      "name": "equipment",
+      "id": "pkBJ24QhXyvhVnhv",
+      "updatedAt": "2026-03-22T14:24:31.616Z",
+      "createdAt": "2026-03-22T14:24:31.616Z"
+    }
+  ]
+}

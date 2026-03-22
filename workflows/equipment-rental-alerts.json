@@ -1,0 +1,299 @@
+{
+  "name": "Alertas de Equipo Rentado",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyDay",
+              "hour": 9,
+              "minute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "table": "inventario_equipo",
+        "returnAll": true,
+        "additionalFields": {}
+      },
+      "id": "supabase-query",
+      "name": "Consultar Equipos Rentados",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "supabaseApi": "Supabase Account"
+      },
+      "operation": "select"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Filtrar equipos que vencen mañana y hoy\nconst today = new Date();\nconst tomorrow = new Date(today);\ntomorrow.setDate(tomorrow.getDate() + 1);\n\nconst formatDate = (date) => date.toISOString().split('T')[0];\n\nconst equipment = $input.all().map(item => item.json);\n\n// Filtrar por fechas\nconst expiringTomorrow = equipment.filter(e => \n  e.tipo_propiedad === 'RENTADO' &&\n  e.fecha_fin_renta === formatDate(tomorrow) &&\n  !e.alerta_enviada &&\n  e.ubicacion !== 'en_stock'\n);\n\nconst expiringToday = equipment.filter(e => \n  e.tipo_propiedad === 'RENTADO' &&\n  e.fecha_fin_renta === formatDate(today) &&\n  e.ubicacion !== 'en_stock'\n);\n\nreturn [\n  { json: { type: 'tomorrow', equipment: expiringTomorrow } },\n  { json: { type: 'today', equipment: expiringToday } }\n];"
+      },
+      "id": "filter-equipment",
+      "name": "Filtrar Equipos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.type}}",
+              "value2": "tomorrow"
+            }
+          ]
+        }
+      },
+      "id": "switch-type",
+      "name": "Switch por Tipo",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Procesar equipos que vencen mañana\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (equipment.length === 0) {\n  return [{ json: { alerts_created: 0 } }];\n}\n\nconst alerts = [];\nfor (const item of equipment) {\n  alerts.push({\n    user_id: item.user_id,\n    tipo_alerta: 'renta_vence_manana',\n    referencia_id: item.id,\n    fecha_ejecucion: new Date().toISOString().split('T')[0],\n    message: `⚠️ El ${item.nombre} rentado de ${item.proveedor_renta} vence mañana ${item.fecha_fin_renta}. ¿Ya lo devolviste?`\n  });\n}\n\nreturn alerts.map(alert => ({ json: alert }));"
+      },
+      "id": "process-tomorrow",
+      "name": "Procesar Vencen Mañana",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "alertas_programadas",
+        "columns": "user_id, tipo_alerta, referencia_id, fecha_ejecucion",
+        "additionalFields": {}
+      },
+      "id": "insert-alerts-tomorrow",
+      "name": "Insertar Alertas Mañana",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 200],
+      "credentials": {
+        "supabaseApi": "Supabase Account"
+      },
+      "operation": "insert"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Actualizar equipos para marcar alerta enviada\nconst alerts = $input.all().map(item => item.json);\nconst equipmentIds = alerts.map(alert => alert.referencia_id);\n\nreturn [{\n  json: {\n    equipment_ids: equipmentIds,\n    alerts_created: alerts.length\n  }\n}];"
+      },
+      "id": "prepare-update",
+      "name": "Preparar Actualización",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1450, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enviar notificaciones para equipos que vencen hoy\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (equipment.length === 0) {\n  return [{ json: { urgent_alerts: 0 } }];\n}\n\nconst urgentAlerts = [];\nfor (const item of equipment) {\n  urgentAlerts.push({\n    user_id: item.user_id,\n    tipo_alerta: 'renta_vence_hoy',\n    referencia_id: item.id,\n    fecha_ejecucion: new Date().toISOString().split('T')[0],\n    message: `🚨 HOY devuelve: ${item.nombre} a ${item.proveedor_renta}`\n  });\n}\n\nreturn urgentAlerts.map(alert => ({ json: alert }));"
+      },
+      "id": "process-today",
+      "name": "Procesar Vencen Hoy",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "alertas_programadas",
+        "columns": "user_id, tipo_alerta, referencia_id, fecha_ejecucion",
+        "additionalFields": {}
+      },
+      "id": "insert-alerts-today",
+      "name": "Insertar Alertas Hoy",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1250, 400],
+      "credentials": {
+        "supabaseApi": "Supabase Account"
+      },
+      "operation": "insert"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Preparar resumen para notificación\nconst tomorrowAlerts = $node[\"Insertar Alertas Mañana\"].json;\nconst todayAlerts = $node[\"Insertar Alertas Hoy\"].json;\n\nconst summary = {\n  date: new Date().toISOString().split('T')[0],\n  tomorrow_count: tomorrowAlerts?.length || 0,\n  today_count: todayAlerts?.length || 0,\n  total_alerts: (tomorrowAlerts?.length || 0) + (todayAlerts?.length || 0)\n};\n\nreturn [{ json: summary }];"
+      },
+      "id": "create-summary",
+      "name": "Crear Resumen",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "chatId": "={{$env.TELEGRAM_CHAT_ID}}",
+        "text": "📊 **Reporte Diario de Equipo Rentado**\n\n📅 Fecha: {{$json.date}}\n\n⏳ **Por vencer mañana:** {{$json.tomorrow_count}} equipo(s)\n🚨 **Vence HOY:** {{$json.today_count}} equipo(s)\n\nTotal alertas: {{$json.total_alerts}}",
+        "additionalFields": {
+          "parseMode": "Markdown"
+        }
+      },
+      "id": "telegram-notification",
+      "name": "Notificación Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [1850, 300],
+      "credentials": {
+        "telegramApi": "Telegram Bot"
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Consultar Equipos Rentados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar Equipos Rentados": {
+      "main": [
+        [
+          {
+            "node": "Filtrar Equipos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtrar Equipos": {
+      "main": [
+        [
+          {
+            "node": "Switch por Tipo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch por Tipo": {
+      "main": [
+        [
+          {
+            "node": "Procesar Vencen Mañana",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Procesar Vencen Hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Vencen Mañana": {
+      "main": [
+        [
+          {
+            "node": "Insertar Alertas Mañana",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Alertas Mañana": {
+      "main": [
+        [
+          {
+            "node": "Preparar Actualización",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Vencen Hoy": {
+      "main": [
+        [
+          {
+            "node": "Insertar Alertas Hoy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insertar Alertas Hoy": {
+      "main": [
+        [
+          {
+            "node": "Crear Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Actualización": {
+      "main": [
+        [
+          {
+            "node": "Crear Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Resumen": {
+      "main": [
+        [
+          {
+            "node": "Notificación Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": [
+    {
+      "name": "alerts",
+      "id": "1"
+    },
+    {
+      "name": "equipment",
+      "id": "2"
+    },
+    {
+      "name": "rental",
+      "id": "3"
+    }
+  ]
+}
