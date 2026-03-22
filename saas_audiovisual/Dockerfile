@@ -1,32 +1,39 @@
 # ============================================
 # Dockerfile for Flutter Web Application
+# Using pre-built Flutter SDK
 # ============================================
 
 # Stage 1: Build Flutter web app
-FROM ghcr.io/cirruslabs/flutter:stable AS build
+FROM cirruslabs/flutter:3.24.3 AS build
 
 WORKDIR /app
 
-# Copy pubspec file
-COPY pubspec.yaml ./
+# Copy pubspec files
+COPY pubspec.yaml pubspec.lock ./
 
-# Get dependencies (generates pubspec.lock)
-RUN flutter pub get --no-precompile
+# Get dependencies (offline mode since lock file exists)
+RUN flutter pub get --offline
 
 # Copy source code
 COPY . .
 
 # Build web app
-RUN flutter build web --release
+RUN flutter build web --release --no-source-maps
 
 # Stage 2: Serve with Nginx
 FROM nginx:alpine
+
+# Remove default nginx html
+RUN rm -rf /usr/share/nginx/html/*
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built web app
 COPY --from=build /app/build/web /usr/share/nginx/html
+
+# Add health check endpoint
+RUN echo "healthy" > /usr/share/nginx/html/health
 
 # Expose port
 EXPOSE 80
