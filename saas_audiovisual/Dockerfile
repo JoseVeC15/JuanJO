@@ -11,8 +11,8 @@ WORKDIR /app
 # Copy pubspec files
 COPY pubspec.yaml pubspec.lock ./
 
-# Get dependencies (offline mode since lock file exists)
-RUN flutter pub get --offline
+# Get dependencies (lock file will speed up resolution)
+RUN flutter pub get
 
 # Copy source code
 COPY . .
