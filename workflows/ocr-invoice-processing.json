@@ -1,5 +1,5 @@
 {
-  "name": "OCR y Procesamiento de Factura",
+  "name": "OCR Factura - OpenAI Vision",
   "nodes": [
     {
       "parameters": {},
@@ -14,95 +14,76 @@
     },
     {
       "parameters": {
-        "functionCode": "// Validar datos de entrada\nconst data = $input.first().json.body;\n\nif (!data.user_id || !data.image_base64) {\n  throw new Error('Faltan campos requeridos: user_id, image_base64');\n}\n\nreturn [{\n  json: {\n    user_id: data.user_id,\n    image_base64: data.image_base64,\n    timestamp: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Validar datos de entrada\nconst data = $input.first().json.body;\n\nif (!data.user_id || !data.image_base64) {\n  throw new Error('Faltan campos requeridos: user_id, image_base64');\n}\n\nreturn [{\n  json: {\n    user_id: data.user_id,\n    image_base64: data.image_base64,\n    timestamp: new Date().toISOString()\n  }\n}];"
       },
       "id": "validate-input",
       "name": "Validar Input",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [450, 300]
     },
     {
       "parameters": {
-        "bucketName": "facturas",
-        "fileName": "={{$node[\"Validar Input\"].json[\"user_id\"]}}/{{$now}}_invoice.jpg",
-        "binaryProperty": "image",
-        "additionalFields": {}
+        "jsCode": "// Preparar imagen para OpenAI Vision\nconst imageData = $input.first().json;\n\n// Si la imagen viene como base64, preparar el formato\nlet imageUrl = imageData.image_base64;\nif (!imageUrl.startsWith('data:')) {\n  imageUrl = `data:image/jpeg;base64,${imageUrl}`;\n}\n\nreturn [{\n  json: {\n    user_id: imageData.user_id,\n    image_data: imageUrl,\n    timestamp: imageData.timestamp\n  }\n}];"
       },
-      "id": "upload-storage",
-      "name": "Subir a Supabase Storage",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [650, 300],
-      "credentials": {
-        "supabaseApi": "Supabase Account"
-      },
-      "operation": "upload"
-    },
-    {
-      "parameters": {
-        "functionCode": "// Convertir base64 a Buffer para Google Vision\nconst imageBuffer = Buffer.from($node[\"Validar Input\"].json.image_base64, 'base64');\n\nreturn [{\n  json: {\n    ...$node[\"Validar Input\"].json,\n    image_buffer: imageBuffer.toString('base64'),\n    storage_path: $node[\"Subir a Supabase Storage\"].json.path\n  }\n}];"
-      },
-      "id": "prepare-ocr",
-      "name": "Preparar OCR",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [850, 300]
+      "id": "prepare-openai",
+      "name": "Preparar OpenAI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://vision.googleapis.com/v1/images:annotate",
+        "url": "https://api.openai.com/v1/chat/completions",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
-        "body": {
-          "requests": [
-            {
-              "image": {
-                "content": "={{$node[\"Preparar OCR\"].json.image_buffer}}"
-              },
-              "features": [
-                {
-                  "type": "DOCUMENT_TEXT_DETECTION",
-                  "maxResults": 1
-                }
-              ]
-            }
-          ]
-        },
-        "options": {}
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"text\",\n          \"text\": \"Extrae los siguientes datos de esta factura y responde en JSON válido:\\n- monto: el total de la factura (número decimal)\\n- fecha_factura: la fecha en formato YYYY-MM-DD\\n- proveedor: nombre del negocio o proveedor\\n- concepto: breve descripción de los productos/servicios\\n- tipo_gasto: categoriza como 'equipamiento_compra', 'alquiler_equipo', 'transporte', 'alimentacion', 'software_licencias', 'subcontratacion', 'material_produccion', 'marketing', 'oficina', 'capacitacion', 'impuestos' o 'otros'\\n\\nResponde SOLO con el JSON, sin texto adicional.\"\n        },\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"{{$json.image_data}}\"\n          }\n        }\n      ]\n    }\n  ],\n  \"max_tokens\": 1000\n}"
       },
-      "id": "google-vision",
-      "name": "Google Vision API",
+      "id": "openai-vision",
+      "name": "OpenAI GPT-4 Vision",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 1,
-      "position": [1050, 300],
+      "typeVersion": 4.2,
+      "position": [850, 300],
       "credentials": {
-        "httpHeaderAuth": "Google Vision API"
+        "httpHeaderAuth": "OpenAI API"
       }
     },
     {
       "parameters": {
-        "functionCode": "// Parsear respuesta de Google Vision\nconst response = $input.first().json;\nconst text = response.responses[0].fullTextAnnotation.text;\n\n// Funciones de extracción\nfunction extractAmount(text) {\n  // Buscar montos en formato MXN o USD\n  const patterns = [\n    /\\$\\s?([\\d,]+\\.\\d{2})/g,\n    /MXN\\s?([\\d,]+\\.\\d{2})/g,\n    /USD\\s?([\\d,]+\\.\\d{2})/g,\n    /TOTAL[:\\s]*([\\d,]+\\.\\d{2})/g,\n    /IMPORTE[:\\s]*([\\d,]+\\.\\d{2})/g\n  ];\n  \n  let amounts = [];\n  for (const pattern of patterns) {\n    let match;\n    while ((match = pattern.exec(text)) !== null) {\n      const amount = parseFloat(match[1].replace(/,/g, ''));\n      if (amount > 0 && amount < 1000000) {\n        amounts.push(amount);\n      }\n    }\n  }\n  \n  // Retornar el monto más común o el último encontrado\n  return amounts.length > 0 ? Math.max(...amounts) : null;\n}\n\nfunction extractDate(text) {\n  const patterns = [\n    /(\\d{1,2})[\\/\\-](\\d{1,2})[\\/\\-](\\d{2,4})/,\n    /(\\d{4})[\\/\\-](\\d{1,2})[\\/\\-](\\d{1,2})/,\n    /(\\d{1,2})\\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)[a-z]*\\s+(\\d{2,4})/i\n  ];\n  \n  for (const pattern of patterns) {\n    const match = text.match(pattern);\n    if (match) {\n      let date;\n      if (pattern.source.includes('ene|feb')) {\n        // Formato con meses en español\n        const months = {\n          'ene': 0, 'feb': 1, 'mar': 2, 'abr': 3, 'may': 4, 'jun': 5,\n          'jul': 6, 'ago': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dic': 11\n        };\n        const day = parseInt(match[1]);\n        const month = months[match[2].toLowerCase()];\n        const year = parseInt(match[3]);\n        date = new Date(year, month, day);\n      } else {\n        date = new Date(match[0]);\n      }\n      \n      if (!isNaN(date.getTime())) {\n        return date.toISOString().split('T')[0];\n      }\n    }\n  }\n  return null;\n}\n\nfunction extractProvider(text) {\n  const lines = text.split('\\n').filter(line => line.trim().length > 3);\n  // Las primeras líneas suelen ser el proveedor\n  for (let i = 0; i < Math.min(5, lines.length); i++) {\n    const line = lines[i].trim();\n    if (line.length > 3 && line.length < 100 && !line.match(/^\\d/)) {\n      return line;\n    }\n  }\n  return 'Proveedor no identificado';\n}\n\nconst extractedData = {\n  monto: extractAmount(text),\n  fecha_factura: extractDate(text),\n  proveedor: extractProvider(text),\n  concepto_ocr: text\n};\n\nreturn [{\n  json: {\n    ...$node[\"Preparar OCR\"].json,\n    ...extractedData\n  }\n}];"
+        "jsCode": "// Parsear respuesta de OpenAI\nconst response = $input.first().json;\nconst content = response.choices[0].message.content;\n\nlet extractedData;\ntry {\n  // Limpiar respuesta por si tiene markdown\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  extractedData = JSON.parse(jsonMatch ? jsonMatch[0] : content);\n} catch (e) {\n  extractedData = {\n    monto: null,\n    fecha_factura: null,\n    proveedor: 'No detectado',\n    concepto: content.substring(0, 100),\n    tipo_gasto: 'otros'\n  };\n}\n\nreturn [{\n  json: {\n    user_id: $input.first().json.user_id,\n    monto: extractedData.monto || 0,\n    fecha_factura: extractedData.fecha_factura || new Date().toISOString().split('T')[0],\n    proveedor: extractedData.proveedor || 'No detectado',\n    concepto_ocr: extractedData.concepto || content,\n    tipo_gasto: extractedData.tipo_gasto || 'otros',\n    image_data: $input.first().json.image_data\n  }\n}];"
       },
-      "id": "parse-ocr",
-      "name": "Parsear OCR",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [1250, 300]
+      "id": "parse-response",
+      "name": "Parsear Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
     },
     {
       "parameters": {
         "operation": "insert",
         "table": "facturas_gastos",
-        "columns": "user_id, imagen_url, monto, fecha_factura, proveedor, concepto_ocr, estado, processed_by_n8n",
-        "additionalFields": {}
+        "columns": "user_id, monto, fecha_factura, proveedor, concepto_ocr, tipo_gasto, estado, processed_by_n8n",
+        "additionalFields": {
+          "values": [
+            {
+              "column": "estado",
+              "value": "registrada"
+            },
+            {
+              "column": "processed_by_n8n",
+              "value": true
+            }
+          ]
+        }
       },
       "id": "supabase-insert",
       "name": "Insertar en Supabase",
       "type": "n8n-nodes-base.supabase",
       "typeVersion": 1,
-      "position": [1450, 300],
+      "position": [1250, 300],
       "credentials": {
         "supabaseApi": "Supabase Account"
       },
@@ -110,13 +91,13 @@
     },
     {
       "parameters": {
-        "functionCode": "// Preparar respuesta para el frontend\nconst data = $input.first().json;\nconst supabaseData = $node[\"Insertar en Supabase\"].json;\n\nreturn [{\n  json: {\n    success: true,\n    factura_id: supabaseData[0].id,\n    extracted_data: {\n      monto: data.monto,\n      fecha_factura: data.fecha_factura,\n      proveedor: data.proveedor\n    },\n    storage_url: data.storage_path,\n    message: 'Factura procesada exitosamente'\n  }\n}];"
+        "jsCode": "// Preparar respuesta para el frontend\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    success: true,\n    extracted_data: {\n      monto: data.monto,\n      fecha_factura: data.fecha_factura,\n      proveedor: data.proveedor,\n      tipo_gasto: data.tipo_gasto,\n      concepto: data.concepto_ocr\n    },\n    message: 'Factura procesada exitosamente con OpenAI Vision'\n  }\n}];"
       },
       "id": "prepare-response",
       "name": "Preparar Respuesta",
-      "type": "n8n-nodes-base.function",
-      "typeVersion": 1,
-      "position": [1650, 300]
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
     },
     {
       "parameters": {
@@ -127,7 +108,7 @@
       "name": "Webhook Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1850, 300]
+      "position": [1650, 300]
     }
   ],
   "connections": {
@@ -146,47 +127,36 @@
       "main": [
         [
           {
-            "node": "Subir a Supabase Storage",
+            "node": "Preparar OpenAI",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Subir a Supabase Storage": {
+    "Preparar OpenAI": {
       "main": [
         [
           {
-            "node": "Preparar OCR",
+            "node": "OpenAI GPT-4 Vision",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Preparar OCR": {
+    "OpenAI GPT-4 Vision": {
       "main": [
         [
           {
-            "node": "Google Vision API",
+            "node": "Parsear Respuesta",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Vision API": {
-      "main": [
-        [
-          {
-            "node": "Parsear OCR",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parsear OCR": {
+    "Parsear Respuesta": {
       "main": [
         [
           {
@@ -224,22 +194,19 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "1.0.0",
+  "versionId": "2.0.0",
   "meta": {
-    "templateCredsSetupCompleted": true
+    "templateCredsSetupCompleted": false
   },
   "tags": [
     {
-      "name": "invoice",
-      "id": "1"
+      "name": "invoice"
     },
     {
-      "name": "ocr",
-      "id": "2"
+      "name": "ocr"
     },
     {
-      "name": "supabase",
-      "id": "3"
+      "name": "openai"
     }
   ]
 }
