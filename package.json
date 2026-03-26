@@ -2,7 +2,7 @@
   "name": "juanjo-root",
   "version": "1.0.0",
   "scripts": {
-    "build": "cd saas_audiovisual && npm run build",
+    "build": "chmod +x build.sh && ./build.sh",
     "install": "cd saas_audiovisual && npm install"
   }
 }
