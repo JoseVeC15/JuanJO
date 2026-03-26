@@ -363,151 +363,141 @@ class _ProjectsScreenState extends State<ProjectsScreen> {
                 )
               : RefreshIndicator(
                   onRefresh: _loadProjects,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _projects.length,
-                    itemBuilder: (context, index) {
-                      final project = _projects[index];
-                      final montoPresupuestado = (project['monto_presupuestado'] as num?)?.toDouble() ?? 0;
-                      final montoFacturado = (project['monto_facturado'] as num?)?.toDouble() ?? 0;
-                      final progress = montoPresupuestado > 0
-                          ? (montoFacturado / montoPresupuestado).clamp(0.0, 1.0)
-                          : 0.0;
+                  child: Center(
+                    child: Container(
+                      constraints: const BoxConstraints(maxWidth: 1000),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: _projects.length,
+                        itemBuilder: (context, index) {
+                          final project = _projects[index];
+                          final montoPresupuestado = (project['monto_presupuestado'] as num?)?.toDouble() ?? 0;
+                          final montoFacturado = (project['monto_facturado'] as num?)?.toDouble() ?? 0;
+                          final progress = montoPresupuestado > 0
+                              ? (montoFacturado / montoPresupuestado).clamp(0.0, 1.0)
+                              : 0.0;
 
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: InkWell(
-                          onTap: () => _showProjectDialog(project),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.grey[100]!),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.02),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: InkWell(
+                              onTap: () => _showProjectDialog(project),
+                              borderRadius: BorderRadius.circular(16),
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      _getServiceIcon(project['tipo_servicio'] ?? ''),
-                                      style: const TextStyle(fontSize: 24),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            project['nombre_cliente'] ?? '',
-                                            style: const TextStyle(
-                                              fontSize: 16,
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(project['estado'] ?? '').withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Text(
+                                            _getServiceIcon(project['tipo_servicio'] ?? ''),
+                                            style: const TextStyle(fontSize: 20),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                project['nombre_cliente'] ?? '',
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              if (project['descripcion'] != null && project['descripcion'].isNotEmpty)
+                                                Text(
+                                                  project['descripcion'],
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.grey[600],
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: _getStatusColor(project['estado'] ?? '').withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(20),
+                                          ),
+                                          child: Text(
+                                            _getStatusLabel(project['estado'] ?? ''),
+                                            style: TextStyle(
+                                              color: _getStatusColor(project['estado'] ?? ''),
+                                              fontSize: 12,
                                               fontWeight: FontWeight.bold,
                                             ),
-                                          ),
-                                          if (project['descripcion'] != null)
-                                            Text(
-                                              project['descripcion'],
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey[600],
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: _getStatusColor(project['estado'] ?? '')
-                                            .withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: _getStatusColor(project['estado'] ?? ''),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        _getStatusLabel(project['estado'] ?? ''),
-                                        style: TextStyle(
-                                          color: _getStatusColor(project['estado'] ?? ''),
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Icon(Icons.calendar_today,
-                                        size: 14, color: Colors.grey[500]),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${project['fecha_inicio']} - ${project['fecha_entrega']}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[500],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Progreso Financiero',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              color: Colors.grey[500],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          LinearProgressIndicator(
-                                            value: progress,
-                                            backgroundColor: Colors.grey[200],
-                                            valueColor: AlwaysStoppedAnimation(
-                                              progress >= 1.0
-                                                  ? Colors.green
-                                                  : Colors.blue,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          '\$${montoFacturado.toStringAsFixed(0)} / \$${montoPresupuestado.toStringAsFixed(0)}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        Text(
-                                          '${(progress * 100).toStringAsFixed(0)}%',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: Colors.grey[500],
                                           ),
                                         ),
                                       ],
                                     ),
+                                    const SizedBox(height: 20),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey[500]),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Entrega: ${project['fecha_entrega']}',
+                                              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                            ),
+                                          ],
+                                        ),
+                                        Text(
+                                          '\$${montoPresupuestado.toStringAsFixed(0)}',
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: progress,
+                                        minHeight: 8,
+                                        backgroundColor: Colors.grey[100],
+                                        valueColor: AlwaysStoppedAnimation(
+                                          progress >= 1.0 ? Colors.green : Theme.of(context).primaryColor,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    },
+                          );
+                        },
+                      ),
+                    ),
                   ),
                 ),
       floatingActionButton: FloatingActionButton.extended(

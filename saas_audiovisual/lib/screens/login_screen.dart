@@ -15,6 +15,53 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _isSignUp = false;
 
+  Future<void> _authenticate() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showSnackBar('Completa todos los campos', Colors.orange);
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      if (_isSignUp) {
+        await SupabaseService.signUp(
+          _emailController.text.trim(),
+          _passwordController.text,
+          fullName: _nameController.text.trim(),
+        );
+        _showSnackBar('Cuenta creada exitosamente', Colors.green);
+      } else {
+        await SupabaseService.signIn(
+          _emailController.text.trim(),
+          _passwordController.text,
+        );
+      }
+    } catch (e) {
+      String message = 'Error desconocido';
+      if (e.toString().contains('Invalid login')) {
+        message = 'Credenciales incorrectas';
+      } else if (e.toString().contains('Email not confirmed')) {
+        message = 'Confirma tu email primero';
+      } else if (e.toString().contains('User already registered')) {
+        message = 'Este email ya está registrado';
+      }
+      _showSnackBar(message, Colors.red);
+    }
+
+    if (mounted) setState(() => _loading = false);
+  }
+
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {

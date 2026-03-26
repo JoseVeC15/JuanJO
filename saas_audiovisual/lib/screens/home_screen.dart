@@ -52,32 +52,33 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final user = SupabaseService.client.auth.currentUser;
     final userName = user?.userMetadata?['full_name'] ?? user?.email?.split('@')[0] ?? 'Usuario';
+    final size = MediaQuery.of(context).size;
+    final isDesktop = size.width > 600;
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dashboard'),
+        title: const Text('JuanJo Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              _showNotifications();
-            },
+            onPressed: _showNotifications,
           ),
           PopupMenuButton(
+            icon: const Icon(Icons.account_circle_outlined),
             itemBuilder: (context) => [
               const PopupMenuItem(
                 value: 'profile',
                 child: ListTile(
-                  leading: Icon(Icons.person),
-                  title: Text('Perfil'),
+                  leading: Icon(Icons.person_outline),
+                  title: Text('Mi Perfil'),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
               const PopupMenuItem(
                 value: 'logout',
                 child: ListTile(
-                  leading: Icon(Icons.logout),
-                  title: Text('Cerrar sesión'),
+                  leading: Icon(Icons.logout_rounded, color: Colors.red),
+                  title: Text('Cerrar sesión', style: TextStyle(color: Colors.red)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -86,67 +87,119 @@ class _HomeScreenState extends State<HomeScreen> {
               if (value == 'logout') _signOut();
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _loadData,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Saludo
-                    Text(
-                      '¡Hola, $userName! 👋',
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+              child: Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 1100),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Saludo
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '¡Hola, $userName! 👋',
+                                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Aquí está tu resumen de hoy',
+                                  style: TextStyle(color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                            if (isDesktop)
+                              ElevatedButton.icon(
+                                onPressed: () => Navigator.pushNamed(context, '/camera'),
+                                icon: const Icon(Icons.add_a_photo_outlined),
+                                label: const Text('Subir Factura'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 32),
+                        
+                        // Cards de estadísticas (Responsive)
+                        _buildResponsiveStatsGrid(isDesktop),
+                        const SizedBox(height: 32),
+                        
+                        // Fila de Contenido Principal (Grafico + Acciones/Alertas)
+                        if (isDesktop)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                flex: 2,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSectionTitle('Gastos por Categoría'),
+                                    const SizedBox(height: 16),
+                                    _buildExpenseChart(),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 32),
+                              Expanded(
+                                flex: 1,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _buildSectionTitle('Acciones Rápidas'),
+                                    const SizedBox(height: 16),
+                                    _buildQuickActions(isVertical: true),
+                                    if ((_stats['equipos_por_vencer'] as List).isNotEmpty) ...[
+                                      const SizedBox(height: 32),
+                                      _buildSectionTitle('Alertas de Equipo'),
+                                      const SizedBox(height: 16),
+                                      _buildEquipmentAlerts(),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          // Mobile Layout (Stacked)
+                          if (_categoryExpenses.isNotEmpty) ...[
+                            _buildSectionTitle('Gastos por Categoría'),
+                            const SizedBox(height: 16),
+                            _buildExpenseChart(),
+                            const SizedBox(height: 32),
+                          ],
+                          
+                          if ((_stats['equipos_por_vencer'] as List).isNotEmpty) ...[
+                            _buildSectionTitle('Alertas de Equipo'),
+                            const SizedBox(height: 16),
+                            _buildEquipmentAlerts(),
+                            const SizedBox(height: 32),
+                          ],
+                          
+                          _buildSectionTitle('Acciones Rápidas'),
+                          const SizedBox(height: 16),
+                          _buildQuickActions(),
+                        ],
+                        const SizedBox(height: 80), // Espacio para el FAB
+                      ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Aquí está tu resumen financiero',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Cards de estadísticas
-                    _buildStatsGrid(),
-                    const SizedBox(height: 24),
-                    
-                    // Gráfico de gastos
-                    if (_categoryExpenses.isNotEmpty) ...[
-                      const Text(
-                        'Gastos por Categoría',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildExpenseChart(),
-                      const SizedBox(height: 24),
-                    ],
-                    
-                    // Alertas de equipo
-                    if ((_stats['equipos_por_vencer'] as List).isNotEmpty) ...[
-                      const Text(
-                        '⚠️ Equipment Alerts',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildEquipmentAlerts(),
-                      const SizedBox(height: 24),
-                    ],
-                    
-                    // Acciones rápidas
-                    const Text(
-                      'Acciones Rápidas',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildQuickActions(),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -158,14 +211,23 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildStatsGrid() {
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+    );
+  }
+
+  Widget _buildResponsiveStatsGrid(bool isDesktop) {
     return GridView.count(
-      crossAxisCount: 2,
+      crossAxisCount: isDesktop ? 4 : 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.5,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      childAspectRatio: isDesktop ? 2.5 : 1.5,
       children: [
         _buildStatCard(
           'Ingresos',
@@ -185,66 +247,17 @@ class _HomeScreenState extends State<HomeScreen> {
           'Margen',
           '${(_stats['margen'] as double).toStringAsFixed(1)}%',
           Colors.blue,
-          Icons.analytics,
+          Icons.analytics_outlined,
           (_stats['margen'] as double) >= 0 ? 'positivo' : 'negativo',
         ),
         _buildStatCard(
           'Proyectos',
           '${_stats['proyectos_activos']}',
           Colors.purple,
-          Icons.folder,
+          Icons.folder_open_rounded,
           'activos',
         ),
       ],
-    );
-  }
-
-  Widget _buildStatCard(
-    String title,
-    String value,
-    Color color,
-    IconData icon,
-    String subtitle,
-  ) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(icon, color: color, size: 24),
-                Text(
-                  title,
-                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                ),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 10),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -260,85 +273,84 @@ class _HomeScreenState extends State<HomeScreen> {
       Colors.indigo,
     ];
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: SizedBox(
-          height: 200,
-          child: Row(
-            children: [
-              // Pie Chart
-              Expanded(
-                flex: 2,
-                child: PieChart(
-                  PieChartData(
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
-                    sections: _categoryExpenses.asMap().entries.map((entry) {
-                      final total = _categoryExpenses.fold<double>(
-                        0, (sum, e) => sum + (e['monto'] as double));
-                      final percentage = (entry.value['monto'] as double) / total * 100;
-                      
-                      return PieChartSectionData(
-                        color: colors[entry.key % colors.length],
-                        value: entry.value['monto'] as double,
-                        title: '${percentage.toStringAsFixed(0)}%',
-                        radius: 50,
-                        titleStyle: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Legend
-              Expanded(
-                flex: 3,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _categoryExpenses.take(5).toList().asMap().entries.map((entry) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: colors[entry.key % colors.length],
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              (entry.value['tipo'] as String).replaceAll('_', ' '),
-                              style: const TextStyle(fontSize: 11),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Text(
-                            '\$${(entry.value['monto'] as double).toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[100]!),
+      ),
+      child: SizedBox(
+        height: 240,
+        child: Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 4,
+                  centerSpaceRadius: 50,
+                  sections: _categoryExpenses.asMap().entries.map((entry) {
+                    final total = _categoryExpenses.fold<double>(
+                      0, (sum, e) => sum + (e['monto'] as double));
+                    final percentage = (entry.value['monto'] as double) / total * 100;
+                    
+                    return PieChartSectionData(
+                      color: colors[entry.key % colors.length],
+                      value: entry.value['monto'] as double,
+                      title: '${percentage.toStringAsFixed(0)}%',
+                      radius: 60,
+                      titleStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     );
                   }).toList(),
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              flex: 3,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _categoryExpenses.take(5).toList().asMap().entries.map((entry) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: colors[entry.key % colors.length],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            (entry.value['tipo'] as String).replaceAll('_', ' '),
+                            style: TextStyle(fontSize: 12, color: Colors.grey[700]),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          '\$${(entry.value['monto'] as double).toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -352,13 +364,17 @@ class _HomeScreenState extends State<HomeScreen> {
         final dueDate = equipment['fecha_fin_renta'] != null
             ? DateTime.parse(equipment['fecha_fin_renta'])
             : null;
-        final daysLeft = dueDate?.difference(DateTime.now()).inDays;
+        final now = DateTime.now();
+        final daysLeft = dueDate?.difference(DateTime(now.year, now.month, now.day)).inDays;
         
         Color color = Colors.orange;
         String message = '';
         
         if (daysLeft != null) {
-          if (daysLeft == 0) {
+          if (daysLeft < 0) {
+            color = Colors.red;
+            message = 'Vencido';
+          } else if (daysLeft == 0) {
             color = Colors.red;
             message = 'Vence HOY';
           } else if (daysLeft == 1) {
@@ -369,16 +385,26 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         }
         
-        return Card(
-          color: color.withOpacity(0.1),
-          margin: const EdgeInsets.only(bottom: 8),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withOpacity(0.1)),
+          ),
           child: ListTile(
-            leading: Icon(Icons.warning, color: color),
-            title: Text(equipment['nombre'] ?? ''),
-            subtitle: Text(message),
+            leading: CircleAvatar(
+              backgroundColor: color.withOpacity(0.1),
+              child: Icon(Icons.warning_amber_rounded, color: color, size: 20),
+            ),
+            title: Text(
+              equipment['nombre'] ?? '',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            subtitle: Text(message, style: TextStyle(fontSize: 12, color: color)),
             trailing: Text(
               equipment['fecha_fin_renta'] ?? '',
-              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.grey[500], fontSize: 11),
             ),
           ),
         );
@@ -386,39 +412,171 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    Color color,
+    IconData icon,
+    String subtitle,
+  ) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey[100]!),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              Text(
+                title,
+                style: TextStyle(color: Colors.grey[600], fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FittedBox(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  subtitle,
+                  style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActions({bool isVertical = false}) {
+    final actions = [
+      _buildActionItem(
+        Icons.camera_alt_outlined,
+        'Factura',
+        'Cargar gastos',
+        Colors.blue,
+        () => Navigator.pushNamed(context, '/camera'),
+      ),
+      _buildActionItem(
+        Icons.folder_outlined,
+        'Proyectos',
+        'Ver todos',
+        Colors.green,
+        () => Navigator.pushNamed(context, '/projects'),
+      ),
+      _buildActionItem(
+        Icons.inventory_2_outlined,
+        'Equipo',
+        'Ver inventario',
+        Colors.orange,
+        () => Navigator.pushNamed(context, '/inventory'),
+      ),
+    ];
+
+    if (isVertical) {
+      return Column(
+        children: actions.map((a) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: a,
+        )).toList(),
+      );
+    }
+
     return Row(
-      children: [
-        Expanded(
-          child: _buildActionButton(
-            context,
-            Icons.camera_alt,
-            'Factura',
-            Colors.blue,
-            () => Navigator.pushNamed(context, '/camera'),
-          ),
+      children: actions.map((a) => Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: a,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildActionButton(
-            context,
-            Icons.folder,
-            'Proyectos',
-            Colors.green,
-            () => Navigator.pushNamed(context, '/projects'),
-          ),
+      )).toList(),
+    );
+  }
+
+  Widget _buildActionItem(
+    IconData icon,
+    String label,
+    String sub,
+    Color color,
+    VoidCallback onTap,
+  ) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.1)),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildActionButton(
-            context,
-            Icons.inventory,
-            'Equipo',
-            Colors.orange,
-            () => Navigator.pushNamed(context, '/inventory'),
-          ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(
+                    sub,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: Colors.grey[400], size: 16),
+          ],
         ),
-      ],
+      ),
     );
   }
 

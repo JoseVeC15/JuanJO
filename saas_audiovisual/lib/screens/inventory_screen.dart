@@ -427,21 +427,41 @@ class _InventoryScreenState extends State<InventoryScreen>
 
   Widget _buildEquipmentCard(Map<String, dynamic> equipment) {
     final isRented = equipment['tipo_propiedad'] == 'RENTADO';
+    final color = _getConditionColor(equipment['condicion'] ?? '');
     
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey[100]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                Text(
-                  _getEquipmentIcon(equipment['tipo'] ?? ''),
-                  style: const TextStyle(fontSize: 28),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[50],
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    _getEquipmentIcon(equipment['tipo'] ?? ''),
+                    style: const TextStyle(fontSize: 24),
+                  ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -449,7 +469,7 @@ class _InventoryScreenState extends State<InventoryScreen>
                       Text(
                         equipment['nombre'] ?? '',
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -457,7 +477,7 @@ class _InventoryScreenState extends State<InventoryScreen>
                         Text(
                           equipment['marca_modelo'],
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 13,
                             color: Colors.grey[600],
                           ),
                         ),
@@ -466,18 +486,17 @@ class _InventoryScreenState extends State<InventoryScreen>
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
+                    horizontal: 10,
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: _getConditionColor(equipment['condicion'] ?? '')
-                        .withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
                     (equipment['condicion'] ?? '').toString().toUpperCase(),
                     style: TextStyle(
-                      color: _getConditionColor(equipment['condicion'] ?? ''),
+                      color: color,
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                     ),
@@ -485,52 +504,24 @@ class _InventoryScreenState extends State<InventoryScreen>
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                if (equipment['numero_serie'] != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.qr_code, size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
-                      Text(
-                        'S/N: ${equipment['numero_serie']}',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                if (!isRented && equipment['ubicacion'] != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
-                      Text(
-                        equipment['ubicacion'].toString().replaceAll('_', ' '),
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                if (isRented && equipment['proveedor_renta'] != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.business, size: 14, color: Colors.grey[500]),
-                      const SizedBox(width: 4),
-                      Text(
-                        equipment['proveedor_renta'],
-                        style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-              ],
+            const SizedBox(height: 20),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  if (equipment['numero_serie'] != null && equipment['numero_serie'].toString().isNotEmpty)
+                    _buildTag(Icons.qr_code_outlined, 'S/N: ${equipment['numero_serie']}'),
+                  const SizedBox(width: 12),
+                  if (!isRented && equipment['ubicacion'] != null)
+                    _buildTag(Icons.location_on_outlined, equipment['ubicacion'].toString().replaceAll('_', ' ')),
+                  if (isRented && equipment['proveedor_renta'] != null)
+                    _buildTag(Icons.business_outlined, equipment['proveedor_renta']),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Divider(color: Colors.grey[300]),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
+            const Divider(height: 1),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -540,13 +531,14 @@ class _InventoryScreenState extends State<InventoryScreen>
                     children: [
                       Text(
                         'Valor Actual',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                       Text(
-                        '\$${(equipment['valor_actual'] as num?)?.toStringAsFixed(2) ?? '0'}',
+                        '\$${(equipment['valor_actual'] as num?)?.toStringAsFixed(0) ?? '0'}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.green,
+                          fontSize: 18,
+                          color: Colors.black87,
                         ),
                       ),
                     ],
@@ -556,14 +548,14 @@ class _InventoryScreenState extends State<InventoryScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Costo por Día',
-                        style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                        'Costo Día',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                       ),
                       Text(
-                        '\$${(equipment['costo_renta_dia'] as num?)?.toStringAsFixed(2) ?? '0'}',
+                        '\$${(equipment['costo_renta_dia'] as num?)?.toStringAsFixed(0) ?? '0'}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                          fontSize: 18,
                         ),
                       ),
                     ],
@@ -574,6 +566,28 @@ class _InventoryScreenState extends State<InventoryScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTag(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: Colors.grey[600]),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: Colors.grey[700]),
+          ),
+        ],
       ),
     );
   }
@@ -638,8 +652,8 @@ class _InventoryScreenState extends State<InventoryScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: 'Propio', icon: Icon(Icons.home)),
-            Tab(text: 'Rentado', icon: Icon(Icons.store)),
+            Tab(text: 'Propio', icon: Icon(Icons.inventory_2_outlined)),
+            Tab(text: 'Rentado', icon: Icon(Icons.store_outlined)),
           ],
         ),
       ),
@@ -653,11 +667,16 @@ class _InventoryScreenState extends State<InventoryScreen>
                     ? _buildEmptyState('No hay equipo propio', 'Agrega tu primer equipo')
                     : RefreshIndicator(
                         onRefresh: _loadEquipment,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _ownEquipment.length,
-                          itemBuilder: (context, index) =>
-                              _buildEquipmentCard(_ownEquipment[index]),
+                        child: Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 1000),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(24),
+                              itemCount: _ownEquipment.length,
+                              itemBuilder: (context, index) =>
+                                  _buildEquipmentCard(_ownEquipment[index]),
+                            ),
+                          ),
                         ),
                       ),
                 // Rented equipment tab
@@ -665,11 +684,16 @@ class _InventoryScreenState extends State<InventoryScreen>
                     ? _buildEmptyState('No hay equipo rentado', 'Agrega equipo rentado')
                     : RefreshIndicator(
                         onRefresh: _loadEquipment,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _rentedEquipment.length,
-                          itemBuilder: (context, index) =>
-                              _buildEquipmentCard(_rentedEquipment[index]),
+                        child: Center(
+                          child: Container(
+                            constraints: const BoxConstraints(maxWidth: 1000),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(24),
+                              itemCount: _rentedEquipment.length,
+                              itemBuilder: (context, index) =>
+                                  _buildEquipmentCard(_rentedEquipment[index]),
+                            ),
+                          ),
                         ),
                       ),
               ],
