@@ -1,0 +1,8 @@
+{
+  "name": "saas-audiovisual",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "sed -i 's/defaultValue: \\x27.*\\x27/defaultValue: \\x27\\x27/g' lib/main.dart && ./install-flutter.sh && ./flutter/bin/flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY",
+    "install": "chmod +x install-flutter.sh"
+  }
+}

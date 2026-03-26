@@ -10,9 +10,18 @@ import 'screens/inventory_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
+  const supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://yfktdnpcmdpjrdlhqrls.supabase.co',
+  );
+  const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlma3RkbnBjbWRwanJkaGpxcmxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODU0MjUsImV4cCI6MjA4OTc2MTQyNX0.bScOoRvEG4C5Ckh3JvITSj06tI4vBi2esfrzoMQLYLA',
+  );
+
   await Supabase.initialize(
-    url: 'https://db.yfktdnpcmdpjrdlhqrls.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmZXRkbnBjbWRwanJkaGpxcmxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE3OTIzNzYsImV4cCI6MjAyNzM2ODM3Nn0.DJxjXyDfJx8qJx8qJx8qJx8qJx8qJx8qJx8qJx8qJx8',
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
   );
   
   runApp(const MyApp());
