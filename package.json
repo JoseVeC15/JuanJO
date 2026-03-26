@@ -1,0 +1,8 @@
+{
+  "name": "juanjo-root",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd saas_audiovisual && npm run build",
+    "install": "cd saas_audiovisual && npm install"
+  }
+}
