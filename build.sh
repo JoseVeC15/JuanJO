@@ -20,6 +20,9 @@ export PATH="$PATH:`pwd`/flutter/bin"
 echo ">>> Versión de Flutter:"
 ./flutter/bin/flutter --version
 
+echo ">>> Ayuda de build web (Primeros 20 líneas):"
+./flutter/bin/flutter build web -h | head -n 20
+
 echo ">>> Limpiando proyecto..."
 ./flutter/bin/flutter clean
 
@@ -29,8 +32,8 @@ echo ">>> Obteniendo dependencias..."
 # 2. Inyección de variables de entorno (Debug)
 echo ">>> SUPABASE_URL: ${SUPABASE_URL:0:10}..."
 
-# 3. Compilación Web
-echo ">>> Compilando para Web (Renderer: HTML)..."
-./flutter/bin/flutter build web --release --web-renderer=html --no-pub --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+# 3. Compilación Web (Sin flag de renderer para probar)
+echo ">>> Compilando para Web (Sin flag renderer para prueba)..."
+./flutter/bin/flutter build web --release --no-pub --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 
 echo ">>> Construcción finalizada con éxito."
