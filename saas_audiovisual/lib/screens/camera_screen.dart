@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -13,7 +13,8 @@ class CameraScreen extends StatefulWidget {
 }
 
 class _CameraScreenState extends State<CameraScreen> {
-  File? _image;
+  XFile? _imageFile;
+  Uint8List? _imageBytes;
   bool _processing = false;
   final _picker = ImagePicker();
 
@@ -27,7 +28,11 @@ class _CameraScreenState extends State<CameraScreen> {
       );
       
       if (pickedFile != null) {
-        setState(() => _image = File(pickedFile.path));
+        final bytes = await pickedFile.readAsBytes();
+        setState(() {
+          _imageFile = pickedFile;
+          _imageBytes = bytes;
+        });
       }
     } catch (e) {
       _showError('Error al seleccionar imagen: $e');
@@ -35,14 +40,13 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   Future<void> _processInvoice() async {
-    if (_image == null) return;
+    if (_imageBytes == null) return;
     
     setState(() => _processing = true);
     
     try {
       // Convertir imagen a base64
-      final bytes = await _image!.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      final base64Image = base64Encode(_imageBytes!);
       final userId = SupabaseService.userId;
       
       // Enviar a n8n webhook
@@ -59,7 +63,7 @@ class _CameraScreenState extends State<CameraScreen> {
         final result = jsonDecode(response.body);
         if (mounted) {
           Navigator.pushNamed(context, '/confirm', arguments: {
-            'image_path': _image!.path,
+            'image_path': _imageFile!.path,
             'monto': result['extracted_data']?['monto'],
             'fecha_factura': result['extracted_data']?['fecha_factura'],
             'proveedor': result['extracted_data']?['proveedor'],
@@ -103,7 +107,7 @@ class _CameraScreenState extends State<CameraScreen> {
         children: [
           // Imagen o placeholder
           Expanded(
-            child: _image == null
+            child: _imageBytes == null
                 ? _buildImagePlaceholder()
                 : _buildImagePreview(),
           ),
@@ -169,8 +173,8 @@ class _CameraScreenState extends State<CameraScreen> {
                   border: Border.all(color: Colors.grey[300]!),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Image.file(
-                  _image!,
+                child: Image.memory(
+                  _imageBytes!,
                   fit: BoxFit.contain,
                 ),
               ),
@@ -181,7 +185,10 @@ class _CameraScreenState extends State<CameraScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TextButton.icon(
-                onPressed: () => setState(() => _image = null),
+                onPressed: () => setState(() {
+                  _imageFile = null;
+                  _imageBytes = null;
+                }),
                 icon: const Icon(Icons.delete_outline),
                 label: const Text('Eliminar'),
                 style: TextButton.styleFrom(foregroundColor: Colors.red),
@@ -285,7 +292,7 @@ class _CameraScreenState extends State<CameraScreen> {
             width: double.infinity,
             height: 56,
             child: ElevatedButton.icon(
-              onPressed: _image != null && !_processing ? _processInvoice : null,
+              onPressed: _imageBytes != null && !_processing ? _processInvoice : null,
               icon: const Icon(Icons.auto_awesome),
               label: Text(
                 _processing ? 'Procesando...' : 'Procesar Factura',
