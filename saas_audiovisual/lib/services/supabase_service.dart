@@ -26,6 +26,13 @@ class SupabaseService {
     );
   }
 
+  static Future<void> signInWithGoogle() async {
+    await _client.auth.signInWithOAuth(
+      OAuthProvider.google,
+      redirectTo: 'https://saasaudiovisual.vercel.app',
+    );
+  }
+
   static Future<void> signOut() {
     return _client.auth.signOut();
   }
