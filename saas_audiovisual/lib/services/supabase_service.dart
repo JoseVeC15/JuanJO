@@ -36,14 +36,13 @@ class SupabaseService {
     var query = _client
         .from('proyectos')
         .select('*')
-        .eq('user_id', userId!)
-        .order('created_at', ascending: false);
+        .eq('user_id', userId!);
     
     if (estado != null && estado != 'todos') {
       query = query.eq('estado', estado);
     }
     
-    return await query;
+    return await query.order('created_at', ascending: false);
   }
 
   static Future<Map<String, dynamic>> getProject(String id) async {
@@ -69,14 +68,13 @@ class SupabaseService {
     var query = _client
         .from('facturas_gastos')
         .select('*')
-        .eq('user_id', userId!)
-        .order('created_at', ascending: false);
+        .eq('user_id', userId!);
     
     if (proyectoId != null) {
       query = query.eq('proyecto_id', proyectoId);
     }
     
-    return await query;
+    return await query.order('created_at', ascending: false);
   }
 
   static Future<Map<String, dynamic>> insertExpense(Map<String, dynamic> data) async {
@@ -114,14 +112,13 @@ class SupabaseService {
     var query = _client
         .from('inventario_equipo')
         .select('*')
-        .eq('user_id', userId!)
-        .order('nombre');
+        .eq('user_id', userId!);
     
     if (tipoPropiedad != null) {
       query = query.eq('tipo_propiedad', tipoPropiedad);
     }
     
-    return await query;
+    return await query.order('nombre');
   }
 
   static Future<void> insertEquipment(Map<String, dynamic> data) async {
