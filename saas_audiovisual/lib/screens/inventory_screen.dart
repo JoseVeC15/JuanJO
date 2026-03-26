@@ -337,7 +337,7 @@ class _InventoryScreenState extends State<InventoryScreen>
             ElevatedButton(
               onPressed: () async {
                 if (_formKey.currentState!.validate()) {
-                  final data = {
+                  final Map<String, dynamic> data = {
                     'nombre': _nombreController.text,
                     'tipo': _selectedTipo,
                     'marca_modelo': _marcaModeloController.text,
