@@ -45,42 +45,41 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       // Convertir imagen a base64
       final base64Image = base64Encode(_imageBytes!);
-      // Llamar a Google Cloud Vision API
-      final apiKey = 'AIzaSyCHumrKnm1kTwYtgCzt5-Mp0KQGPJuho-I';
-      final url = Uri.parse('https://vision.googleapis.com/v1/images:annotate?key=$apiKey');
+      
+      // Llamamos a n8n webhook de prueba (recuerda usar /webhook/ para producción luego)
+      final url = Uri.parse('https://n8naws.josevec.uk/webhook-test/process-invoice');
+      
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'requests': [
-            {
-              'image': {'content': base64Image},
-              'features': [
-                {'type': 'TEXT_DETECTION'}
-              ]
-            }
-          ]
+          // Colocamos temporalmente el ID que usamos de prueba.
+          // En el futuro puedes traer el ID logueado: SupabaseService.client.auth.currentUser?.id
+          'user_id': 'af341d31-c861-4242-950c-7f21be0b13b7',
+          'image_base64': base64Image
         }),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 120)); // Ampliamos el timeout porque la IA puede tardar
+
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
-        final text = result['responses']?[0]?['fullTextAnnotation']?['text'] ?? '';
-        // Extraer datos clave del texto usando expresiones regulares
-        final monto = _extractMonto(text);
-        final fecha = _extractFecha(text);
-        final proveedor = _extractProveedor(text);
-        if (mounted) {
-          Navigator.pushNamed(context, '/confirm', arguments: {
-            'image_path': _imageFile!.path,
-            'monto': monto,
-            'fecha_factura': fecha,
-            'proveedor': proveedor,
-            'concepto_ocr': '',
-            'factura_id': null,
-          });
+        
+        if (result['success'] == true) {
+          final extracted = result['extracted'] ?? {};
+          if (mounted) {
+            Navigator.pushNamed(context, '/confirm', arguments: {
+              'image_path': _imageFile!.path,
+              'monto': extracted['monto']?.toString(),
+              'fecha_factura': extracted['fecha']?.toString(),
+              'proveedor': extracted['proveedor']?.toString(),
+              'concepto_ocr': extracted['categoria']?.toString() ?? '',
+              'factura_id': null,
+            });
+          }
+        } else {
+          throw Exception('La IA no pudo procesar la factura: ${result['message']}');
         }
       } else {
-        throw Exception('Error del servidor: ${response.statusCode}');
+        throw Exception('Error del servidor: HTTP ${response.statusCode}');
       }
     } catch (e) {
       _showError('Error procesando factura: $e');
