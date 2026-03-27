@@ -46,8 +46,8 @@ class _CameraScreenState extends State<CameraScreen> {
       // Convertir imagen a base64
       final base64Image = base64Encode(_imageBytes!);
       
-      // Llamamos a n8n webhook de prueba (recuerda usar /webhook/ para producción luego)
-      final url = Uri.parse('https://n8naws.josevec.uk/webhook-test/process-invoice');
+      // Llamamos al webhook de producción
+      final url = Uri.parse('https://n8naws.josevec.uk/webhook/process-invoice');
       
       final response = await http.post(
         url,
