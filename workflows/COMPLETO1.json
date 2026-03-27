@@ -289,7 +289,14 @@
       ]
     },
     {
-      "parameters": {},
+      "parameters": {
+        "bucketName": "facturas",
+        "fileName": "={{ $node['Validar Input'].json.user_id }}/{{ $now.toFormat('yyyyMMdd-HHmmss') }}.jpg",
+        "fileData": "={{ $node['Validar Input'].json.image_base64 }}",
+        "options": {
+          "contentType": "image/jpeg"
+        }
+      },
       "id": "cba83034-797b-4d72-b7b1-a636708212f9",
       "name": "Subir a Supabase Storage",
       "type": "n8n-nodes-base.supabase",

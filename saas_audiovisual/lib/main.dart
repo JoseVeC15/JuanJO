@@ -33,32 +33,83 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SaaS Audiovisual',
+      title: 'Gestión Autónoma',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
+        fontFamily: 'Montserrat',
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1E293B), // Slate 800
-          primary: const Color(0xFF2563EB),   // Blue 600
+          seedColor: const Color(0xFF2563EB), // Azul principal
+          primary: const Color(0xFF2563EB),   // Azul fuerte
+          secondary: const Color(0xFF10B981), // Verde acento
+          background: const Color(0xFFF8FAFC), // Fondo claro
+          surface: Colors.white,
+        ),
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Color(0xFF1E293B),
+          elevation: 0,
+          titleTextStyle: TextStyle(
+            fontFamily: 'Montserrat',
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            color: Color(0xFF2563EB),
+          ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: Colors.grey[50],
+          fillColor: Colors.white,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Color(0xFFCBD5E1)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey[300]!),
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(color: Color(0xFFCBD5E1)),
           ),
+          labelStyle: TextStyle(color: Color(0xFF64748B)),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 0,
+            backgroundColor: const Color(0xFF2563EB),
+            foregroundColor: Colors.white,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
             ),
+            textStyle: const TextStyle(
+              fontFamily: 'Montserrat',
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        cardTheme: CardTheme(
+          color: Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+        ),
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(
+            fontFamily: 'Montserrat',
+            fontWeight: FontWeight.bold,
+            fontSize: 28,
+            color: Color(0xFF1E293B),
+          ),
+          titleLarge: TextStyle(
+            fontFamily: 'Montserrat',
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            color: Color(0xFF2563EB),
+          ),
+          bodyLarge: TextStyle(
+            fontFamily: 'Montserrat',
+            fontSize: 16,
+            color: Color(0xFF334155),
           ),
         ),
       ),

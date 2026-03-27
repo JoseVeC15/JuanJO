@@ -79,14 +79,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.05),
-              Theme.of(context).colorScheme.surface,
-              Theme.of(context).colorScheme.secondary.withOpacity(0.05),
+              Color(0xFF2563EB),
+              Color(0xFF10B981),
+              Color(0xFFF8FAFC),
             ],
           ),
         ),
@@ -96,8 +96,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Container(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Card(
-                elevation: isDesktop ? 4 : 0,
-                color: isDesktop ? Colors.white : Colors.transparent,
+                elevation: isDesktop ? 8 : 2,
+                color: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24),
                 ),

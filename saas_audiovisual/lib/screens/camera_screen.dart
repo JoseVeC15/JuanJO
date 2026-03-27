@@ -41,34 +41,42 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _processInvoice() async {
     if (_imageBytes == null) return;
-    
     setState(() => _processing = true);
-    
     try {
       // Convertir imagen a base64
       final base64Image = base64Encode(_imageBytes!);
-      final userId = SupabaseService.userId;
-      
-      // Enviar a n8n webhook
+      // Llamar a Google Cloud Vision API
+      final apiKey = 'AIzaSyCHumrKnm1kTwYtgCzt5-Mp0KQGPJuho-I';
+      final url = Uri.parse('https://vision.googleapis.com/v1/images:annotate?key=$apiKey');
       final response = await http.post(
-        Uri.parse('https://n8nlocal.josevec.uk/webhook/c9900166-2986-41b5-9113-8d87682964d4'),
+        url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'user_id': userId,
-          'image_base64': base64Image,
+          'requests': [
+            {
+              'image': {'content': base64Image},
+              'features': [
+                {'type': 'TEXT_DETECTION'}
+              ]
+            }
+          ]
         }),
       ).timeout(const Duration(seconds: 60));
-      
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
+        final text = result['responses']?[0]?['fullTextAnnotation']?['text'] ?? '';
+        // Extraer datos clave del texto usando expresiones regulares
+        final monto = _extractMonto(text);
+        final fecha = _extractFecha(text);
+        final proveedor = _extractProveedor(text);
         if (mounted) {
           Navigator.pushNamed(context, '/confirm', arguments: {
             'image_path': _imageFile!.path,
-            'monto': result['extracted_data']?['monto'],
-            'fecha_factura': result['extracted_data']?['fecha_factura'],
-            'proveedor': result['extracted_data']?['proveedor'],
-            'concepto_ocr': result['extracted_data']?['concepto_ocr'] ?? '',
-            'factura_id': result['factura_id'],
+            'monto': monto,
+            'fecha_factura': fecha,
+            'proveedor': proveedor,
+            'concepto_ocr': '',
+            'factura_id': null,
           });
         }
       } else {
@@ -77,8 +85,29 @@ class _CameraScreenState extends State<CameraScreen> {
     } catch (e) {
       _showError('Error procesando factura: $e');
     }
-    
     if (mounted) setState(() => _processing = false);
+  }
+
+  // Métodos auxiliares para extraer datos del texto OCR
+  String? _extractMonto(String text) {
+    final montoRegExp = RegExp(r'(\$|USD|S/|€|MXN)?\s?([0-9]+[\.,][0-9]{2})');
+    final match = montoRegExp.firstMatch(text);
+    return match != null ? match.group(0) : null;
+  }
+
+  String? _extractFecha(String text) {
+    final fechaRegExp = RegExp(r'(\d{2}[/-]\d{2}[/-]\d{4})|(\d{4}[/-]\d{2}[/-]\d{2})');
+    final match = fechaRegExp.firstMatch(text);
+    return match != null ? match.group(0) : null;
+  }
+
+  String? _extractProveedor(String text) {
+    // Busca la primera línea como proveedor (puedes mejorar esto según tus facturas)
+    final lines = text.split('\n');
+    if (lines.isNotEmpty) {
+      return lines[0].trim();
+    }
+    return null;
   }
 
   void _showError(String message) {

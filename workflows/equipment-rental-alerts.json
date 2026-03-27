@@ -104,7 +104,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Procesar equipos que vencen mañana\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (!equipment || equipment.length === 0) {\n  return [{ json: { alerts_created: 0, alerts: [] } }];\n}\n\nconst alerts = equipment.map(item => ({\n  user_id: item.user_id,\n  tipo_alerta: 'renta_vence_manana',\n  referencia_id: item.id,\n  fecha_ejecucion: new Date().toISOString().split('T')[0],\n  nombre: item.nombre,\n  proveedor: item.proveedor_renta,\n  fecha_fin: item.fecha_fin_renta,\n  message: `⚠️ El equipo "${item.nombre}" rentado a ${item.proveedor_renta} vence MAÑANA (${item.fecha_fin_renta}). Recuerda preparar la devolución.`\n}));\n\nreturn [{ json: { alerts_created: alerts.length, alerts: alerts } }];"
+        "jsCode": "// Procesar equipos que vencen mañana\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (!equipment || equipment.length === 0) {\n  return [{ json: { alerts_created: 0, alerts: [] } }];\n}\n\nconst alerts = equipment.map(item => ({\n  user_id: item.user_id,\n  tipo_alerta: 'renta_vence_manana',\n  referencia_id: item.id,\n  fecha_ejecucion: new Date().toISOString().split('T')[0],\n  nombre: item.nombre,\n  proveedor: item.proveedor_renta,\n  fecha_fin: item.fecha_fin_renta,\n  message: 'El equipo ' + item.nombre + ' rentado a ' + item.proveedor_renta + ' vence MAÑANA (' + item.fecha_fin_renta + '). Recuerda preparar la devolucion.'\n}));\n\nreturn [{ json: { alerts_created: alerts.length, alerts: alerts } }];"
       },
       "id": "process-tomorrow",
       "name": "Procesar Vencen Mañana",
@@ -114,7 +114,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Procesar equipos que vencen HOY\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (!equipment || equipment.length === 0) {\n  return [{ json: { alerts_created: 0, alerts: [] } }];\n}\n\nconst alerts = equipment.map(item => ({\n  user_id: item.user_id,\n  tipo_alerta: 'renta_vence_hoy',\n  referencia_id: item.id,\n  fecha_ejecucion: new Date().toISOString().split('T')[0],\n  nombre: item.nombre,\n  proveedor: item.proveedor_renta,\n  fecha_fin: item.fecha_fin_renta,\n  message: `🚨 URGENTE: El equipo "${item.nombre}" rentado a ${item.proveedor_renta} vence HOY. Debe devolverse hoy.`\n}));\n\nreturn [{ json: { alerts_created: alerts.length, alerts: alerts } }];"
+        "jsCode": "// Procesar equipos que vencen HOY\nconst data = $input.first().json;\nconst equipment = data.equipment;\n\nif (!equipment || equipment.length === 0) {\n  return [{ json: { alerts_created: 0, alerts: [] } }];\n}\n\nconst alerts = equipment.map(item => ({\n  user_id: item.user_id,\n  tipo_alerta: 'renta_vence_hoy',\n  referencia_id: item.id,\n  fecha_ejecucion: new Date().toISOString().split('T')[0],\n  nombre: item.nombre,\n  proveedor: item.proveedor_renta,\n  fecha_fin: item.fecha_fin_renta,\n  message: 'URGENTE: El equipo ' + item.nombre + ' rentado a ' + item.proveedor_renta + ' vence HOY. Debe devolverse hoy.'\n}));\n\nreturn [{ json: { alerts_created: alerts.length, alerts: alerts } }];"
       },
       "id": "process-today",
       "name": "Procesar Vencen Hoy",
@@ -124,7 +124,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Combinar alertas de ambos flujos\nconst tomorrowData = $node[\"Procesar Vencen Mañana\"].json;\nconst todayData = $node[\"Procesar Vencen Hoy\"].json;\n\nconst allAlerts = [\n  ...(tomorrowData.alerts || []),\n  ...(todayData.alerts || [])\n];\n\nif (allAlerts.length === 0) {\n  return [{ json: { has_alerts: false, message: 'No hay alertas hoy' } }];\n}\n\n// Preparar mensaje para Telegram\nlet telegramMessage = `🔔 **Alertas de Equipo Rentado**\\n`;\ntelegramMessage += `📅 ${new Date().toLocaleDateString('es-MX')}\\n\\n`;\n\nif (tomorrowData.alerts && tomorrowData.alerts.length > 0) {\n  telegramMessage += `⏳ **Vencen MAÑANA (${tomorrowData.alerts.length}):**\\n`;\n  tomorrowData.alerts.forEach(a => {\n    telegramMessage += `• ${a.nombre} - ${a.proveedor}\\n`;\n  });\n  telegramMessage += '\\n';\n}\n\nif (todayData.alerts && todayData.alerts.length > 0) {\n  telegramMessage += `🚨 **Vencen HOY (${todayData.alerts.length}):**\\n`;\n  todayData.alerts.forEach(a => {\n    telegramMessage += `• ${a.nombre} - ${a.proveedor}\\n`;\n  });\n}\n\nreturn [{\n  json: {\n    has_alerts: true,\n    telegram_message: telegramMessage,\n    total_alerts: allAlerts.length,\n    tomorrow_count: tomorrowData.alerts?.length || 0,\n    today_count: todayData.alerts?.length || 0,\n    alerts: allAlerts\n  }\n}];"
+        "jsCode": "// Combinar alertas de ambos flujos\nconst tomorrowData = $node['Procesar Vencen Mañana'].json;\nconst todayData = $node['Procesar Vencen Hoy'].json;\n\nconst allAlerts = [\n  ...(tomorrowData.alerts || []),\n  ...(todayData.alerts || [])\n];\n\nif (allAlerts.length === 0) {\n  return [{ json: { has_alerts: false, message: 'No hay alertas hoy' } }];\n}\n\n// Preparar mensaje para Telegram\nlet telegramMessage = 'Alertas de Equipo Rentado\\n';\ntelegramMessage += new Date().toLocaleDateString('es-MX') + '\\n\\n';\n\nif (tomorrowData.alerts && tomorrowData.alerts.length > 0) {\n  telegramMessage += 'Vencen MAÑANA (' + tomorrowData.alerts.length + '):\\n';\n  tomorrowData.alerts.forEach(a => {\n    telegramMessage += '- ' + a.nombre + ' - ' + a.proveedor + '\\n';\n  });\n  telegramMessage += '\\n';\n}\n\nif (todayData.alerts && todayData.alerts.length > 0) {\n  telegramMessage += 'Vencen HOY (' + todayData.alerts.length + '):\\n';\n  todayData.alerts.forEach(a => {\n    telegramMessage += '- ' + a.nombre + ' - ' + a.proveedor + '\\n';\n  });\n}\n\nreturn [{\n  json: {\n    has_alerts: true,\n    telegram_message: telegramMessage,\n    total_alerts: allAlerts.length,\n    tomorrow_count: tomorrowData.alerts ? tomorrowData.alerts.length : 0,\n    today_count: todayData.alerts ? todayData.alerts.length : 0,\n    alerts: allAlerts\n  }\n}];"
       },
       "id": "combine-alerts",
       "name": "Combinar Alertas",
@@ -156,7 +156,7 @@
         "options": {}
       },
       "id": "check-has-alerts",
-      "name": "¿Hay Alertas?",
+      "name": "Hay Alertas",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [1450, 300]
@@ -257,14 +257,14 @@
       "main": [
         [
           {
-            "node": "¿Hay Alertas?",
+            "node": "Hay Alertas",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "¿Hay Alertas?": {
+    "Hay Alertas": {
       "main": [
         [
           {

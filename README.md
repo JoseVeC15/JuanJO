@@ -1,6 +1,6 @@
-# SaaS Financiero Freelancer Audiovisual
+# Gestión Autónoma
 
-Sistema de gestión financiera diseñado específicamente para freelancers y pequeños equipos de producción audiovisual. Permite controlar proyectos, gastos, inventario de equipo, facturas con OCR automático y automatizaciones.
+Plataforma moderna de gestión autónoma para freelancers audiovisuales. Permite administrar proyectos, facturas, inventario y más, con una interfaz renovada y profesional.
 
 ## Stack Tecnológico
 
