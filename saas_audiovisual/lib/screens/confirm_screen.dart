@@ -24,19 +24,19 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
 
   List<Map<String, dynamic>> _proyectos = [];
 
-  final List<Map<String, String>> _tiposGasto = [
-    {'value': 'equipamiento_compra', 'label': 'Equipamiento', 'icon': 'camera'},
-    {'value': 'alquiler_equipo', 'label': 'Alquiler Equipo', 'icon': 'car_rental'},
-    {'value': 'transporte', 'label': 'Transporte', 'icon': 'directions_car'},
-    {'value': 'alimentacion', 'label': 'Alimentación', 'icon': 'restaurant'},
-    {'value': 'software_licencias', 'label': 'Software/Licencias', 'icon': 'computer'},
-    {'value': 'subcontratacion', 'label': 'Subcontratación', 'icon': 'people'},
-    {'value': 'material_produccion', 'label': 'Material Producción', 'icon': 'inventory'},
-    {'value': 'marketing', 'label': 'Marketing', 'icon': 'campaign'},
-    {'value': 'oficina', 'label': 'Oficina', 'icon': 'business'},
-    {'value': 'capacitacion', 'label': 'Capacitación', 'icon': 'school'},
-    {'value': 'impuestos', 'label': 'Impuestos', 'icon': 'receipt'},
-    {'value': 'otros', 'label': 'Otros', 'icon': 'more_horiz'},
+  final List<Map<String, dynamic>> _tiposGasto = [
+    {'value': 'equipamiento_compra', 'label': 'Equipamiento', 'icon': Icons.camera_alt_rounded, 'color': Color(0xFF3B82F6)},
+    {'value': 'alquiler_equipo', 'label': 'Alquiler', 'icon': Icons.car_rental_rounded, 'color': Color(0xFF6366F1)},
+    {'value': 'transporte', 'label': 'Transporte', 'icon': Icons.directions_car_rounded, 'color': Color(0xFF8B5CF6)},
+    {'value': 'alimentacion', 'label': 'Alimentación', 'icon': Icons.restaurant_rounded, 'color': Color(0xFFEC4899)},
+    {'value': 'software_licencias', 'label': 'Software', 'icon': Icons.computer_rounded, 'color': Color(0xFF06B6D4)},
+    {'value': 'subcontratacion', 'label': 'Personal', 'icon': Icons.people_alt_rounded, 'color': Color(0xFF10B981)},
+    {'value': 'material_produccion', 'label': 'Materiales', 'icon': Icons.inventory_2_rounded, 'color': Color(0xFFF59E0B)},
+    {'value': 'marketing', 'label': 'Marketing', 'icon': Icons.campaign_rounded, 'color': Color(0xFFEF4444)},
+    {'value': 'oficina', 'label': 'Oficina', 'icon': Icons.business_center_rounded, 'color': Color(0xFF64748B)},
+    {'value': 'capacitacion', 'label': 'Formación', 'icon': Icons.school_rounded, 'color': Color(0xFFD946EF)},
+    {'value': 'impuestos', 'label': 'Impuestos', 'icon': Icons.receipt_long_rounded, 'color': Color(0xFF475569)},
+    {'value': 'otros', 'label': 'Otros', 'icon': Icons.more_horiz_rounded, 'color': Color(0xFF94A3B8)},
   ];
 
   Map<String, dynamic>? _invoiceData;
@@ -366,25 +366,18 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
         ),
         const SizedBox(height: 16),
         
-        // Tipo de gasto
-        DropdownButtonFormField<String>(
-          value: _tipoGasto,
-          decoration: const InputDecoration(
-            labelText: 'Tipo de Gasto',
-            prefixIcon: Icon(Icons.category),
-            border: OutlineInputBorder(),
+        // Tipo de Gasto (Grid selection)
+        const Text(
+          'Categoría del Gasto',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF475569),
           ),
-          items: _tiposGasto.map((tipo) {
-            return DropdownMenuItem(
-              value: tipo['value'],
-              child: Text(tipo['label']!),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() => _tipoGasto = value!);
-          },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
+        _buildCategoryGrid(),
+        const SizedBox(height: 24),
         
         // Proyecto (opcional)
         DropdownButtonFormField<String?>(
@@ -464,6 +457,70 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildCategoryGrid() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: _tiposGasto.length,
+      itemBuilder: (context, index) {
+        final tipo = _tiposGasto[index];
+        final isSelected = _tipoGasto == tipo['value'];
+        final color = tipo['color'] as Color;
+
+        return InkWell(
+          onTap: () => setState(() => _tipoGasto = tipo['value']),
+          borderRadius: BorderRadius.circular(16),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              color: isSelected ? color.withOpacity(0.12) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isSelected ? color : const Color(0xFFE2E8F0),
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : null,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  tipo['icon'] as IconData,
+                  color: isSelected ? color : const Color(0xFF64748B),
+                  size: 28,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  tipo['label'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    color: isSelected ? color : const Color(0xFF475569),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
