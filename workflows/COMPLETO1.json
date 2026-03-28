@@ -327,7 +327,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Analiza esta factura. Extrae los datos en JSON puro:\n{\n  \"monto\": (total sin comas),\n  \"fecha_factura\": (YYYY-MM-DD),\n  \"proveedor\": (nombre empresa),\n  \"concepto_ocr\": (resumen items)\n}\nSi es un comprobante de transferencia bancaria, responde únicamente la palabra 'TRANSFERENCIA'.",
+        "text": "=Eres un experto en contabilidad de Paraguay y normativa de la SET. \nAnaliza la imagen y extrae la información en este formato JSON EXACTO:\n\n{\n  \"document_type\": \"factura\",\n  \"supplier\": {\n    \"razon_social\": \"Nombre del emisor (el que tiene el RUC y Timbrado en la parte superior)\",\n    \"ruc\": \"RUC del emisor\",\n    \"direccion\": \"Dirección del emisor\"\n  },\n  \"customer\": {\n    \"razon_social\": \"Nombre del cliente/comprador\",\n    \"ruc\": \"RUC del cliente\"\n  },\n  \"document_info\": {\n    \"numero_factura\": \"Formato XXX-XXX-XXXXXXX\",\n    \"timbrado\": \"Número de timbrado\",\n    \"fecha_emision\": \"YYYY-MM-DD\"\n  },\n  \"tax_summary\": {\n    \"total_exentas\": 0,\n    \"total_gravadas_5\": 0,\n    \"total_gravadas_10\": 0,\n    \"iva_5\": 0,\n    \"iva_10\": 0,\n    \"total_iva\": 0\n  },\n  \"totals\": {\n    \"subtotal\": 0,\n    \"total\": 0\n  },\n  \"concepto_ocr\": \"Breve resumen de los items\"\n}\n\nREGLAS CRÍTICAS:\n1. No confundas al Vendedor/Emisor (arriba) con el Comprador/Cliente.\n2. Si un dato no existe, usa null.\n3. Si es un comprobante de transferencia bancaria, responde 'TRANSFERENCIA'.",
         "messages": {
           "messageValues": [
             {
@@ -434,7 +434,7 @@
     },
     {
       "parameters": {
-        "functionCode": "// Preparar respuesta\nconst data = $input.first().json;\nreturn [{\n  json: {\n    success: true,\n    extracted: {\n      monto: data.monto,\n      proveedor: data.proveedor\n    },\n    message: 'Factura procesada'\n  }\n}];"
+        "functionCode": "// Preparar respuesta con todos los datos extraídos\nconst data = $input.first().json;\nreturn [{\n  json: {\n    success: true,\n    extracted: {\n      ...data\n    },\n    message: 'Factura procesada con éxito'\n  }\n}];"
       },
       "id": "d228ea58-acea-4820-977f-839ecde01830",
       "name": "Preparar Respuesta",
