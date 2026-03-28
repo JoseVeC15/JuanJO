@@ -12,6 +12,10 @@ class ConfirmScreen extends StatefulWidget {
 class _ConfirmScreenState extends State<ConfirmScreen> {
   final _montoController = TextEditingController();
   final _proveedorController = TextEditingController();
+  final _rucController = TextEditingController();
+  final _facturaNumController = TextEditingController();
+  final _timbradoController = TextEditingController();
+  final _iva10Controller = TextEditingController();
   final _notasController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   String _tipoGasto = 'otros';
@@ -52,16 +56,41 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
       _invoiceData = args;
       _imagePath = args['image_path'];
       
-      // Pre-cargar datos del OCR
+      // Pre-cargar datos del OCR (Soporta formato plano y anidado)
       if (args['monto'] != null) {
         _montoController.text = args['monto'].toString();
+      } else if (args['totals']?['total'] != null) {
+        _montoController.text = args['totals']['total'].toString();
       }
+
       if (args['proveedor'] != null) {
         _proveedorController.text = args['proveedor'].toString();
+      } else if (args['supplier']?['razon_social'] != null) {
+        _proveedorController.text = args['supplier']['razon_social'].toString();
       }
-      if (args['fecha_factura'] != null) {
+
+      if (args['supplier']?['ruc'] != null) {
+        _rucController.text = args['supplier']['ruc'].toString();
+      }
+
+      if (args['document_info']?['numero_factura'] != null) {
+        _facturaNumController.text = args['document_info']['numero_factura'].toString();
+      }
+
+      if (args['document_info']?['timbrado'] != null) {
+        _timbradoController.text = args['document_info']['timbrado'].toString();
+      }
+
+      if (args['tax_summary']?['total_gravadas_10'] != null) {
+        _iva10Controller.text = args['tax_summary']['total_gravadas_10'].toString();
+      } else if (args['tax_summary']?['iva_10'] != null) {
+        _iva10Controller.text = args['tax_summary']['iva_10'].toString();
+      }
+
+      final rawFecha = args['fecha_factura'] ?? args['document_info']?['fecha_emision'];
+      if (rawFecha != null) {
         try {
-          _selectedDate = DateTime.parse(args['fecha_factura'].toString());
+          _selectedDate = DateTime.parse(rawFecha.toString());
         } catch (e) {
           // Keep current date if parsing fails
         }
@@ -111,6 +140,10 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
         'monto': double.tryParse(_montoController.text) ?? 0,
         'fecha_factura': DateFormat('yyyy-MM-dd').format(_selectedDate),
         'proveedor': _proveedorController.text,
+        'ruc_proveedor': _rucController.text,
+        'numero_factura': _facturaNumController.text,
+        'timbrado': _timbradoController.text,
+        'iva_10': double.tryParse(_iva10Controller.text) ?? 0,
         'concepto_ocr': _invoiceData?['concepto_ocr'] ?? '',
         'tipo_gasto': _tipoGasto,
         'proyecto_id': _proyectoId,
@@ -257,8 +290,64 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
             labelText: 'Proveedor',
             prefixIcon: Icon(Icons.store),
             border: OutlineInputBorder(),
-            helperText: 'Nombre del negocio o proveedor',
           ),
+        ),
+        const SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: TextField(
+                controller: _rucController,
+                decoration: const InputDecoration(
+                  labelText: 'RUC/ID Fiscal',
+                  prefixIcon: Icon(Icons.fingerprint),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 1,
+              child: TextField(
+                controller: _iva10Controller,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: const InputDecoration(
+                  labelText: 'IVA 10%',
+                  prefixText: '\$ ',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _facturaNumController,
+                decoration: const InputDecoration(
+                  labelText: 'Nº Factura',
+                  prefixIcon: Icon(Icons.confirmation_number_outlined),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                controller: _timbradoController,
+                decoration: const InputDecoration(
+                  labelText: 'Timbrado',
+                  prefixIcon: Icon(Icons.verified_user_outlined),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 16),
         
@@ -410,6 +499,10 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
   void dispose() {
     _montoController.dispose();
     _proveedorController.dispose();
+    _rucController.dispose();
+    _facturaNumController.dispose();
+    _timbradoController.dispose();
+    _iva10Controller.dispose();
     _notasController.dispose();
     super.dispose();
   }
