@@ -348,7 +348,7 @@
     },
     {
       "parameters": {
-        "functionCode": "// Parsear respuesta de OpenAI\nconst response = $input.first().json.text;\nlet extracted = {};\n\nif (response.includes('TRANSFERENCIA')) {\n  extracted = { monto: 0, proveedor: 'TRANSFERENCIA', concepto_ocr: 'Comprobante de Pago' };\n} else {\n  try {\n    const jsonMatch = response.match(/\\{.*\\}/s);\n    extracted = JSON.parse(jsonMatch ? jsonMatch[0] : response);\n  } catch (e) {}\n}\n\nreturn [{\n  json: {\n    ...$node[\"Preparar OCR\"].json,\n    monto: extracted.monto || 0,\n    fecha_factura: extracted.fecha_factura || new Date().toISOString().split('T')[0],\n    proveedor: extracted.proveedor || 'Proveedor desconocido',\n    concepto_ocr: extracted.concepto_ocr || response.substring(0, 500)\n  }\n}];"
+        "functionCode": "// Parsear respuesta de OpenAI\nconst response = $input.first().json.text;\nlet extracted = {};\n\ntry {\n    const jsonMatch = response.match(/\\{[\\s\\S]*\\}/);\n    extracted = JSON.parse(jsonMatch ? jsonMatch[0] : response);\n} catch (e) {\n    extracted = { monto: 0, proveedor: 'Error parseo' };\n}\n\nreturn [{\n  json: {\n    ...$node[\"Preparar OCR\"].json,\n    ...extracted,\n    monto: extracted.totals?.total || extracted.monto || 0,\n    proveedor: extracted.supplier?.razon_social || extracted.proveedor || 'No detectado',\n    fecha_factura: extracted.document_info?.fecha_emision || extracted.fecha_factura || new Date().toISOString().split('T')[0],\n    concepto_ocr: extracted.concepto_ocr || response.substring(0, 500)\n  }\n}];"
       },
       "id": "7c0a181f-0add-4932-a715-8f4bfd39103d",
       "name": "Procesar Resultados IA",
@@ -384,6 +384,22 @@
             {
               "fieldId": "proveedor",
               "fieldValue": "={{$json.proveedor}}"
+            },
+            {
+              "fieldId": "ruc_proveedor",
+              "fieldValue": "={{ $json.supplier?.ruc }}"
+            },
+            {
+              "fieldId": "numero_factura",
+              "fieldValue": "={{ $json.document_info?.numero_factura }}"
+            },
+            {
+              "fieldId": "timbrado",
+              "fieldValue": "={{ $json.document_info?.timbrado }}"
+            },
+            {
+              "fieldId": "iva_10",
+              "fieldValue": "={{ $json.tax_summary?.iva_10 }}"
             },
             {
               "fieldId": "concepto_ocr",
