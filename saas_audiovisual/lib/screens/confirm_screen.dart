@@ -375,8 +375,8 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
             border: OutlineInputBorder(),
           ),
           items: _tiposGasto.map((tipo) {
-            return DropdownMenuItem(
-              value: tipo['value'],
+            return DropdownMenuItem<String>(
+              value: tipo['value'] as String,
               child: Row(
                 children: [
                   Icon(tipo['icon'] as IconData, size: 18, color: tipo['color'] as Color),
