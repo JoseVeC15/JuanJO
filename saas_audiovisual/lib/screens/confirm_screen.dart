@@ -366,17 +366,30 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
         ),
         const SizedBox(height: 16),
         
-        // Tipo de Gasto (Grid selection)
-        const Text(
-          'Categoría del Gasto',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF475569),
+        // Tipo de Gasto (Reverted to Dropdown)
+        DropdownButtonFormField<String>(
+          value: _tipoGasto,
+          decoration: const InputDecoration(
+            labelText: 'Tipo de Gasto',
+            prefixIcon: Icon(Icons.category_rounded),
+            border: OutlineInputBorder(),
           ),
+          items: _tiposGasto.map((tipo) {
+            return DropdownMenuItem(
+              value: tipo['value'],
+              child: Row(
+                children: [
+                  Icon(tipo['icon'] as IconData, size: 18, color: tipo['color'] as Color),
+                  const SizedBox(width: 12),
+                  Text(tipo['label'] as String),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() => _tipoGasto = value!);
+          },
         ),
-        const SizedBox(height: 12),
-        _buildCategoryGrid(),
         const SizedBox(height: 24),
         
         // Proyecto (opcional)
@@ -436,91 +449,59 @@ class _ConfirmScreenState extends State<ConfirmScreen> {
           ),
         ),
         
-        // Concepto OCR (si existe)
+        // Concepto OCR (Si existe, optimizado)
         if (_invoiceData?['concepto_ocr'] != null) ...[
+          const SizedBox(height: 24),
+          const Divider(),
           const SizedBox(height: 16),
-          ExpansionTile(
-            title: const Text('Texto OCR completo'),
+          const Row(
             children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Text(
-                  _invoiceData!['concepto_ocr'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                    fontFamily: 'monospace',
-                  ),
+              Icon(Icons.auto_awesome, size: 18, color: Colors.blue),
+              SizedBox(width: 8),
+              Text(
+                'Sugerencia de Concepto (OCR)',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF475569),
                 ),
               ),
             ],
           ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCategoryGrid() {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 10,
-        mainAxisSpacing: 10,
-        childAspectRatio: 1.1,
-      ),
-      itemCount: _tiposGasto.length,
-      itemBuilder: (context, index) {
-        final tipo = _tiposGasto[index];
-        final isSelected = _tipoGasto == tipo['value'];
-        final color = tipo['color'] as Color;
-
-        return InkWell(
-          onTap: () => setState(() => _tipoGasto = tipo['value']),
-          borderRadius: BorderRadius.circular(16),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isSelected ? color.withOpacity(0.12) : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isSelected ? color : const Color(0xFFE2E8F0),
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: color.withOpacity(0.2),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      )
-                    ]
-                  : null,
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  tipo['icon'] as IconData,
-                  color: isSelected ? color : const Color(0xFF64748B),
-                  size: 28,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  tipo['label'] as String,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? color : const Color(0xFF475569),
-                  ),
-                ),
-              ],
+            child: Text(
+              _invoiceData!['concepto_ocr'],
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF334155),
+                height: 1.5,
+              ),
             ),
           ),
-        );
-      },
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _notasController.text = _invoiceData!['concepto_ocr'];
+              });
+            },
+            icon: const Icon(Icons.copy_rounded, size: 16),
+            label: const Text('Usar como nota'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.blue,
+              padding: EdgeInsets.zero,
+            ),
+          ),
+        ],
+      ],
     );
   }
 
