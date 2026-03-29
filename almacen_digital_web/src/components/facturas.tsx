@@ -105,13 +105,22 @@ export default function Facturas() {
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Facturas y Gastos</h1>
           <p className="text-gray-500 mt-1">{facturasGastos.length} registros · {ocrProcessed} con OCR</p>
         </div>
-        <button
-          onClick={() => setShowOCR(!showOCR)}
-          className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:shadow-xl transition-all"
-        >
-          {uploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
-          {uploading ? 'Procesando...' : 'Nueva Factura (OCR)'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="p-3 text-slate-500 hover:bg-slate-100 rounded-xl transition-all"
+            title="Refrescar datos"
+          >
+            <Loader2 size={20} className={dataLoading ? 'animate-spin' : ''} />
+          </button>
+          <button
+            onClick={() => setShowOCR(!showOCR)}
+            className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:shadow-xl transition-all"
+          >
+            {uploading ? <Loader2 className="animate-spin" size={20} /> : <Upload size={20} />}
+            {uploading ? 'Procesando...' : 'Nueva Factura (OCR)'}
+          </button>
+        </div>
       </div>
 
       {/* OCR Demo Panel */}
