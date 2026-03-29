@@ -1,278 +1,80 @@
-# Gestión Autónoma
+# Almacén Digital (JuanJo) 🚀
 
-Plataforma moderna de gestión autónoma para freelancers audiovisuales. Permite administrar proyectos, facturas, inventario y más, con una interfaz renovada y profesional.
+Plataforma SaaS profesional diseñada para la gestión integral de freelancers y empresas del sector audiovisual. Permite administrar proyectos, flujos de caja, inventarios de equipos y procesamiento automatizado de facturas con IA avanzada.
 
-## Stack Tecnológico
+## 🛠️ Stack Tecnológico
 
 | Componente | Herramienta | Función |
 |------------|-------------|---------|
-| **Frontend** | Flutter Web 3.x | Interfaz mobile-first PWA |
-| **Base de datos** | Supabase | PostgreSQL + Auth + Storage |
-| **Automatizaciones** | n8n | Workflows OCR y alertas |
-| **OCR/IA** | OpenAI GPT-4 Vision | Extracción inteligente de datos |
-| **Storage** | Supabase Storage | Imágenes de facturas y equipos |
-| **Notificaciones** | Telegram Bot | Alertas y recordatorios |
-| **Deployment** | Easypanel + Docker | Hosting y orquestación |
+| **Frontend** | Flutter Web 3.x | Aplicación web premium y responsiva |
+| **Backend/DB** | Supabase | PostgreSQL, Autenticación y Storage |
+| **Automatización** | n8n | Orquestación de flujos de trabajo (Workflows) |
+| **Inteligencia Artificial** | OpenAI (GPT-4o-mini) | Extracción de datos fiscales mediante OCR avanzado |
+| **Cloud Computing** | Google Cloud Platform | Servicios de infraestructura y People API |
+| **Despliegue** | Vercel | Hosting de alta disponibilidad para el frontend |
 
-## Credenciales del Proyecto
+## ✨ Características Principales
 
-### Supabase
-- **URL**: `https://db.yfktdnpcmdpjrdlhqrls.supabase.co`
-- **Anon Key**: Disponible en `config/env.example`
+### 🧾 Procesamiento Inteligente de Facturas (OCR)
+- **Extracción de Datos Fiscales**: Detección automática de RUC Proveedor, Número de Factura, Timbrado e IVA (5%, 10%, Exentas) de Paraguay.
+- **Identificación Experta**: El sistema distingue inteligentemente entre Emisor y Comprador, evitando errores comunes en tickets térmicos.
+- **Sugerencia de Concepto**: OCR optimizado que resume los items de la factura para facilitar el registro de gastos.
 
-### n8n
-- **URL**: `https://n8nlocal.josevec.uk`
-- **Webhook OCR**: `/webhook-test/c9900166-2986-41b5-9113-8d87682964d4`
+### 📊 Gestión de Proyectos y Finanzas
+- **Seguimiento en Tiempo Real**: Visualización de estados (Cotización, Proceso, Entregado, Pagado).
+- **Control de Gastos**: Registro automático vinculado a proyectos específicos.
+- **Dashboard Premium**: Gráficos e indicadores de salud financiera (Ingresos vs. Gastos).
 
-### Telegram Bot
-- **User ID**: `1561439670`
-- **Bot Token**: Configurar en variables de entorno n8n
+### 📦 Inventario y Alertas
+- **Control de Equipos**: Gestión de equipos propios y rentados.
+- **Alertas Automatizadas**: Notificaciones de vencimiento de rentas enviadas vía Telegram.
 
-## Requisitos Previos
+## 🚀 Instalación y Configuración
 
-### Desarrollo Local
-- Flutter SDK 3.x
-- Dart SDK 3.x
-- Git
-- Chrome (para pruebas web)
+### 1. Requisitos
+- [Flutter SDK](https://docs.flutter.dev/get-started/install)
+- [Supabase CLI](https://supabase.com/docs/guides/cli) (opcional para desarrollo)
 
-### Producción
-- Docker y Docker Compose
-- Easypanel (opcional)
-- Dominio con Cloudflare (opcional)
-
-## Instalación Rápida
-
-### 1. Clonar el repositorio
-```bash
-git clone <url-del-repositorio>
-cd JuanJo
+### 2. Configuración del Entorno
+Crea un archivo `.env` en la raíz del proyecto con las siguientes variables:
+```env
+SUPABASE_URL=tu_url_de_supabase
+SUPABASE_ANON_KEY=tu_anon_key
+GOOGLE_CLOUD_PROJECT=saas-491603
+GOOGLE_APPLICATION_CREDENTIALS=config/service-account.json
 ```
 
-### 2. Configurar Supabase
-```bash
-# Ejecutar esquema principal
-psql -h <host> -U postgres -d postgres -f database/schema.sql
-
-# Configurar storage
-psql -h <host> -U postgres -d postgres -f config/storage-setup.sql
-
-# Cargar datos de prueba (opcional)
-psql -h <host> -U postgres -d postgres -f scripts/sample-data-simple.sql
-```
-
-### 3. Configurar n8n
-```bash
-# Importar workflows
-# 1. Abrir n8n en https://n8nlocal.josevec.uk
-# 2. Importar cada archivo JSON de workflows/
-# 3. Configurar credenciales:
-#    - OpenAI API Key
-#    - Telegram Bot Token
-#    - Supabase URL y Service Key
-```
-
-### 4. Ejecutar Frontend (Desarrollo)
+### 3. Ejecución del Frontend
 ```bash
 cd saas_audiovisual
 flutter pub get
 flutter run -d chrome
 ```
 
-### 5. Ejecutar Frontend (Producción)
-```bash
-cd saas_audiovisual
-docker-compose up -d
-```
+### 4. Configuración de n8n
+- Importar el archivo `workflows/COMPLETO1.json` en tu instancia de n8n.
+- Configurar las credenciales de OpenAI, Supabase y Telegram.
+- Asegurar que el Webhook coincida con la URL configurada en el frontend.
 
-## Estructura del Proyecto
+## 📁 Estructura del Proyecto
 
-```
+```text
 JuanJo/
-├── saas_audiovisual/           # Aplicación Flutter Web
-│   ├── lib/
-│   │   ├── main.dart           # Entry point con rutas
-│   │   ├── screens/            # Pantallas de la app
-│   │   │   ├── login_screen.dart
-│   │   │   ├── home_screen.dart
-│   │   │   ├── camera_screen.dart
-│   │   │   ├── confirm_screen.dart
-│   │   │   ├── projects_screen.dart
-│   │   │   └── inventory_screen.dart
-│   │   └── services/
-│   │       └── supabase_service.dart
-│   ├── Dockerfile              # Container multi-stage
-│   ├── docker-compose.yml      # Orquestación completa
-│   ├── nginx.conf              # Configuración web server
-│   └── pubspec.yaml            # Dependencias Flutter
-│
-├── database/
-│   └── schema.sql              # Esquema completo (tablas, RLS, triggers)
-│
-├── config/
-│   ├── env.example             # Variables de entorno
-│   └── storage-setup.sql       # Configuración buckets storage
-│
-├── workflows/
-│   ├── ocr-invoice-processing.json
-│   ├── equipment-rental-alerts.json
-│   └── payment-followup.json
-│
-├── scripts/
-│   ├── sample-data.sql         # Datos de prueba completos
-│   └── sample-data-simple.sql  # Datos mínimos para testing
-│
-├── docs/
-│   └── setup-guide.md          # Guía detallada de setup
-│
-└── frontend/
-    └── wireframes.md           # Diseños UI/UX
+├── saas_audiovisual/   # Aplicación Flutter (Frontend)
+│   ├── lib/            # Código fuente (Screens, Services, Models)
+│   └── build.sh        # Script de construcción para Vercel
+├── database/           # Scripts SQL (Esquema, Datos, Limpieza)
+├── config/             # Configuraciones de Google Cloud y Credenciales
+├── workflows/          # Workflows exportados de n8n
+└── .gitignore          # Archivos excluidos del control de versiones
 ```
 
-## Pantallas de la Aplicación
+## 🔐 Seguridad y Privacidad
+- El proyecto utiliza **Google Service Accounts** para integraciones seguras.
+- Se recomienda no subir archivos `.json` de credenciales ni secretos al repositorio público.
+- Implementación de RLS (Row Level Security) en Supabase para proteger los datos de usuario.
 
-| Pantalla | Archivo | Descripción |
-|----------|---------|-------------|
-| Login | `login_screen.dart` | Autenticación con email/password |
-| Dashboard | `home_screen.dart` | Resumen financiero, gráficos, alertas |
-| Cámara | `camera_screen.dart` | Captura de factura (imagen/galería) |
-| Confirmar | `confirm_screen.dart` | Revisión datos OCR, guardar factura |
-| Proyectos | `projects_screen.dart` | Listado, filtros por estado, CRUD |
-| Inventario | `inventory_screen.dart` | Equipo propio/rentado, alertas vencimiento |
-
-## Características Principales
-
-### Gestión de Proyectos
-- Crear/editar proyectos audiovisuales
-- Tracking de presupuesto vs facturado
-- Estados: cotización → en progreso → entregado → facturado → pagado
-- Filtros por estado y búsqueda
-
-### Captura de Facturas con OCR
-- Cámara o galería para capturar imagen
-- Procesamiento con OpenAI GPT-4 Vision
-- Extracción automática: monto, fecha, proveedor
-- Asignación a proyecto y categoría de gasto
-
-### Inventario de Equipo
-- Equipo propio: depreciación, valor actual, ubicación
-- Equipo rentado: proveedor, fechas, costo diario
-- Alertas de vencimiento de renta
-- Asignación a proyectos
-
-### Dashboard Financiero
-- Ingresos y gastos del mes
-- Margen de ganancia
-- Gráfico de gastos por categoría
-- Proyectos activos
-- Alertas de equipo por vencer
-
-### Automatizaciones (n8n)
-- OCR automático de facturas
-- Alertas de renta próxima a vencer
-- Seguimiento de pagos pendientes
-- Notificaciones vía Telegram
-
-## Comandos Útiles
-
-### Flutter
-```bash
-# Ejecutar en desarrollo
-flutter run -d chrome
-
-# Build para producción
-flutter build web --release
-
-# Analizar código
-flutter analyze
-
-# Ejecutar tests
-flutter test
-```
-
-### Docker
-```bash
-# Levantar servicios
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f frontend
-
-# Detener servicios
-docker-compose down
-
-# Reconstruir imagen
-docker-compose build --no-cache frontend
-```
-
-### Base de Datos
-```bash
-# Conectar a Supabase (vía psql o cliente)
-# Tablas principales:
-# - profiles
-# - proyectos
-# - facturas_gastos
-# - inventario_equipo
-# - ingresos
-# - alertas_programadas
-```
-
-## Variables de Entorno
-
-### Supabase (Flutter)
-Configuradas en `lib/main.dart`:
-```dart
-url: 'https://db.yfktdnpcmdpjrdlhqrls.supabase.co'
-anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
-```
-
-### n8n (docker-compose.yml o Easypanel)
-```
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=<tu-contraseña>
-TELEGRAM_BOT_TOKEN=<tu-token>
-OPENAI_API_KEY=<tu-api-key>
-```
-
-## Deployment en Easypanel
-
-1. Conectar repositorio Git en Easypanel
-2. Configurar build: `saas_audiovisual/`
-3. Puerto: `8080`
-4. Variables de entorno desde `config/env.example`
-5. Dominio: configurar en Cloudflare
-
-## URLs del Proyecto
-
-| Servicio | URL |
-|----------|-----|
-| Frontend (local) | `http://localhost:8080` |
-| n8n | `https://n8nlocal.josevec.uk` |
-| Supabase Dashboard | `https://supabase.com/dashboard` |
-| Easypanel | Configurar según hosting |
-
-## Troubleshooting
-
-### Error de CORS en Supabase
-- Verificar que el dominio está autorizado en Supabase Dashboard
-- Agregar URL de producción en Authentication → URL Configuration
-
-### n8n no accede a variables de entorno
-- Configurar `N8N_BLOCK_ENV_ACCESS_IN_NODE=false` o
-- Hardcodear valores directamente en los nodos
-
-### Flutter build falla
-- Ejecutar `flutter clean && flutter pub get`
-- Verificar versión de Flutter: `flutter --version`
-
-## Documentación Adicional
-
-- `docs/setup-guide.md` - Guía detallada de configuración
-- `frontend/wireframes.md` - Wireframes y diseños UI
-- `database/schema.sql` - Documentación inline del esquema
-
-## License
-
-Propietario: Juan José (JuanJo)
-Proyecto: SaaS Financiero Freelancer Audiovisual
-Fecha: Marzo 2026
+---
+**Desarrollado para:** Juan José (JuanJo)  
+**Versión:** 2.0 (Marzo 2026)  
+**Estado:** Producción / Estable  
