@@ -16,7 +16,7 @@ void main() async {
   );
   const supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlma3RkbnBjbWRwanJkaGpxcmxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQxODU0MjUsImV4cCI6MjA4OTc2MTQyNX0.bScOoRvEG4C5Ckh3JvITSj06tI4vBi2esfrzoMQLYLA',
+    defaultValue: 'sb_publishable_bcIFK_FA8uduHv6r2VeIGg_AE3882-e',
   );
 
   await Supabase.initialize(
