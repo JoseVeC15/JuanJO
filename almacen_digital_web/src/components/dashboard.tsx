@@ -13,6 +13,7 @@ import {
   getServiceIcon, getStatusLabel, getStatusColor,
   getGastoLabel, getGastoColor
 } from '../data/sampleData';
+import { useAuth } from '../contexts/AuthContext';
 
 const severityConfig: Record<string, { bg: string; border: string; icon: string; dot: string }> = {
   critica: { bg: 'bg-red-50', border: 'border-red-200', icon: 'text-red-600', dot: 'bg-red-500' },
@@ -22,6 +23,7 @@ const severityConfig: Record<string, { bg: string; border: string; icon: string;
 
 export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => void }) {
   const { proyectos, facturasGastos, inventarioEquipo, alertas, ingresos, loading } = useSupabaseData();
+  const { user } = useAuth();
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
 
   if (loading) {
@@ -65,7 +67,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
       {/* Greeting */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">¡Hola de nuevo! 👋</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+            ¡Hola, {user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'de nuevo'}! 👋
+          </h1>
           <p className="text-gray-500 mt-1">Tu FINANCE está al día</p>
         </div>
         <button

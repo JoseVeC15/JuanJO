@@ -26,7 +26,7 @@ export default function LoginScreen() {
               🏙️
             </div>
             <h1 className="text-3xl font-bold text-white tracking-tight">FINANCE</h1>
-            <p className="text-slate-400 mt-2">Bienvenido de nuevo, JuanJo</p>
+            <p className="text-slate-400 mt-2">Acceso Seguro al Portal FINANCE</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -122,7 +122,7 @@ export default function LoginScreen() {
           </button>
 
           <p className="text-center text-slate-500 text-xs mt-8">
-            Juan José (JuanJo) • SaaS Financiero v2.0
+            Sistema de Gestión Financiera • v2.0
           </p>
         </div>
       </div>
