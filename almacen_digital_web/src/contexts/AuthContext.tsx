@@ -15,13 +15,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    // Escuchar cambios de estado (incluyendo el retorno de OAuth)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth Event:', event);
+      if (session) {
+        setUser(session.user);
+      } else {
+        setUser(null);
+      }
       setLoading(false);
+
+      // Limpiar URL si hay fragmentos de autenticación (evita colisiones)
+      if (event === 'SIGNED_IN' && window.location.hash.includes('access_token')) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    // Verificación inicial de sesión
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) console.error('Error al recuperar sesión:', error.message);
+      if (session) setUser(session.user);
       setLoading(false);
     });
 

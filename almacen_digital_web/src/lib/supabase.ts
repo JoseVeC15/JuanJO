@@ -7,5 +7,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables');
 }
 
-// Sincronización de llaves API ECC (V3)
-export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '');
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
+  auth: {
+    flowType: 'pkce',
+    persistSession: true,
+    detectSessionInUrl: true,
+    autoRefreshToken: true
+  }
+});
