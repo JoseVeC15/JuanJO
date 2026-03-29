@@ -48,15 +48,20 @@ export default function AdminPanel() {
         body: formData
       });
 
-      if (error) throw error;
+      if (error) {
+        // Error de la propia función (ej: 400 Bad Request)
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        throw new Error(errorMsg);
+      }
 
-      setStatus({ type: 'success', msg: 'Cliente registrado con éxito. Ya puede iniciar sesión.' });
+      setStatus({ type: 'success', msg: 'Cliente registrado con éxito.' });
       setFormData({ email: '', password: '', nombre_completo: '' });
       queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
       setTimeout(() => setShowCreateModal(false), 2000);
     } catch (err: any) {
-      console.error(err);
-      setStatus({ type: 'error', msg: err.message || 'Error al crear usuario. Verifica la configuración de Edge Functions.' });
+      console.error("DEBUG Edge Function:", err);
+      const msg = err.message || 'Error desconocido';
+      setStatus({ type: 'error', msg: `Fallo en Registro: ${msg}` });
     } finally {
       setIsSubmitting(false);
     }
