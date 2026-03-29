@@ -54,7 +54,7 @@ function App() {
             <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center text-white text-lg">
               🏙️
             </div>
-            <h1 className="text-white font-bold tracking-tight">Almacén Digital</h1>
+            <h1 className="text-white font-bold tracking-tight">FINANCE</h1>
           </div>
         </div>
 
@@ -97,7 +97,7 @@ function App() {
             <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white text-sm">
               🏙️
             </div>
-            <h1 className="font-bold text-slate-900">Almacén Digital</h1>
+            <h1 className="font-bold text-slate-900">FINANCE</h1>
           </div>
           <button onClick={() => signOut()} className="text-slate-400 px-2 py-1">
             <LogOut size={20} />

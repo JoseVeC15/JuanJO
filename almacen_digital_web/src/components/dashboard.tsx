@@ -66,7 +66,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">¡Hola de nuevo! 👋</h1>
-          <p className="text-gray-500 mt-1">Tu Almacén Digital está al día</p>
+          <p className="text-gray-500 mt-1">Tu FINANCE está al día</p>
         </div>
         <button
           onClick={() => onNavigate('facturas')}

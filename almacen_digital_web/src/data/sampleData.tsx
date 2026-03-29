@@ -1,5 +1,5 @@
 // ============================================
-// SAMPLE DATA - Almacén Digital JuanJo
+// SAMPLE DATA - FINANCE JuanJo
 // SaaS Financiero Freelancer Audiovisual (Paraguay)
 // ============================================
 
