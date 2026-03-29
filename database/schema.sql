@@ -587,3 +587,11 @@ COMMENT ON TABLE inventario_equipo IS 'Inventario de equipo audiovisual (propio 
 COMMENT ON TABLE uso_equipo_proyecto IS 'Relación entre equipo y proyectos';
 COMMENT ON TABLE ingresos IS 'Ingresos y pagos de proyectos';
 COMMENT ON TABLE alertas_programadas IS 'Alertas programadas para n8n';
+
+-- ============================================
+-- ENABLE REALTIME
+-- ============================================
+
+-- Habilitar eventos en tiempo real para facturas y proyectos
+ALTER PUBLICATION supabase_realtime ADD TABLE facturas_gastos;
+ALTER PUBLICATION supabase_realtime ADD TABLE proyectos;

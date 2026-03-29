@@ -1,73 +1,90 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso } from '../data/sampleData';
 
 export function useSupabaseData() {
-  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-  const [facturasGastos, setFacturasGastos] = useState<FacturaGasto[]>([]);
-  const [inventarioEquipo, setInventarioEquipo] = useState<Equipo[]>([]);
-  const [alertas, setAlertas] = useState<Alerta[]>([]);
-  const [ingresos, setIngresos] = useState<Ingreso[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: sessionUser } = useQuery({
+    queryKey: ['session_user'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      return user;
+    },
+    staleTime: Infinity, // Don't keep fetching user
+  });
+
+  const { data: proyectos = [], isLoading: loadingProyectos, error: errorProyectos } = useQuery({
+    queryKey: ['proyectos', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('proyectos').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Proyecto[];
+    }
+  });
+
+  const { data: facturasGastos = [], isLoading: loadingFacturas, error: errorFacturas } = useQuery({
+    queryKey: ['facturas_gastos', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('facturas_gastos').select('*').order('fecha_factura', { ascending: false });
+      if (error) throw error;
+      return data as FacturaGasto[];
+    }
+  });
+
+  const { data: inventarioEquipo = [], isLoading: loadingEquipo, error: errorEquipo } = useQuery({
+    queryKey: ['inventario_equipo', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('inventario_equipo').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Equipo[];
+    }
+  });
+
+  const { data: ingresos = [], isLoading: loadingIngresos, error: errorIngresos } = useQuery({
+    queryKey: ['ingresos', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('ingresos').select('*').order('fecha_emision', { ascending: false });
+      if (error) throw error;
+      return data as Ingreso[];
+    }
+  });
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user) {
-          setLoading(false);
-          return;
-        }
+    if (!sessionUser) return;
 
-        // Fetch all data in parallel
-        const [
-          { data: projectsData, error: projectsError },
-          { data: invoicesData, error: invoicesError },
-          { data: equipmentData, error: equipmentError },
-          { data: incomeData, error: incomeError },
-          // { data: alertsData, error: alertsError }
-        ] = await Promise.all([
-          supabase.from('proyectos').select('*').order('created_at', { ascending: false }),
-          supabase.from('facturas_gastos').select('*').order('fecha_factura', { ascending: false }),
-          supabase.from('inventario_equipo').select('*').order('created_at', { ascending: false }),
-          supabase.from('ingresos').select('*').order('fecha_emision', { ascending: false }),
-        ]);
-
-        if (projectsError) throw projectsError;
-        if (invoicesError) throw invoicesError;
-        if (equipmentError) throw equipmentError;
-        if (incomeError) throw incomeError;
-
-        setProyectos(projectsData || []);
-        setFacturasGastos(invoicesData || []);
-        setInventarioEquipo(equipmentData || []);
-        setIngresos(incomeData || []);
-        
-        // Mock alerts for now if table is empty or differently structured
-        setAlertas([]); 
-
-      } catch (err: any) {
-        setError(err.message);
-        console.error('Error fetching data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-
-    // Subscribe to changes
-    const projectsSubscription = supabase.channel('public:proyectos').on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos' }, fetchData).subscribe();
-    const invoicesSubscription = supabase.channel('public:facturas_gastos').on('postgres_changes', { event: '*', schema: 'public', table: 'facturas_gastos' }, fetchData).subscribe();
+    const projectsSubscription = supabase.channel('public:proyectos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'proyectos' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['proyectos'] });
+      }).subscribe();
+      
+    const invoicesSubscription = supabase.channel('public:facturas_gastos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'facturas_gastos' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
+      }).subscribe();
 
     return () => {
       supabase.removeChannel(projectsSubscription);
       supabase.removeChannel(invoicesSubscription);
     };
-  }, []);
+  }, [sessionUser, queryClient]);
 
-  return { proyectos, facturasGastos, inventarioEquipo, alertas, ingresos, loading, error };
+  const loading = !sessionUser || loadingProyectos || loadingFacturas || loadingEquipo || loadingIngresos;
+  const error = errorProyectos || errorFacturas || errorEquipo || errorIngresos ? 'Error fetching data' : null;
+
+  return { 
+    proyectos, 
+    facturasGastos, 
+    inventarioEquipo, 
+    alertas: [] as Alerta[], 
+    ingresos, 
+    loading, 
+    error 
+  };
 }
+
