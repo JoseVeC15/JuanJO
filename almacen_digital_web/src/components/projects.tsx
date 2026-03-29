@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, Plus, Calendar, DollarSign, Loader2, ArrowUpRight } from 'lucide-react';
+import { Folder, Plus, Calendar, Wallet, Loader2, ArrowUpRight } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGsShort, getServiceIcon, getStatusLabel, getStatusColor } from '../data/sampleData';
 
@@ -68,7 +68,7 @@ export default function Projects() {
                     <span className="text-xs">{project.fecha_entrega}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-900 font-bold">
-                    <DollarSign size={16} className="text-emerald-500" />
+                    <Wallet size={16} className="text-emerald-500" />
                     <span>{formatGsShort(Number(project.monto_presupuestado))}</span>
                   </div>
                 </div>

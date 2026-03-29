@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  TrendingUp, TrendingDown, DollarSign, Folder, Package,
+  TrendingUp, TrendingDown, Wallet, Folder, Package,
   AlertTriangle, Camera, ArrowUpRight, ArrowDownRight, Loader2
 } from 'lucide-react';
 import {
@@ -89,7 +89,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
           subtitle="cobrados"
           icon={<TrendingUp size={22} />}
           color="emerald"
-          trend={12.5}
+          trend={totalIngresos > 0 ? 12.5 : undefined}
         />
         <StatCard
           title="Gastos"
@@ -97,15 +97,15 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
           subtitle="este período"
           icon={<TrendingDown size={22} />}
           color="red"
-          trend={-3.2}
+          trend={totalGastos > 0 ? -3.2 : undefined}
         />
         <StatCard
           title="Margen"
           value={`${margen.toFixed(1)}%`}
           subtitle={margen >= 0 ? 'positivo' : 'negativo'}
-          icon={<DollarSign size={22} />}
+          icon={<Wallet size={22} />}
           color="blue"
-          trend={margen >= 50 ? 5.0 : -2.0}
+          trend={(totalIngresos > 0 || totalGastos > 0) ? (margen >= 50 ? 5.0 : -2.0) : undefined}
         />
         <StatCard
           title="Proyectos"
