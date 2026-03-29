@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react';
 import {
   Search, Upload, FileText, CheckCircle, Clock, AlertCircle,
-  ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon
+  ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon,
+  Trash2, Edit2, X, Save
 } from 'lucide-react';
+import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -18,8 +21,10 @@ const estadoConfig: Record<string, { label: string; color: string; icon: React.R
 };
 
 export default function Facturas() {
+  const queryClient = useQueryClient();
   const { facturasGastos, loading: dataLoading } = useSupabaseData();
   const { user } = useAuth();
+  
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('todos');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -29,6 +34,31 @@ export default function Facturas() {
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Edit states
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<any>({});
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('facturas_gastos').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, ...updates }: any) => {
+      const { error } = await supabase.from('facturas_gastos').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
+      setEditingId(null);
+    }
+  });
 
   if (dataLoading) {
     return (
@@ -50,7 +80,7 @@ export default function Facturas() {
       reader.onloadend = async () => {
         const base64String = (reader.result as string).split(',')[1];
         
-        const response = await fetch(import.meta.env.VITE_N8N_WEBHOOK_URL, {
+        const response = await fetch(import.meta.env.VITE_N8N_WEBHOOK_URL as string, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -73,6 +103,28 @@ export default function Facturas() {
       setUploadStatus('error');
       setUploading(false);
     }
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar esta factura?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const handleEditClick = (factura: any) => {
+    setEditingId(factura.id);
+    setEditForm({
+      proveedor: factura.proveedor,
+      monto: factura.monto,
+      tipo_gasto: factura.tipo_gasto || 'otros',
+      fecha_factura: factura.fecha_factura,
+      numero_factura: factura.numero_factura,
+      ruc_proveedor: factura.ruc_proveedor,
+    });
+  };
+
+  const handleSaveEdit = (id: string) => {
+    updateMutation.mutate({ id, ...editForm });
   };
 
   const filtered = facturasGastos
@@ -121,6 +173,31 @@ export default function Facturas() {
             {uploading ? 'Procesando...' : 'Nueva Factura (OCR)'}
           </button>
         </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+          <input
+            type="text"
+            placeholder="Buscar por proveedor, N° factura, concepto..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none"
+          />
+        </div>
+        <select
+          value={filterEstado}
+          onChange={(e) => setFilterEstado(e.target.value)}
+          className="px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all outline-none cursor-pointer"
+        >
+          <option value="todos">Todos los Estados</option>
+          <option value="pendiente_clasificar">Pendientes</option>
+          <option value="registrada">Registradas</option>
+          <option value="en_proceso_pago">En Proceso</option>
+          <option value="pagada">Pagadas</option>
+        </select>
       </div>
 
       {/* OCR Demo Panel */}
@@ -198,11 +275,12 @@ export default function Facturas() {
       <div className="space-y-3">
         {filtered.map(factura => {
           const isExpanded = expandedId === factura.id;
+          const isEditing = editingId === factura.id;
           const est = estadoConfig[factura.estado] || estadoConfig.pendiente_clasificar;
 
           return (
             <div key={factura.id} className={`bg-white rounded-2xl border transition-all ${isExpanded ? 'border-emerald-200 shadow-lg' : 'border-gray-100 shadow-sm'}`}>
-              <div className="p-5 cursor-pointer flex items-center gap-4" onClick={() => setExpandedId(isExpanded ? null : factura.id)}>
+              <div className="p-5 cursor-pointer flex items-center gap-4" onClick={() => !isEditing && setExpandedId(isExpanded ? null : factura.id)}>
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: getGastoColor(factura.tipo_gasto) + '15' }}>
                   <FileText size={20} style={{ color: getGastoColor(factura.tipo_gasto) }} />
                 </div>
@@ -224,23 +302,121 @@ export default function Facturas() {
                 <div className="text-right">
                   <p className="font-bold text-gray-900">{formatGs(Number(factura.monto))}</p>
                 </div>
-                {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                {!isEditing && (
+                  <div className="ml-2 text-gray-400">
+                    {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                  </div>
+                )}
               </div>
 
-              {isExpanded && (
-                <div className="px-5 pb-5 border-t border-gray-50 pt-4 space-y-4">
+              {isExpanded && isEditing && (
+                <div className="px-5 pb-5 border-t border-gray-50 pt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Proveedor</label>
+                      <input 
+                        type="text" 
+                        value={editForm.proveedor || ''} 
+                        onChange={e => setEditForm({...editForm, proveedor: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Monto (Gs)</label>
+                      <input 
+                        type="number" 
+                        value={editForm.monto || ''} 
+                        onChange={e => setEditForm({...editForm, monto: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Categoría</label>
+                      <select 
+                        value={editForm.tipo_gasto || 'otros'} 
+                        onChange={e => setEditForm({...editForm, tipo_gasto: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none dropdown-trigger"
+                      >
+                        <option value="alimentacion">Alimentación</option>
+                        <option value="transporte">Transporte</option>
+                        <option value="oficina">Oficina</option>
+                        <option value="alquiler_equipo">Alquiler de Equipo</option>
+                        <option value="equipamiento_compra">Equipamiento</option>
+                        <option value="otros">Otros</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Fecha Emisión</label>
+                      <input 
+                        type="date" 
+                        value={editForm.fecha_factura || ''} 
+                        onChange={e => setEditForm({...editForm, fecha_factura: e.target.value})}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-end gap-3 pt-3 border-t border-gray-100 mt-2">
+                    <button 
+                      onClick={() => setEditingId(null)}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors font-semibold"
+                    >
+                      <X size={16} /> Cancelar
+                    </button>
+                    <button 
+                      onClick={() => handleSaveEdit(factura.id)}
+                      disabled={updateMutation.isPending}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors font-semibold disabled:opacity-50"
+                    >
+                      {updateMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {isExpanded && !isEditing && (
+                <div className="px-5 pb-5 border-t border-gray-50 pt-4 space-y-4 animate-in fade-in slide-in-from-top-2">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <DetailField label="RUC" value={factura.ruc_proveedor} />
                     <DetailField label="Timbrado" value={factura.timbrado} />
                     <DetailField label="IVA 10%" value={formatGs(Number(factura.iva_10 || 0))} />
                     <DetailField label="IVA 5%" value={formatGs(Number(factura.iva_5 || 0))} />
                   </div>
-                  {factura.concepto_ocr && (
-                    <div className="bg-emerald-50/30 p-3 rounded-xl text-sm text-slate-700 border border-emerald-100/50">
-                      <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Concepto Sugerido</p>
-                      {factura.concepto_ocr}
+
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    {factura.tipo_gasto && (
+                      <div 
+                        className="p-3 rounded-xl text-sm font-medium border" 
+                        style={{ 
+                          backgroundColor: getGastoColor(factura.tipo_gasto) + '15', 
+                          borderColor: getGastoColor(factura.tipo_gasto) + '30',
+                          color: getGastoColor(factura.tipo_gasto)
+                        }}
+                      >
+                        <p className="text-[10px] font-bold uppercase mb-1 opacity-70">Tipo de Gasto</p>
+                        {getGastoLabel(factura.tipo_gasto)}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleEditClick(factura); }}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-lg transition-colors"
+                      >
+                        <Edit2 size={16} /> Editar
+                      </button>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDelete(factura.id); }}
+                        disabled={deleteMutation.isPending}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        {deleteMutation.isPending ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />} 
+                        Eliminar
+                      </button>
                     </div>
-                  )}
+                  </div>
+
                   {factura.imagen_url && (
                     <button className="flex items-center gap-2 text-xs text-blue-600 font-bold hover:underline">
                       <ImageIcon size={14} /> Ver documento original
@@ -268,8 +444,8 @@ function SummaryCard({ label, value, color }: { label: string; value: string; co
 function DetailField({ label, value }: { label: string; value: any }) {
   return (
     <div>
-      <p className="text-[10px] text-gray-400 uppercase font-bold">{label}</p>
-      <p className="text-sm font-semibold text-gray-700">{value || '-'}</p>
+      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+      <p className="font-semibold text-gray-900 border-b border-gray-100 pb-1">{value || '-'}</p>
     </div>
   );
 }
