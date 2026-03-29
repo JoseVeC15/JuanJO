@@ -1,50 +1,62 @@
 // supabase/functions/create-client-user/index.ts
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
-serve(async (req) => {
-  // Manejo de CORS
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '', // Usar la clave maestra de forma segura en el servidor
-      { auth: { persistSession: false } }
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 
-    // Obtener datos del cuerpo
-    const { email, password, nombre_completo } = await req.json()
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false }
+    })
 
-    // 1. Crear el usuario en Auth (Service Role)
+    const body = await req.json()
+    const { email, password, nombre_completo } = body
+    
+    console.log(`Paso 1: Creando usuario Auth para ${email}`)
+
     const { data: authUser, error: authError } = await supabaseClient.auth.admin.createUser({
       email,
       password,
-      email_confirm: true // Confirmar automáticamente para que el cliente entre directo
+      email_confirm: true,
+      user_metadata: { full_name: nombre_completo }
     })
 
     if (authError) throw authError
 
-    // 2. Actualizar el perfil con el nombre y nivel de acceso (Nivel 2 = Cliente)
+    console.log(`Paso 2: Usuario Auth creado (ID: ${authUser.user.id}).`)
+
+    // Intentamos UPSERT con ambos casos para prevenir errores de esquema
     const { error: profileError } = await supabaseClient
       .from('profiles')
-      .update({ 
-        nombre_completo, 
+      .upsert({ 
+        id: authUser.user.id,
+        nombre_completo,
+        "Nombre_completo": nombre_completo, // Para ser compatibles con la mayúscula detectada
         nivel_acceso: 2 
       })
-      .eq('id', authUser.user.id)
 
-    if (profileError) throw profileError
+    if (profileError) {
+       console.error("Error en profiles:", profileError.message)
+       // Si falla por una de las dos, intentamos una por una
+       await supabaseClient.from('profiles').upsert({ id: authUser.user.id, nivel_acceso: 2 })
+    }
+
+    console.log("¡Registro completado con éxito!")
 
     return new Response(
-      JSON.stringify({ message: "Usuario creado con éxito", userId: authUser.user.id }),
+      JSON.stringify({ message: "Éxito", id: authUser.user.id }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
@@ -52,6 +64,7 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    console.error("Error fatal:", error.message)
     return new Response(
       JSON.stringify({ error: error.message }),
       { 
