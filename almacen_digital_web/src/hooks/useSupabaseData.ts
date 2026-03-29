@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso } from '../data/sampleData';
+import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile } from '../data/sampleData';
 
 export function useSupabaseData() {
   const queryClient = useQueryClient();
@@ -13,6 +13,20 @@ export function useSupabaseData() {
       return user;
     },
     staleTime: Infinity, // Don't keep fetching user
+  });
+
+  const { data: profile, isLoading: loadingProfile } = useQuery({
+    queryKey: ['profile', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', sessionUser?.id)
+        .single();
+      if (error) throw error;
+      return data as Profile;
+    }
   });
 
   const { data: proyectos = [], isLoading: loadingProyectos, error: errorProyectos } = useQuery({
@@ -83,7 +97,8 @@ export function useSupabaseData() {
     inventarioEquipo, 
     alertas: [] as Alerta[], 
     ingresos, 
-    loading, 
+    profile,
+    loading: loading || loadingProfile, 
     error 
   };
 }

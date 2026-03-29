@@ -6,12 +6,15 @@ import Facturas from './components/facturas';
 import Projects from './components/projects';
 import Inventario from './components/inventario';
 import Reportes from './components/reportes';
-import { Layout, LogOut, Loader2 } from 'lucide-react';
+import { Layout, LogOut, Loader2, ShieldCheck } from 'lucide-react';
+import AdminPanel from './components/AdminPanel';
+import { useSupabaseData } from './hooks/useSupabaseData';
 
-type Page = 'dashboard' | 'facturas' | 'proyectos' | 'inventario' | 'reportes';
+type Page = 'dashboard' | 'facturas' | 'proyectos' | 'inventario' | 'reportes' | 'admin';
 
 function App() {
   const { user, loading, signOut } = useAuth();
+  const { profile } = useSupabaseData();
   const [activePage, setActivePage] = useState<Page>('dashboard');
 
   if (loading) {
@@ -33,6 +36,7 @@ function App() {
       case 'proyectos': return <Projects />;
       case 'inventario': return <Inventario />;
       case 'reportes': return <Reportes />;
+      case 'admin': return <AdminPanel />;
       default: return <Dashboard onNavigate={setActivePage} />;
     }
   };
@@ -44,6 +48,10 @@ function App() {
     { key: 'inventario', label: 'Inventario', icon: '📦' },
     { key: 'reportes', label: 'Reportes', icon: '📊' },
   ];
+
+  if (profile?.nivel_acceso === 1) {
+    navItems.push({ key: 'admin', label: 'Admin', icon: <ShieldCheck size={20} className="text-indigo-400" /> });
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex">

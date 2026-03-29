@@ -13,6 +13,14 @@ export type CondicionEquipo = 'nuevo' | 'bueno' | 'regular' | 'reparacion';
 export type TipoPropiedad = 'PROPIO' | 'RENTADO';
 export type UbicacionEquipo = 'en_stock' | 'en_proyecto' | 'mantenimiento' | 'prestado' | 'vendido';
 
+export interface Profile {
+  id: string;
+  nombre_completo: string;
+  email?: string;
+  nivel_acceso: 1 | 2;
+  created_at: string;
+}
+
 export interface Proyecto {
   id: string;
   nombre_cliente: string;
