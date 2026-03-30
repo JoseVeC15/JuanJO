@@ -92,7 +92,6 @@ export default function Facturas() {
         });
         if (response.ok) {
           setUploadStatus('success');
-          setTimeout(() => setShowOCR(false), 3000);
         } else {
           setUploadStatus('error');
         }
@@ -102,6 +101,10 @@ export default function Facturas() {
     } catch (error) {
       setUploadStatus('error');
       setUploading(false);
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -214,7 +217,19 @@ export default function Facturas() {
                         <button onClick={() => setShowOCR(false)} className="bg-gray-100 text-gray-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">Cerrar</button>
                     </div>
 
-                    {uploadStatus === 'success' && <p className="mt-6 text-emerald-600 font-bold flex items-center justify-center gap-2"><CheckCircle size={18} /> ¡Documento enviado a n8n con éxito!</p>}
+                    {uploadStatus === 'success' && (
+                        <div className="mt-6 flex flex-col items-center gap-4">
+                            <p className="text-emerald-600 font-bold flex items-center justify-center gap-2">
+                                <CheckCircle size={18} /> ¡Documento enviado a n8n con éxito!
+                            </p>
+                            <button 
+                                onClick={() => setUploadStatus('idle')}
+                                className="bg-emerald-100 text-emerald-700 px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-200 transition-all"
+                            >
+                                Subir Otro de Seguido
+                            </button>
+                        </div>
+                    )}
                     {uploadStatus === 'error' && <p className="mt-6 text-rose-500 font-bold flex items-center justify-center gap-2"><AlertCircle size={18} /> Error en la conexión con el servidor IA.</p>}
                 </div>
             </motion.div>
@@ -540,6 +555,3 @@ function InputGroup({ label, placeholder, type = "text" }: any) {
     );
 }
 
-function CalendarIcon(props: any) {
-    return <Clock {...props} />; // Placeholder
-}
