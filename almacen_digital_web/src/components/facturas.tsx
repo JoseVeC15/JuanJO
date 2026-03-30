@@ -15,6 +15,18 @@ import {
   formatGs, formatGsShort
 } from '../data/sampleData';
 
+const formatDateTime = (dateStr: string) => {
+  if (!dateStr) return 'N/A';
+  const d = new Date(dateStr);
+  return d.toLocaleString('es-PY', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
 const estadoConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pendiente_clasificar: { label: 'Pendiente', color: '#F59E0B', icon: <Clock size={14} /> },
   registrada: { label: 'Registrada', color: '#3B82F6', icon: <FileText size={14} /> },
@@ -371,7 +383,12 @@ export default function Facturas() {
                                         <button className="flex items-center gap-2 bg-white border border-gray-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"><Edit2 size={16} /> Corregir Datos</button>
                                       </div>
                                       <div className="flex items-center gap-4">
-                                        <span className="text-[10px] text-gray-300 font-bold italic">ID Interno: {f.id}</span>
+                                        <div className="text-right">
+                                          <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none mb-1">Registro en Sistema</p>
+                                          <p className="text-[11px] text-gray-600 font-bold">{formatDateTime(f.created_at)}</p>
+                                        </div>
+                                        <div className="w-px h-8 bg-gray-100 mx-2" />
+                                        <span className="text-[10px] text-gray-300 font-bold italic">ID: {f.id.split('-')[0]}...</span>
                                         <button onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); }} className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"><Trash2 size={20} /></button>
                                       </div>
                                     </div>
@@ -508,7 +525,12 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
                 <button className="flex items-center gap-2 bg-slate-100 text-slate-900 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"><Edit2 size={16} /> Corregir Datos</button>
               </div>
               <div className="flex items-center gap-4">
-                  <span className="text-[10px] text-gray-300 font-bold italic">ID Interno: {data.id}</span>
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-none mb-1">Registro en Sistema</p>
+                    <p className="text-[11px] text-gray-600 font-bold">{formatDateTime(data.created_at)}</p>
+                  </div>
+                  <div className="w-px h-8 bg-gray-200 mx-2" />
+                  <span className="text-[10px] text-gray-300 font-bold italic">ID: {data.id.split('-')[0]}...</span>
                   <button onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && onDelete(); }} className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><Trash2 size={20} /></button>
               </div>
             </div>
