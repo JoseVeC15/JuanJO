@@ -1,10 +1,10 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, Fragment } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, FileText, CheckCircle, Clock, AlertCircle,
   ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon,
   Trash2, Edit2, X, Table as TableIcon, LayoutGrid,
-  Filter, Download, CheckSquare, Square, MoreHorizontal,
+  Download,
   ArrowUpRight, ArrowDownLeft, Plus, Shield
 } from 'lucide-react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
@@ -12,8 +12,7 @@ import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  formatGs, formatGsShort,
-  getGastoLabel, getGastoColor
+  formatGs, formatGsShort
 } from '../data/sampleData';
 
 const estadoConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -37,7 +36,6 @@ export default function Facturas() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showOCR, setShowOCR] = useState(false);
   const [showAddManual, setShowAddManual] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -287,34 +285,88 @@ export default function Facturas() {
                       <th className="p-6 w-10"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-gray-50/50">
                     {filteredData.map(f => (
-                      <tr key={f.id} className="hover:bg-slate-50 transition-colors group">
-                        <td className="p-6 text-xs font-bold text-gray-600">
-                          {activeTab === 'gastos' 
-                            ? (f as any).fecha_factura 
-                            : ((f as any).fecha || (f as any).fecha_emision)}
-                        </td>
-                        <td className="p-6">
-                          <p className="text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors">{activeTab === 'gastos' ? (f as any).proveedor : (f as any).cliente}</p>
-                          <p className="text-[10px] text-gray-400 font-bold mt-0.5">{activeTab === 'gastos' ? (f as any).ruc_proveedor : (f as any).ruc_cliente || '-'}</p>
-                        </td>
-                        <td className="p-6">
-                            <p className="text-xs font-black text-gray-700">{f.numero_factura || '-'}</p>
-                            <p className="text-[10px] text-gray-400 font-bold mt-0.5">Timb: {(f as any).timbrado || 'N/A'}</p>
-                        </td>
-                        <td className="p-6 text-right">
-                            <p className="text-[11px] font-bold text-blue-600">+{formatGsShort(f.iva_10 || 0)}</p>
-                            <p className="text-[10px] font-semibold text-indigo-500 mt-0.5">+{formatGsShort(f.iva_5 || 0)}</p>
-                        </td>
-                        <td className="p-6 text-sm font-black text-gray-900 text-right">{formatGs(f.monto)}</td>
-                        <td className="p-6 text-center">
-                            <span className="text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest" style={{ backgroundColor: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color + '15', color: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color }}>
-                            {(estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).label}
-                          </span>
-                        </td>
-                        <td className="p-6"><button className="text-gray-300 hover:text-rose-500 transition-colors"><MoreHorizontal size={18} /></button></td>
-                      </tr>
+                      <Fragment key={f.id}>
+                        <tr 
+                          onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                          className={`hover:bg-slate-50 transition-all cursor-pointer group ${expandedId === f.id ? 'bg-indigo-50/30' : ''}`}
+                        >
+                          <td className="p-6 text-xs font-bold text-gray-600">
+                            {activeTab === 'gastos' 
+                              ? (f as any).fecha_factura 
+                              : ((f as any).fecha || (f as any).fecha_emision)}
+                          </td>
+                          <td className="p-6">
+                            <p className="text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{activeTab === 'gastos' ? (f as any).proveedor : (f as any).cliente}</p>
+                            <p className="text-[10px] text-gray-400 font-bold mt-0.5">{activeTab === 'gastos' ? (f as any).ruc_proveedor : (f as any).ruc_cliente || '-'}</p>
+                          </td>
+                          <td className="p-6">
+                              <p className="text-xs font-black text-gray-700">{f.numero_factura || '-'}</p>
+                              <p className="text-[10px] text-gray-400 font-bold mt-0.5">Timb: {(f as any).timbrado || 'N/A'}</p>
+                          </td>
+                          <td className="p-6 text-right">
+                              <p className="text-[11px] font-bold text-blue-600">+{formatGsShort(f.iva_10 || 0)}</p>
+                              <p className="text-[10px] font-semibold text-indigo-500 mt-0.5">+{formatGsShort(f.iva_5 || 0)}</p>
+                          </td>
+                          <td className="p-6 text-sm font-black text-gray-900 text-right">{formatGs(f.monto)}</td>
+                          <td className="p-6 text-center">
+                              <span className="text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest" style={{ backgroundColor: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color + '15', color: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color }}>
+                              {(estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).label}
+                            </span>
+                          </td>
+                          <td className="p-6">
+                            <div className="text-gray-300 group-hover:text-indigo-500 transition-colors">
+                              {expandedId === f.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            </div>
+                          </td>
+                        </tr>
+                        
+                        {/* Expanded Detail Row for Table */}
+                        {expandedId === f.id && (
+                          <tr className="bg-white">
+                            <td colSpan={7} className="p-0">
+                                <motion.div 
+                                  initial={{ opacity: 0, height: 0 }} 
+                                  animate={{ opacity: 1, height: 'auto' }} 
+                                  className="px-12 py-10 border-b border-indigo-100 bg-gradient-to-b from-indigo-50/20 to-transparent"
+                                >
+                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+                                      <DetailBox label={activeTab === 'gastos' ? "RUC Emisor (Proveedor)" : "RUC Receptor (Cliente)"} value={activeTab === 'gastos' ? (f as any).ruc_proveedor : (f as any).ruc_cliente} icon={<Shield size={14} />} />
+                                      <DetailBox label="Timbrado SET" value={(f as any).timbrado} desc={(f as any).vencimiento_timbrado ? `Vence: ${(f as any).vencimiento_timbrado}` : 'Vigente'} />
+                                      <DetailBox label="Condición / CDC" value={(f as any).condicion_venta ? (f as any).condicion_venta.toUpperCase() : 'CONTADO'} desc={(f as any).cdc || 'Factura Pre-impresa'} />
+                                      <div className="space-y-3 bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm">
+                                          <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest"><span>IVA 10%</span><span className="text-blue-600 font-bold">{formatGs(f.iva_10 || 0)}</span></div>
+                                          <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest"><span>IVA 5%</span><span className="text-indigo-600 font-bold">{formatGs(f.iva_5 || 0)}</span></div>
+                                          <div className="h-px bg-gray-100" />
+                                          <div className="flex justify-between items-center text-[10px] font-black text-slate-800 uppercase tracking-widest"><span>Exentas</span><span>{formatGs(f.exentas || 0)}</span></div>
+                                      </div>
+                                  </div>
+                                  
+                                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-gray-100 pt-8">
+                                    <div className="flex items-center gap-3">
+                                      {(f as any).imagen_url && (
+                                        <a href={(f as any).imagen_url} target="_blank" className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                                          <ImageIcon size={16} /> Ver Documento SET
+                                        </a>
+                                      )}
+                                      <button className="flex items-center gap-2 bg-white border border-gray-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"><Edit2 size={16} /> Corregir Datos</button>
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-[10px] text-gray-300 font-bold italic">ID Interno: {f.id}</span>
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); }} 
+                                          className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"
+                                        >
+                                          <Trash2 size={20} />
+                                        </button>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
               </table>

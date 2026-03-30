@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Users, UserPlus, Mail, Shield, Search, 
-  ExternalLink, Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2
+  Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
@@ -53,9 +53,15 @@ export default function AdminPanel() {
       });
 
       if (error) {
-        // Error de la propia función (ej: 400 Bad Request)
-        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-        throw new Error(errorMsg);
+        // Error de red o de la propia función
+        let errorMsg = 'Error al registrar cliente';
+        try {
+          const body = await error.context?.json();
+          errorMsg = body?.error || body?.message || error.message;
+        } catch {
+          errorMsg = error.message || 'Error desconocido en la función';
+        }
+        throw new Error(`${errorMsg} (Status: ${error.status || '???'})`);
       }
 
       setStatus({ type: 'success', msg: 'Cliente registrado con éxito.' });
@@ -79,8 +85,14 @@ export default function AdminPanel() {
       console.log(`[ADMIN OP] Resultado:`, { data, error });
 
       if (error) {
-        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-        throw new Error(errorMsg);
+        let errorMsg = 'Fallo en la operación administrativa';
+        try {
+          const body = await error.context?.json();
+          errorMsg = body?.error || body?.message || error.message;
+        } catch {
+          errorMsg = error.message || 'Error desconocido';
+        }
+        throw new Error(`${errorMsg} (Status: ${error.status || '???'})`);
       }
 
       setStatus({ type: 'success', msg: `Operación ${action} completada con éxito.` });
