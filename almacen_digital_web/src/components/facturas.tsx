@@ -87,7 +87,7 @@ export default function Facturas() {
           body: JSON.stringify({ 
             user_id: user.id, 
             image_base64: base64String, 
-            type: activeTab === 'gastos' ? 'expense' : 'income' // Inform n8n of the document type
+            type: activeTab === 'gastos' ? 'expense' : 'income' 
           })
         });
         if (response.ok) {
@@ -174,7 +174,7 @@ export default function Facturas() {
             <Download size={18} /> SET CSV
           </button>
           <button 
-            onClick={() => setShowOCR(!showOCR)} 
+            onClick={() => { setShowOCR(!showOCR); setUploadStatus('idle'); }} 
             className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
           >
             {uploading ? <Loader2 className="animate-spin" size={18} /> : <Scan size={18} />}
@@ -285,89 +285,88 @@ export default function Facturas() {
                       <th className="p-6 w-10"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50/50">
-                    {filteredData.map(f => (
-                      <Fragment key={f.id}>
-                        <tr 
-                          onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
-                          className={`hover:bg-slate-50 transition-all cursor-pointer group ${expandedId === f.id ? 'bg-indigo-50/30' : ''}`}
-                        >
-                          <td className="p-6 text-xs font-bold text-gray-600">
-                            {activeTab === 'gastos' 
-                              ? (f as any).fecha_factura 
-                              : ((f as any).fecha || (f as any).fecha_emision)}
-                          </td>
-                          <td className="p-6">
-                            <p className="text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{activeTab === 'gastos' ? (f as any).proveedor : (f as any).cliente}</p>
-                            <p className="text-[10px] text-gray-400 font-bold mt-0.5">{activeTab === 'gastos' ? (f as any).ruc_proveedor : (f as any).ruc_cliente || '-'}</p>
-                          </td>
-                          <td className="p-6">
-                              <p className="text-xs font-black text-gray-700">{f.numero_factura || '-'}</p>
-                              <p className="text-[10px] text-gray-400 font-bold mt-0.5">Timb: {(f as any).timbrado || 'N/A'}</p>
-                          </td>
-                          <td className="p-6 text-right">
-                              <p className="text-[11px] font-bold text-blue-600">+{formatGsShort(f.iva_10 || 0)}</p>
-                              <p className="text-[10px] font-semibold text-indigo-500 mt-0.5">+{formatGsShort(f.iva_5 || 0)}</p>
-                          </td>
-                          <td className="p-6 text-sm font-black text-gray-900 text-right">{formatGs(f.monto)}</td>
-                          <td className="p-6 text-center">
-                              <span className="text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest" style={{ backgroundColor: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color + '15', color: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color }}>
-                              {(estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).label}
-                            </span>
-                          </td>
-                          <td className="p-6">
-                            <div className="text-gray-300 group-hover:text-indigo-500 transition-colors">
-                              {expandedId === f.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                            </div>
-                          </td>
-                        </tr>
-                        
-                        {/* Expanded Detail Row for Table */}
-                        {expandedId === f.id && (
-                          <tr className="bg-white">
-                            <td colSpan={7} className="p-0">
-                                <motion.div 
-                                  initial={{ opacity: 0, height: 0 }} 
-                                  animate={{ opacity: 1, height: 'auto' }} 
-                                  className="px-12 py-10 border-b border-indigo-100 bg-gradient-to-b from-indigo-50/20 to-transparent"
-                                >
-                                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-                                      <DetailBox label={activeTab === 'gastos' ? "RUC Emisor (Proveedor)" : "RUC Receptor (Cliente)"} value={activeTab === 'gastos' ? (f as any).ruc_proveedor : (f as any).ruc_cliente} icon={<Shield size={14} />} />
-                                      <DetailBox label="Timbrado SET" value={(f as any).timbrado} desc={(f as any).vencimiento_timbrado ? `Vence: ${(f as any).vencimiento_timbrado}` : 'Vigente'} />
-                                      <DetailBox label="Condición / CDC" value={(f as any).condicion_venta ? (f as any).condicion_venta.toUpperCase() : 'CONTADO'} desc={(f as any).cdc || 'Factura Pre-impresa'} />
+                  <tbody className="divide-y divide-gray-100">
+                      {filteredData.map((f: any) => {
+                        const isVeryNew = f.created_at ? (Date.now() - new Date(f.created_at).getTime()) < 10000 : false;
+                        return (
+                          <Fragment key={f.id}>
+                            <motion.tr 
+                              initial={isVeryNew ? { backgroundColor: '#10b98115' } : {}}
+                              animate={isVeryNew ? { backgroundColor: 'rgba(255,255,255,0)' } : {}}
+                              transition={{ duration: 10 }}
+                              onClick={() => setExpandedId(expandedId === f.id ? null : f.id)}
+                              className={`hover:bg-slate-50 transition-all cursor-pointer group ${expandedId === f.id ? 'bg-indigo-50/30' : ''}`}
+                            >
+                              <td className="p-6 text-xs font-bold text-gray-600">
+                                {activeTab === 'gastos' ? f.fecha_factura : (f.fecha || f.fecha_emision)}
+                              </td>
+                              <td className="p-6">
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors uppercase tracking-tight">
+                                    {activeTab === 'gastos' ? f.proveedor : f.cliente}
+                                  </p>
+                                  {isVeryNew && (
+                                    <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]" />
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-gray-400 font-bold mt-0.5">{activeTab === 'gastos' ? f.ruc_proveedor : f.ruc_cliente || '-'}</p>
+                              </td>
+                              <td className="p-6">
+                                <p className="text-xs font-black text-gray-700">{f.numero_factura || '-'}</p>
+                                <p className="text-[10px] text-gray-400 font-bold mt-0.5">Timb: {f.timbrado || 'N/A'}</p>
+                              </td>
+                              <td className="p-6 text-right">
+                                <p className="text-[11px] font-bold text-blue-600">+{formatGsShort(f.iva_10 || 0)}</p>
+                                <p className="text-[10px] font-semibold text-indigo-500 mt-0.5">+{formatGsShort(f.iva_5 || 0)}</p>
+                              </td>
+                              <td className="p-6 text-sm font-black text-gray-900 text-right">{formatGs(f.monto)}</td>
+                              <td className="p-6 text-center">
+                                <span className="text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest" style={{ backgroundColor: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color + '15', color: (estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).color }}>
+                                  {(estadoConfig[f.estado] || estadoConfig.pendiente_clasificar).label}
+                                </span>
+                              </td>
+                              <td className="p-6 text-right">
+                                <div className="text-gray-300 group-hover:text-indigo-500 transition-colors flex justify-end">
+                                  {expandedId === f.id ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                                </div>
+                              </td>
+                            </motion.tr>
+                            {expandedId === f.id && (
+                              <tr className="bg-white">
+                                <td colSpan={7} className="p-0">
+                                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="px-12 py-10 border-b border-indigo-100 bg-gradient-to-b from-indigo-50/20 to-transparent">
+                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+                                      <DetailBox label={activeTab === 'gastos' ? "RUC Emisor (Proveedor)" : "RUC Receptor (Cliente)"} value={activeTab === 'gastos' ? f.ruc_proveedor : f.ruc_cliente} icon={<Shield size={14} />} />
+                                      <DetailBox label="Timbrado SET" value={f.timbrado} desc={f.vencimiento_timbrado ? `Vence: ${f.vencimiento_timbrado}` : 'Vigente'} />
+                                      <DetailBox label="Condición / CDC" value={f.condicion_venta ? f.condicion_venta.toUpperCase() : 'CONTADO'} desc={f.cdc || 'Factura Pre-impresa'} />
                                       <div className="space-y-3 bg-white p-5 rounded-2xl border border-indigo-100 shadow-sm">
-                                          <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest"><span>IVA 10%</span><span className="text-blue-600 font-bold">{formatGs(f.iva_10 || 0)}</span></div>
-                                          <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest"><span>IVA 5%</span><span className="text-indigo-600 font-bold">{formatGs(f.iva_5 || 0)}</span></div>
-                                          <div className="h-px bg-gray-100" />
-                                          <div className="flex justify-between items-center text-[10px] font-black text-slate-800 uppercase tracking-widest"><span>Exentas</span><span>{formatGs(f.exentas || 0)}</span></div>
+                                        <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest"><span>IVA 10%</span><span className="text-blue-600 font-bold">{formatGs(f.iva_10 || 0)}</span></div>
+                                        <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest"><span>IVA 5%</span><span className="text-indigo-600 font-bold">{formatGs(f.iva_5 || 0)}</span></div>
+                                        <div className="h-px bg-gray-100" />
+                                        <div className="flex justify-between items-center text-[10px] font-black text-slate-800 uppercase tracking-widest"><span>Exentas</span><span>{formatGs(f.exentas || 0)}</span></div>
                                       </div>
-                                  </div>
-                                  
-                                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-gray-100 pt-8">
-                                    <div className="flex items-center gap-3">
-                                      {(f as any).imagen_url && (
-                                        <a href={(f as any).imagen_url} target="_blank" className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
-                                          <ImageIcon size={16} /> Ver Documento SET
-                                        </a>
-                                      )}
-                                      <button className="flex items-center gap-2 bg-white border border-gray-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"><Edit2 size={16} /> Corregir Datos</button>
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-t border-gray-100 pt-8">
+                                      <div className="flex items-center gap-3">
+                                        {f.imagen_url && (
+                                          <a href={f.imagen_url} target="_blank" className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                                            <ImageIcon size={16} /> Ver Documento SET
+                                          </a>
+                                        )}
+                                        <button className="flex items-center gap-2 bg-white border border-gray-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"><Edit2 size={16} /> Corregir Datos</button>
+                                      </div>
+                                      <div className="flex items-center gap-4">
                                         <span className="text-[10px] text-gray-300 font-bold italic">ID Interno: {f.id}</span>
-                                        <button 
-                                          onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); }} 
-                                          className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"
-                                        >
-                                          <Trash2 size={20} />
-                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); }} className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"><Trash2 size={20} /></button>
+                                      </div>
                                     </div>
-                                  </div>
-                                </motion.div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    ))}
+                                  </motion.div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
                   </tbody>
               </table>
             </motion.div>
@@ -413,8 +412,26 @@ export default function Facturas() {
 function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
   const isGasto = type === 'gastos';
   const data = item as any;
+  const isVeryNew = data.created_at ? (Date.now() - new Date(data.created_at).getTime()) < 10000 : false;
+  
   return (
-    <motion.div layout className={`bg-white rounded-[2rem] border transition-all ${isExpanded ? 'border-indigo-200 shadow-2xl scale-[1.01]' : 'border-gray-100 shadow-sm'} relative overflow-hidden`}>
+    <motion.div 
+      layout 
+      initial={isVeryNew ? { boxShadow: '0 0 0 4px #10b981' } : {}}
+      animate={isVeryNew ? { boxShadow: '0 0 0 0px #10b981' } : {}}
+      transition={{ duration: 10 }}
+      className={`bg-white rounded-[2rem] border transition-all ${isExpanded ? 'border-indigo-200 shadow-2xl scale-[1.01]' : 'border-gray-100 shadow-sm'} relative overflow-hidden`}
+    >
+      {isVeryNew && (
+        <motion.div 
+          initial={{ opacity: 1, y: 0 }} 
+          animate={{ opacity: 0, y: -20 }} 
+          transition={{ duration: 10, ease: "easeOut" }}
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-2 pointer-events-none"
+        >
+          <Scan size={14} className="animate-spin" /> ✨ RECIÉN LLEGADA (IA)
+        </motion.div>
+      )}
       {isExpanded && <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-400 via-indigo-400 to-emerald-400" />}
       <div className="p-6 flex items-center gap-5 cursor-pointer" onClick={onToggle}>
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform ${isExpanded ? 'rotate-3' : ''} ${isGasto ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}>
@@ -422,14 +439,18 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
-            <h4 className="font-black text-gray-900 truncate leading-none text-lg">{isGasto ? data.proveedor : data.cliente}</h4>
+            <h4 className="font-black text-gray-900 truncate leading-none text-lg">
+              {isGasto ? data.proveedor : data.cliente}
+            </h4>
             {data.processed_by_n8n && (
-                <div className="bg-emerald-50 text-emerald-600 p-1 rounded-md" title="Auditado por IA"><Scan size={12} strokeWidth={3} /></div>
+              <div className="bg-emerald-50 text-emerald-600 p-1 rounded-md" title="Auditado por IA">
+                <Scan size={12} strokeWidth={3} />
+              </div>
             )}
           </div>
           <div className="flex flex-wrap gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest items-center">
             <span className="flex items-center gap-1.5">
-              <CalendarIcon size={12} /> 
+              <Clock size={12} /> 
               {isGasto ? data.fecha_factura : (data.fecha || data.fecha_emision)}
             </span>
             <span>•</span>
