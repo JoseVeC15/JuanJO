@@ -78,7 +78,7 @@ export default function AdminPanel() {
     setIsSubmitting(true);
     setStatus(null);
     try {
-      const { error } = await supabase.functions.invoke('admin-manage-user', {
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
         body: { action, userId, data: dataObj }
       });
 
