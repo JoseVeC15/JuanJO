@@ -128,7 +128,7 @@ export default function AdminPanel() {
           <p className="text-gray-500 mt-1">Gestión centralizada de licencias y clientes</p>
         </div>
         <button
-          onClick={() => setShowCreateModal(true)}
+          onClick={() => { setShowCreateModal(true); setStatus(null); }}
           className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all"
         >
           <UserPlus size={20} />
@@ -206,21 +206,21 @@ export default function AdminPanel() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-60 hover:opacity-100 transition-opacity">
                       <button 
-                        onClick={() => setEditData({ id: p.id, name: p.nombre_completo })}
+                        onClick={() => { setEditData({ id: p.id, name: p.nombre_completo }); setStatus(null); }}
                         className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
                         title="Editar Nombre"
                       >
                         <Edit2 size={16} />
                       </button>
                       <button 
-                        onClick={() => setResetData({ id: p.id, email: p.email || '' })}
+                        onClick={() => { setResetData({ id: p.id, email: p.email || '' }); setStatus(null); }}
                         className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
                         title="Resetear Contraseña"
                       >
                         <Key size={16} />
                       </button>
                       <button 
-                        onClick={() => setDeleteId(p.id)}
+                        onClick={() => { setDeleteId(p.id); setStatus(null); }}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                         title="Eliminar Cliente"
                       >
