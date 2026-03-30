@@ -110,10 +110,10 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard index={0} title="Efectivo en Caja" value={formatGsShort(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" />
-        <StatCard index={1} title="Ventas del Período" value={formatGsShort(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" />
+        <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" />
+        <StatCard index={1} title="Ventas del Período" value={formatGs(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" />
         <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" />
-        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGsShort(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" />
+        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -145,8 +145,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
                     <h3 className="font-bold text-xl tracking-tight">Resguardo DNIT</h3>
                 </div>
                 <div className="space-y-5">
-                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGsShort(stats.ivaDebitoTotal)}</span></div>
-                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Crédito (Compras)</span><span className="text-sm font-bold text-rose-400">-{formatGsShort(stats.ivaCreditoTotal)}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGs(stats.ivaDebitoTotal)}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Crédito (Compras)</span><span className="text-sm font-bold text-rose-400">-{formatGs(stats.ivaCreditoTotal)}</span></div>
                     <div className="h-px bg-slate-800 my-4" />
                     <div className="p-5 bg-white/5 rounded-3xl flex justify-between items-center border border-white/5">
                         <div>

@@ -439,7 +439,7 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
           </div>
         </div>
         <div className="text-right flex flex-col items-end">
-          <p className="font-black text-gray-900 text-xl tracking-tight">{formatGsShort(Number(data.monto))}</p>
+          <p className="font-black text-gray-900 text-xl tracking-tight">{formatGs(Number(data.monto))}</p>
           <span className="text-[9px] px-2.5 py-0.5 rounded-lg font-black uppercase tracking-widest mt-1" style={{ backgroundColor: (estadoConfig[data.estado] || estadoConfig.pendiente_clasificar).color + '15', color: (estadoConfig[data.estado] || estadoConfig.pendiente_clasificar).color }}>
             {(estadoConfig[data.estado] || estadoConfig.pendiente_clasificar).label}
           </span>
