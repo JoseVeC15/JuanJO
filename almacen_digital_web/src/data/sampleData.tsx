@@ -721,11 +721,13 @@ export const monthlyFinancials = [
 ];
 
 // ============ HELPERS ============
-export const formatGs = (amount: number): string => {
+export const formatGs = (amount: number | null | undefined): string => {
+  if (amount === null || amount === undefined || isNaN(amount)) return '₲ 0';
   return '₲ ' + amount.toLocaleString('es-PY');
 };
 
-export const formatGsShort = (amount: number): string => {
+export const formatGsShort = (amount: number | null | undefined): string => {
+  if (amount === null || amount === undefined || isNaN(amount)) return '₲ 0';
   if (amount >= 1000000) {
     return '₲ ' + (amount / 1000000).toFixed(1) + 'M';
   }

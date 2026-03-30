@@ -61,7 +61,7 @@ export default function Facturas() {
       .filter(f => {
         const text = activeTab === 'gastos' 
             ? `${(f as any).proveedor} ${f.numero_factura} ${(f as any).concepto_ocr}` 
-            : `${(f as any).cliente} ${f.numero_factura} ${(f as any).ruc_cliente}`;
+            : `${(f as any).cliente} ${f.numero_factura} ${(f as any).ruc_cliente} ${(f as any).fecha_emision}`;
         return (text || '').toLowerCase().includes(search.toLowerCase());
       });
   }, [activeTab, facturasGastos, ingresos, filterEstado, search]);
@@ -290,7 +290,11 @@ export default function Facturas() {
                   <tbody className="divide-y divide-gray-50">
                     {filteredData.map(f => (
                       <tr key={f.id} className="hover:bg-slate-50 transition-colors group">
-                        <td className="p-6 text-xs font-bold text-gray-600">{activeTab === 'gastos' ? (f as any).fecha_factura : (f as any).fecha}</td>
+                        <td className="p-6 text-xs font-bold text-gray-600">
+                          {activeTab === 'gastos' 
+                            ? (f as any).fecha_factura 
+                            : ((f as any).fecha || (f as any).fecha_emision)}
+                        </td>
                         <td className="p-6">
                           <p className="text-sm font-black text-gray-900 group-hover:text-emerald-600 transition-colors">{activeTab === 'gastos' ? (f as any).proveedor : (f as any).cliente}</p>
                           <p className="text-[10px] text-gray-400 font-bold mt-0.5">{activeTab === 'gastos' ? (f as any).ruc_proveedor : (f as any).ruc_cliente || '-'}</p>
@@ -372,7 +376,10 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
             )}
           </div>
           <div className="flex flex-wrap gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest items-center">
-            <span className="flex items-center gap-1.5"><CalendarIcon size={12} /> {isGasto ? data.fecha_factura : data.fecha}</span>
+            <span className="flex items-center gap-1.5">
+              <CalendarIcon size={12} /> 
+              {isGasto ? data.fecha_factura : (data.fecha || data.fecha_emision)}
+            </span>
             <span>•</span>
             <span className="text-gray-500">{data.numero_factura || 'Sin N° Doc'}</span>
             <span>•</span>
