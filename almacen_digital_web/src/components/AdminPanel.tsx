@@ -24,7 +24,7 @@ export default function AdminPanel() {
   });
 
   const [editData, setEditData] = useState<{ id: string, name: string } | null>(null);
-  const [resetData, setResetData] = useState<{ id: string, email: string } | null>(null);
+  const [resetData, setResetData] = useState<{ id: string, email: string, newPass?: string } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: allProfiles = [], isLoading } = useQuery({
@@ -68,6 +68,7 @@ export default function AdminPanel() {
   };
 
   const handleAdminOp = async (action: 'DELETE' | 'UPDATE_NAME' | 'RESET_PASSWORD', userId: string, payload?: any) => {
+    console.log(`[ADMIN OP] Inicia: ${action} para ${userId}`, payload);
     setIsSubmitting(true);
     setStatus(null);
     try {
@@ -75,10 +76,15 @@ export default function AdminPanel() {
         body: { action, userId, payload }
       });
 
-      if (error) throw error;
+      console.log(`[ADMIN OP] Resultado:`, { data, error });
+
+      if (error) {
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        throw new Error(errorMsg);
+      }
 
       setStatus({ type: 'success', msg: `Operación ${action} completada con éxito.` });
-      queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
+      await queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
       
       // Cerrar modales
       setEditData(null);
@@ -86,8 +92,8 @@ export default function AdminPanel() {
       setDeleteId(null);
 
     } catch (err: any) {
-      console.error("Admin Op Error:", err);
-      setStatus({ type: 'error', msg: err.message || 'Error en la operación' });
+      console.error("[ADMIN OP ERROR]:", err);
+      setStatus({ type: 'error', msg: err?.message || 'Error en la conexión con la función administrativa.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -319,6 +325,12 @@ export default function AdminPanel() {
                 className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
               />
             </div>
+            {status && (
+              <div className={`p-4 rounded-xl flex items-start gap-3 my-2 ${status.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                <p className="text-sm font-medium">{status.msg}</p>
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <button 
                 onClick={() => setEditData(null)}
@@ -354,21 +366,27 @@ export default function AdminPanel() {
                  <input 
                   type="text"
                   placeholder="Ej: NuevaClave2024"
-                  id="reset-pass-input-admin"
+                  value={resetData.newPass || ''}
+                  onChange={e => setResetData({...resetData, newPass: e.target.value})}
                   className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-mono"
                 />
               </div>
             </div>
+            {status && (
+              <div className={`p-4 rounded-xl flex items-start gap-3 my-2 ${status.type === 'success' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                <p className="text-sm font-medium">{status.msg}</p>
+              </div>
+            )}
             <div className="flex gap-3 pt-4">
-              <button onClick={() => setResetData(null)} className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all">
+              <button onClick={() => { setResetData(null); setStatus(null); }} className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all">
                 Cancelar
               </button>
               <button 
                 onClick={() => {
-                  const val = (document.getElementById('reset-pass-input-admin') as HTMLInputElement).value;
-                  if (val) handleAdminOp('RESET_PASSWORD', resetData.id, { newPassword: val });
+                  if (resetData.newPass) handleAdminOp('RESET_PASSWORD', resetData.id, { newPassword: resetData.newPass });
                 }}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !resetData.newPass}
                 className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
               >
                 {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Confirmar Reset"}
@@ -393,6 +411,12 @@ export default function AdminPanel() {
               <p className="text-sm text-gray-500">Esta acción es irreversible y el cliente perderá acceso al sistema.</p>
             </div>
             <div className="flex flex-col gap-2 pt-2">
+              {status && (
+                <div className={`p-4 rounded-xl flex items-start gap-3 mb-4 ${status.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                  <p className="text-sm font-medium">{status.msg}</p>
+                </div>
+              )}
               <button 
                 onClick={() => handleAdminOp('DELETE', deleteId)}
                 disabled={isSubmitting}
@@ -400,7 +424,7 @@ export default function AdminPanel() {
               >
                 {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Sí, Eliminar Definitivamente"}
               </button>
-              <button onClick={() => setDeleteId(null)} className="w-full py-3 text-gray-500 font-bold hover:text-gray-700 transition-all">
+              <button onClick={() => { setDeleteId(null); setStatus(null); }} className="w-full py-3 text-gray-500 font-bold hover:text-gray-700 transition-all">
                 Cancelar
               </button>
             </div>
