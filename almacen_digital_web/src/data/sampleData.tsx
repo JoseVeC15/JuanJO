@@ -18,6 +18,7 @@ export interface Profile {
   nombre_completo: string;
   email?: string;
   nivel_acceso: 1 | 2;
+  estado?: 'activo' | 'suspendido';
   created_at: string;
 }
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Users, UserPlus, Mail, Shield, Search, 
-  Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2
+  Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2, Pause, Play
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
@@ -26,6 +26,7 @@ export default function AdminPanel() {
   const [editData, setEditData] = useState<{ id: string, name: string } | null>(null);
   const [resetData, setResetData] = useState<{ id: string, email: string, newPass?: string } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [suspendData, setSuspendData] = useState<{ id: string, name: string, currentState: 'activo' | 'suspendido' } | null>(null);
 
   const { data: allProfiles = [], isLoading } = useQuery({
     queryKey: ['admin_all_profiles'],
@@ -73,7 +74,7 @@ export default function AdminPanel() {
     }
   };
 
-  const handleAdminOp = async (action: 'delete_user' | 'update_user' | 'reset_password', userId: string, dataObj?: any) => {
+  const handleAdminOp = async (action: 'delete_user' | 'update_user' | 'reset_password' | 'toggle_suspension', userId: string, dataObj?: any) => {
     console.log(`[ADMIN OP] Inicia: ${action} para ${userId}`, dataObj);
     setIsSubmitting(true);
     setStatus(null);
@@ -102,6 +103,7 @@ export default function AdminPanel() {
       setEditData(null);
       setResetData(null);
       setDeleteId(null);
+      setSuspendData(null);
 
     } catch (err: any) {
       console.error("[ADMIN OP ERROR]:", err);
@@ -170,6 +172,7 @@ export default function AdminPanel() {
             <thead>
               <tr className="bg-gray-50/50 text-gray-400 text-[10px] uppercase font-bold tracking-widest">
                 <th className="px-6 py-4">Usuario</th>
+                <th className="px-6 py-4">Estado</th>
                 <th className="px-6 py-4">Nivel</th>
                 <th className="px-6 py-4">Fecha Registro</th>
                 <th className="px-6 py-4 text-right">Acciones</th>
@@ -196,6 +199,11 @@ export default function AdminPanel() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    <span className={`text-[9px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest ${p.estado === 'suspendido' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                      {p.estado === 'suspendido' ? 'Suspendido' : 'Activo'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
                     <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-tighter ${p.nivel_acceso === 1 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
                       {p.nivel_acceso === 1 ? 'Súper Admin' : 'Cliente'}
                     </span>
@@ -218,6 +226,13 @@ export default function AdminPanel() {
                         title="Resetear Contraseña"
                       >
                         <Key size={16} />
+                      </button>
+                      <button 
+                        onClick={() => { setSuspendData({ id: p.id, name: p.nombre_completo, currentState: p.estado || 'activo' }); setStatus(null); }}
+                        className={`p-2 transition-all rounded-lg ${p.estado === 'suspendido' ? 'text-emerald-500 hover:bg-emerald-50' : 'text-amber-500 hover:bg-amber-50'}`}
+                        title={p.estado === 'suspendido' ? "Activar Cuenta" : "Suspender Cuenta"}
+                      >
+                        {p.estado === 'suspendido' ? <Play size={16} /> : <Pause size={16} />}
                       </button>
                       <button 
                         onClick={() => { setDeleteId(p.id); setStatus(null); }}
@@ -437,6 +452,45 @@ export default function AdminPanel() {
                 {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Sí, Eliminar Definitivamente"}
               </button>
               <button onClick={() => { setDeleteId(null); setStatus(null); }} className="w-full py-3 text-gray-500 font-bold hover:text-gray-700 transition-all">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suspend Modal */}
+      {suspendData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 text-center space-y-6 overflow-hidden relative">
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto ${suspendData.currentState === 'activo' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
+              {suspendData.currentState === 'activo' ? <Pause size={40} /> : <Play size={40} />}
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">
+                {suspendData.currentState === 'activo' ? '¿Suspender Cliente?' : '¿Reactivar Cliente?'}
+              </h3>
+              <p className="text-sm text-gray-500">
+                {suspendData.currentState === 'activo' 
+                  ? `El acceso de ${suspendData.name} al sistema será bloqueado inmediatamente.`
+                  : `Se restaurará el acceso completo para ${suspendData.name}.`}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 pt-2">
+              {status && (
+                <div className={`p-4 rounded-xl flex items-start gap-3 mb-4 ${status.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                  <p className="text-sm font-medium">{status.msg}</p>
+                </div>
+              )}
+              <button 
+                onClick={() => handleAdminOp('toggle_suspension', suspendData.id, { estado: suspendData.currentState === 'activo' ? 'suspendido' : 'activo' })}
+                disabled={isSubmitting}
+                className={`w-full text-white font-bold py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 ${suspendData.currentState === 'activo' ? 'bg-amber-600 hover:bg-amber-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : (suspendData.currentState === 'activo' ? "Sí, Suspender Cuenta" : "Sí, Activar Cuenta")}
+              </button>
+              <button onClick={() => { setSuspendData(null); setStatus(null); }} className="w-full py-3 text-gray-500 font-bold hover:text-gray-700 transition-all">
                 Cancelar
               </button>
             </div>
