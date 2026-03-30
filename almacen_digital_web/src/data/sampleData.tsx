@@ -89,14 +89,28 @@ export interface Alerta {
   leida: boolean;
 }
 
+export type CondicionVenta = 'contado' | 'credito';
+
 export interface Ingreso {
   id: string;
-  proyecto_id: string;
+  proyecto_id: string | null;
   cliente: string;
+  ruc_cliente?: string;
+  numero_factura?: string;
+  timbrado?: string;
+  vencimiento_timbrado?: string;
+  condicion_venta?: CondicionVenta;
+  cdc?: string; // Código de Control (e-Kuatia)
   monto: number;
+  iva_10?: number;
+  iva_5?: number;
+  exentas?: number;
   fecha: string;
   estado: 'pendiente' | 'pagado' | 'parcial' | 'vencido';
   metodo_pago: MetodoPago | null;
+  imagen_url?: string | null;
+  notas?: string;
+  processed_by_n8n?: boolean;
 }
 
 // ============ PROYECTOS ============
@@ -689,14 +703,11 @@ export const alertas: Alerta[] = [
 
 // ============ INGRESOS ============
 export const ingresos: Ingreso[] = [
-  { id: 'i1', proyecto_id: 'p1', cliente: 'Tigo Paraguay', monto: 15000000, fecha: '2026-02-01', estado: 'pagado', metodo_pago: 'transferencia' },
-  { id: 'i2', proyecto_id: 'p1', cliente: 'Tigo Paraguay', monto: 15000000, fecha: '2026-03-01', estado: 'pagado', metodo_pago: 'transferencia' },
-  { id: 'i3', proyecto_id: 'p2', cliente: 'Personal Paraguay', monto: 14000000, fecha: '2026-02-20', estado: 'pagado', metodo_pago: 'transferencia' },
-  { id: 'i4', proyecto_id: 'p2', cliente: 'Personal Paraguay', monto: 14000000, fecha: '2026-03-15', estado: 'pendiente', metodo_pago: null },
-  { id: 'i5', proyecto_id: 'p4', cliente: 'Shopping del Sol', monto: 12000000, fecha: '2026-02-15', estado: 'pagado', metodo_pago: 'deposito' },
-  { id: 'i6', proyecto_id: 'p5', cliente: 'Coca-Cola Paraguay', monto: 8500000, fecha: '2026-03-10', estado: 'pendiente', metodo_pago: null },
-  { id: 'i7', proyecto_id: 'p6', cliente: 'Chacomer', monto: 7500000, fecha: '2026-03-05', estado: 'pagado', metodo_pago: 'transferencia' },
-  { id: 'i8', proyecto_id: 'p8', cliente: 'Salemma', monto: 20000000, fecha: '2025-12-28', estado: 'pagado', metodo_pago: 'transferencia' },
+  { id: 'i1', proyecto_id: 'p1', cliente: 'Tigo Paraguay', ruc_cliente: '80012345-6', numero_factura: '001-001-000001', timbrado: '12345678', condicion_venta: 'contado', monto: 15000000, iva_10: 1363636, fecha: '2026-02-01', estado: 'pagado', metodo_pago: 'transferencia', processed_by_n8n: true },
+  { id: 'i2', proyecto_id: 'p1', cliente: 'Tigo Paraguay', ruc_cliente: '80012345-6', numero_factura: '001-001-000002', timbrado: '12345678', condicion_venta: 'contado', monto: 15000000, iva_10: 1363636, fecha: '2026-03-01', estado: 'pagado', metodo_pago: 'transferencia', processed_by_n8n: true },
+  { id: 'i3', proyecto_id: 'p2', cliente: 'Personal Paraguay', ruc_cliente: '80098765-4', numero_factura: '001-001-000003', timbrado: '15234567', condicion_venta: 'credito', monto: 14000000, iva_10: 1272727, fecha: '2026-02-20', estado: 'pagado', metodo_pago: 'transferencia', processed_by_n8n: true },
+  { id: 'i4', proyecto_id: 'p2', cliente: 'Personal Paraguay', ruc_cliente: '80098765-4', numero_factura: '001-001-000004', timbrado: '15234567', condicion_venta: 'credito', monto: 14000000, iva_10: 1272727, fecha: '2026-03-15', estado: 'pendiente', metodo_pago: null, processed_by_n8n: false },
+  { id: 'i5', proyecto_id: 'p4', cliente: 'Shopping del Sol', ruc_cliente: '80054321-9', numero_factura: '001-001-000005', timbrado: '16543210', condicion_venta: 'contado', monto: 12000000, iva_10: 1090909, fecha: '2026-02-15', estado: 'pagado', metodo_pago: 'deposito', processed_by_n8n: true },
 ];
 
 // ============ FINANCIAL MONTHLY DATA ============

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Users, UserPlus, Mail, Shield, Search, 
-  ExternalLink, Loader2, CheckCircle2, AlertCircle, X, Lock
+  ExternalLink, Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
@@ -22,6 +22,10 @@ export default function AdminPanel() {
     password: '',
     nombre_completo: ''
   });
+
+  const [editData, setEditData] = useState<{ id: string, name: string } | null>(null);
+  const [resetData, setResetData] = useState<{ id: string, email: string } | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: allProfiles = [], isLoading } = useQuery({
     queryKey: ['admin_all_profiles'],
@@ -58,10 +62,32 @@ export default function AdminPanel() {
       setFormData({ email: '', password: '', nombre_completo: '' });
       queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
       setTimeout(() => setShowCreateModal(false), 2000);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleAdminOp = async (action: 'DELETE' | 'UPDATE_NAME' | 'RESET_PASSWORD', userId: string, payload?: any) => {
+    setIsSubmitting(true);
+    setStatus(null);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+        body: { action, userId, payload }
+      });
+
+      if (error) throw error;
+
+      setStatus({ type: 'success', msg: `Operación ${action} completada con éxito.` });
+      queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
+      
+      // Cerrar modales
+      setEditData(null);
+      setResetData(null);
+      setDeleteId(null);
+
     } catch (err: any) {
-      console.error("DEBUG Edge Function:", err);
-      const msg = err.message || 'Error desconocido';
-      setStatus({ type: 'error', msg: `Fallo en Registro: ${msg}` });
+      console.error("Admin Op Error:", err);
+      setStatus({ type: 'error', msg: err.message || 'Error en la operación' });
     } finally {
       setIsSubmitting(false);
     }
@@ -160,9 +186,29 @@ export default function AdminPanel() {
                     {new Date(p.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all">
-                      <ExternalLink size={18} />
-                    </button>
+                    <div className="flex items-center justify-end gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => setEditData({ id: p.id, name: p.nombre_completo })}
+                        className="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                        title="Editar Nombre"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => setResetData({ id: p.id, email: p.email || '' })}
+                        className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                        title="Resetear Contraseña"
+                      >
+                        <Key size={16} />
+                      </button>
+                      <button 
+                        onClick={() => setDeleteId(p.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Eliminar Cliente"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -254,6 +300,111 @@ export default function AdminPanel() {
                 </div>
               </form>
            </div>
+        </div>
+      )}
+      {/* Edit Name Modal */}
+      {editData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 text-left">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <Edit2 className="text-indigo-600" size={24} />
+              Editar Nombre
+            </h3>
+            <div className="space-y-4">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Nuevo Nombre</label>
+              <input 
+                type="text"
+                value={editData.name}
+                onChange={e => setEditData({...editData, name: e.target.value})}
+                className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button 
+                onClick={() => setEditData(null)}
+                className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => handleAdminOp('UPDATE_NAME', editData.id, { nombre_completo: editData.name })}
+                disabled={isSubmitting}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Guardar Cambios"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {resetData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 text-left">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 text-amber-600">
+              <Key size={24} />
+              Resetear Contraseña
+            </h3>
+            <p className="text-sm text-gray-500 italic">Cliente: {resetData.email}</p>
+            <div className="space-y-4">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Nueva Clave Temporal</label>
+              <div className="relative group">
+                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                 <input 
+                  type="text"
+                  placeholder="Ej: NuevaClave2024"
+                  id="reset-pass-input-admin"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-amber-500 outline-none font-mono"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <button onClick={() => setResetData(null)} className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all">
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  const val = (document.getElementById('reset-pass-input-admin') as HTMLInputElement).value;
+                  if (val) handleAdminOp('RESET_PASSWORD', resetData.id, { newPassword: val });
+                }}
+                disabled={isSubmitting}
+                className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Confirmar Reset"}
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest mt-2">
+              Se obligará al cliente a cambiar esta clave al entrar
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
+              <Trash2 size={40} className="text-red-600" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">¿Eliminar Cliente?</h3>
+              <p className="text-sm text-gray-500">Esta acción es irreversible y el cliente perderá acceso al sistema.</p>
+            </div>
+            <div className="flex flex-col gap-2 pt-2">
+              <button 
+                onClick={() => handleAdminOp('DELETE', deleteId)}
+                disabled={isSubmitting}
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-red-100 transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : "Sí, Eliminar Definitivamente"}
+              </button>
+              <button onClick={() => setDeleteId(null)} className="w-full py-3 text-gray-500 font-bold hover:text-gray-700 transition-all">
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,301 +1,203 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
-  TrendingUp, TrendingDown, Wallet, Folder, Package,
-  AlertTriangle, Camera, ArrowUpRight, ArrowDownRight, Loader2
+  TrendingUp, Wallet,
+  ArrowUpRight, Loader2,
+  Activity, DollarSign, Plus,
+  ShieldCheck, AlertTriangle, Target, Shield
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell
+  ResponsiveContainer
 } from 'recharts';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import {
   formatGs, formatGsShort,
-  getServiceIcon, getStatusLabel, getStatusColor,
   getGastoLabel, getGastoColor
 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
 
-const severityConfig: Record<string, { bg: string; border: string; icon: string; dot: string }> = {
-  critica: { bg: 'bg-red-50', border: 'border-red-200', icon: 'text-red-600', dot: 'bg-red-500' },
-  advertencia: { bg: 'bg-amber-50', border: 'border-amber-200', icon: 'text-amber-600', dot: 'bg-amber-500' },
-  info: { bg: 'bg-blue-50', border: 'border-blue-200', icon: 'text-blue-600', dot: 'bg-blue-500' },
-};
-
 export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => void }) {
-  const { proyectos, facturasGastos, inventarioEquipo, alertas, ingresos, loading } = useSupabaseData();
+  const { proyectos, facturasGastos, ingresos, loading } = useSupabaseData();
   const { user } = useAuth();
-  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="text-emerald-500 animate-spin" size={32} />
-      </div>
-    );
+  const stats = useMemo(() => {
+    if (loading) return null;
+
+    const totalIngresos = ingresos.filter(i => i.estado === 'pagado').reduce((s, i) => s + Number(i.monto), 0);
+    const totalGastos = facturasGastos.reduce((s, f) => s + Number(f.monto), 0);
+    const margen = totalIngresos > 0 ? ((totalIngresos - totalGastos) / totalIngresos * 100) : 0;
+    const proyectosActivos = proyectos.filter(p => p.estado === 'en_progreso' || p.estado === 'cotizacion').length;
+
+    const currentYear = new Date().getFullYear();
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    
+    // REAL IVA CALCULATION (SET COMPLIANT)
+    // IVA Débito: Total from Issued Invoices (ingresos)
+    const ivaDebito10 = ingresos.reduce((s, i) => s + (Number(i.iva_10 || 0)), 0);
+    const ivaDebito5 = ingresos.reduce((s, i) => s + (Number(i.iva_5 || 0)), 0);
+    const ivaDebitoTotal = ivaDebito10 + ivaDebito5;
+
+    // IVA Crédito: Total from Expenses (facturas_gastos)
+    const ivaCredito10 = facturasGastos.reduce((s, f) => s + (Number(f.iva_10 || 0)), 0);
+    const ivaCredito5 = facturasGastos.reduce((s, f) => s + (Number(f.iva_5 || 0)), 0);
+    const ivaCreditoTotal = ivaCredito10 + ivaCredito5;
+
+    const ivaAPagar = Math.max(0, ivaDebitoTotal - ivaCreditoTotal);
+
+    const monthlyData = months.map((m, i) => {
+      const monthStr = (i + 1).toString().padStart(2, '0');
+      const monthIngresos = ingresos
+        .filter(ing => ing.estado === 'pagado' && (ing.fecha || '').startsWith(`${currentYear}-${monthStr}`))
+        .reduce((s, ing) => s + Number(ing.monto), 0);
+      const monthGastos = facturasGastos
+        .filter(gas => (gas.fecha_factura || '').startsWith(`${currentYear}-${monthStr}`))
+        .reduce((s, gas) => s + Number(gas.monto), 0);
+      return { mes: m, ingresos: monthIngresos, gastos: monthGastos };
+    }).filter(d => d.ingresos > 0 || d.gastos > 0).slice(-6);
+
+    const finalMonthlyData = monthlyData.length > 0 ? monthlyData : [
+      { mes: 'Ene', ingresos: 0, gastos: 0 }
+    ];
+
+    const pieData = Object.entries(
+      facturasGastos.reduce((acc, f) => {
+        acc[f.tipo_gasto] = (acc[f.tipo_gasto] || 0) + Number(f.monto);
+        return acc;
+      }, {} as Record<string, number>)
+    ).map(([key, value]) => ({ 
+      name: getGastoLabel(key as any), 
+      value, 
+      color: getGastoColor(key as any) 
+    })).sort((a, b) => b.value - a.value);
+
+    const activeProjectsList = proyectos.filter(p => ['en_progreso', 'cotizacion', 'entregado', 'facturado'].includes(p.estado));
+
+    return { 
+        totalIngresos, totalGastos, margen, proyectosActivos, 
+        monthlyData: finalMonthlyData, pieData, activeProjectsList,
+        ivaAPagar, ivaDebitoTotal, ivaCreditoTotal,
+        iva10: ivaDebito10 - ivaCredito10,
+        iva5: ivaDebito5 - ivaCredito5
+    };
+  }, [loading, ingresos, facturasGastos, proyectos]);
+
+  if (loading || !stats) {
+    return <div className="flex items-center justify-center h-64"><Loader2 className="text-emerald-500 animate-spin" size={32} /></div>;
   }
 
-  // Compute stats
-  const totalIngresos = ingresos.filter(i => i.estado === 'pagado').reduce((s, i) => s + Number(i.monto), 0);
-  const totalGastos = facturasGastos.reduce((s, f) => s + Number(f.monto), 0);
-  const margen = totalIngresos > 0 ? ((totalIngresos - totalGastos) / totalIngresos * 100) : 0;
-  const proyectosActivos = proyectos.filter(p => p.estado === 'en_progreso' || p.estado === 'cotizacion').length;
-  const equiposPorVencer = inventarioEquipo.filter(e => e.tipo_propiedad === 'RENTADO' && e.fecha_fin_renta).length;
-  const alertasNoLeidas = alertas.filter(a => !a.leida).length;
-
-  // Expense by category
-  const gastosPorCategoria = facturasGastos.reduce((acc, f) => {
-    acc[f.tipo_gasto] = (acc[f.tipo_gasto] || 0) + Number(f.monto);
-    return acc;
-  }, {} as Record<string, number>);
-
-  const pieData = Object.entries(gastosPorCategoria)
-    .map(([key, value]) => ({ name: getGastoLabel(key as any), value, color: getGastoColor(key as any) }))
-    .sort((a, b) => b.value - a.value);
-
-  const activeProjects = proyectos.filter(p => ['en_progreso', 'cotizacion', 'entregado', 'facturado'].includes(p.estado));
-  const activeAlerts = alertas.filter(a => !a.leida);
-
-  // Chart data (mocking 6 months based on current totals for now, or could use real monthly grouping)
-  const chartData = [
-    { mes: 'Ene', ingresos: totalIngresos * 0.7, gastos: totalGastos * 0.6 },
-    { mes: 'Feb', ingresos: totalIngresos * 0.9, gastos: totalGastos * 0.8 },
-    { mes: 'Mar', ingresos: totalIngresos, gastos: totalGastos },
-  ];
-
   return (
-    <div className="space-y-6">
-      {/* Greeting */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
-            ¡Hola, {user?.user_metadata?.full_name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'de nuevo'}! 👋
+    <div className="space-y-8 pb-12">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+            <Activity size={14} /> SaaS PRO Dashboard
+          </div>
+          <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
+            Hola, {user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
           </h1>
-          <p className="text-gray-500 mt-1">Tu FINANCE está al día</p>
+          <p className="text-gray-500 mt-1 font-medium italic">Visión consolidada alineada con DNIT/SET (PY).</p>
+        </motion.div>
+        
+        <div className="flex items-center gap-3">
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onNavigate('facturas')} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">
+            <Plus size={18} className="text-emerald-500" /> Nuevo Doc (SET)
+          </motion.button>
+          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 bg-slate-900 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-slate-200">
+            <DollarSign size={18} className="text-emerald-400" /> Emitir Factura
+          </motion.button>
         </div>
-        <button
-          onClick={() => onNavigate('facturas')}
-          className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white px-5 py-3 rounded-xl font-semibold shadow-lg shadow-emerald-200 hover:shadow-xl hover:shadow-emerald-300 transition-all hover:-translate-y-0.5"
-        >
-          <Camera size={20} />
-          Subir Factura
-        </button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Ingresos"
-          value={formatGsShort(totalIngresos)}
-          subtitle="cobrados"
-          icon={<TrendingUp size={22} />}
-          color="emerald"
-          trend={totalIngresos > 0 ? 12.5 : undefined}
-        />
-        <StatCard
-          title="Gastos"
-          value={formatGsShort(totalGastos)}
-          subtitle="este período"
-          icon={<TrendingDown size={22} />}
-          color="red"
-          trend={totalGastos > 0 ? -3.2 : undefined}
-        />
-        <StatCard
-          title="Margen"
-          value={`${margen.toFixed(1)}%`}
-          subtitle={margen >= 0 ? 'positivo' : 'negativo'}
-          icon={<Wallet size={22} />}
-          color="blue"
-          trend={(totalIngresos > 0 || totalGastos > 0) ? (margen >= 50 ? 5.0 : -2.0) : undefined}
-        />
-        <StatCard
-          title="Proyectos"
-          value={`${proyectosActivos}`}
-          subtitle="activos"
-          icon={<Folder size={22} />}
-          color="purple"
-          extra={
-            <div className="flex items-center gap-1 mt-1">
-              <Package size={12} className="text-amber-500" />
-              <span className="text-xs text-amber-600">{equiposPorVencer} equipos rentados</span>
-            </div>
-          }
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard index={0} title="Efectivo en Caja" value={formatGsShort(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" />
+        <StatCard index={1} title="Ventas del Período" value={formatGsShort(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" />
+        <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" />
+        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGsShort(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" />
       </div>
 
-      {/* Main Content Row */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Chart */}
-        <div className="xl:col-span-2 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <h3 className="font-bold text-gray-900 text-lg mb-1">Tendencia Financiera</h3>
-          <p className="text-sm text-gray-500 mb-4">Ingresos vs Gastos reales</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={chartData}>
-              <defs>
-                <linearGradient id="ingGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gasGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="mes" tick={{ fill: '#94a3b8', fontSize: 12 }} />
-              <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickFormatter={(v: number) => `${(v / 1000000).toFixed(0)}M`} />
-              <Tooltip
-                formatter={(value: any) => [formatGs(Number(value)), '']}
-                labelStyle={{ fontWeight: 700 }}
-                contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
-              />
-              <Area type="monotone" dataKey="ingresos" stroke="#10B981" strokeWidth={2.5} fill="url(#ingGrad)" name="Ingresos" />
-              <Area type="monotone" dataKey="gastos" stroke="#EF4444" strokeWidth={2.5} fill="url(#gasGrad)" name="Gastos" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Expenses Pie */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-          <h3 className="font-bold text-gray-900 text-lg mb-1">Distribución de Gastos</h3>
-          <p className="text-sm text-gray-500 mb-4">Por categorías</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                innerRadius={45}
-                outerRadius={75}
-                paddingAngle={4}
-                dataKey="value"
-              >
-                {pieData.map((entry, idx) => (
-                  <Cell key={idx} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: any) => formatGs(Number(value))} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-2 mt-2">
-            {pieData.slice(0, 5).map((item, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="text-xs text-gray-600 flex-1 truncate">{item.name}</span>
-                <span className="text-xs font-semibold text-gray-800">{formatGsShort(item.value)}</span>
-              </div>
-            ))}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 p-10 shadow-sm relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-10" />
+          <h3 className="font-black text-gray-900 text-xl mb-10">Proyección Mensual Consolidada</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={stats.monthlyData}>
+                <defs>
+                   <linearGradient id="ingresGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/><stop offset="95%" stopColor="#10B981" stopOpacity={0}/></linearGradient>
+                   <linearGradient id="gastosGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F43F5E" stopOpacity={0.1}/><stop offset="95%" stopColor="#F43F5E" stopOpacity={0}/></linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }} dy={10} />
+                <YAxis hide />
+                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} formatter={(val) => formatGs(Number(val))} />
+                <Area type="monotone" dataKey="ingresos" stroke="#10B981" strokeWidth={5} fillOpacity={1} fill="url(#ingresGrad)" />
+                <Area type="monotone" dataKey="gastos" stroke="#F43F5E" strokeWidth={5} fillOpacity={1} fill="url(#gastosGrad)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-      </div>
+        </motion.div>
 
-      {/* Projects */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2">
-          <h3 className="font-bold text-gray-900 text-lg mb-4">Proyectos en Curso</h3>
-          <div className="space-y-3">
-            {activeProjects.map(project => {
-              const progress = project.monto_presupuestado > 0
-                ? (project.monto_facturado / project.monto_presupuestado) * 100
-                : 0;
-              return (
-                <div
-                  key={project.id}
-                  className={`bg-white rounded-2xl border p-5 transition-all cursor-pointer ${hoveredProject === project.id ? 'border-blue-300 shadow-md shadow-blue-50' : 'border-gray-100 shadow-sm'}`}
-                  onMouseEnter={() => setHoveredProject(project.id)}
-                  onMouseLeave={() => setHoveredProject(null)}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
-                      style={{ backgroundColor: getStatusColor(project.estado) + '15' }}>
-                      {getServiceIcon(project.tipo_servicio)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-bold text-gray-900">{project.nombre_cliente}</h4>
-                        <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold"
-                          style={{
-                            backgroundColor: getStatusColor(project.estado) + '18',
-                            color: getStatusColor(project.estado),
-                          }}>
-                          {getStatusLabel(project.estado)}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500 truncate">{project.descripcion}</p>
-                    </div>
-                    <div className="text-right hidden sm:block">
-                      <p className="font-bold text-gray-900">{formatGsShort(project.monto_presupuestado)}</p>
-                    </div>
-                  </div>
+        <div className="space-y-8">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden group">
+                <div className="flex items-center gap-3 mb-8">
+                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform"><Shield size={24} /></div>
+                    <h3 className="font-bold text-xl tracking-tight">Resguardo DNIT</h3>
                 </div>
-              );
-            })}
-          </div>
-        </div>
+                <div className="space-y-5">
+                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGsShort(stats.ivaDebitoTotal)}</span></div>
+                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Crédito (Compras)</span><span className="text-sm font-bold text-rose-400">-{formatGsShort(stats.ivaCreditoTotal)}</span></div>
+                    <div className="h-px bg-slate-800 my-4" />
+                    <div className="p-5 bg-white/5 rounded-3xl flex justify-between items-center border border-white/5">
+                        <div>
+                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Saldo Liquidable</p>
+                            <p className="text-2xl font-black">{formatGs(stats.ivaAPagar)}</p>
+                        </div>
+                        {stats.ivaAPagar > 2000000 && <AlertTriangle className="text-amber-500" size={28} />}
+                    </div>
+                </div>
+                <div className="mt-6 flex gap-3">
+                    <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                        <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Tasa 10%</p>
+                        <p className="text-xs font-black text-blue-400">{formatGsShort(stats.iva10)}</p>
+                    </div>
+                    <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                        <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Tasa 5%</p>
+                        <p className="text-xs font-black text-indigo-400">{formatGsShort(stats.iva5)}</p>
+                    </div>
+                </div>
+            </motion.div>
 
-        {/* Quick Actions */}
-        <div className="space-y-4">
-          <h3 className="font-bold text-gray-900 text-lg">Acciones Rápidas</h3>
-          <QuickAction icon="📸" label="Subir Factura" desc="Registrar gasto con OCR" color="#10B981" onClick={() => onNavigate('facturas')} />
-          <QuickAction icon="📂" label="Proyectos" desc="Gestionar trabajos" color="#3B82F6" onClick={() => onNavigate('proyectos')} />
-          <QuickAction icon="📦" label="Inventario" desc="Equipos y rentas" color="#F59E0B" onClick={() => onNavigate('inventario')} />
-          <QuickAction icon="📊" label="Reportes" desc="Análisis financiero" color="#8B5CF6" onClick={() => onNavigate('reportes')} />
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="bg-emerald-500 rounded-[2rem] p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10">
+                <div className="flex justify-between items-center mb-5">
+                    <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Monitor PYG/USD</span>
+                    <ArrowUpRight size={18} className="text-slate-900/40" />
+                </div>
+                <div className="flex items-end gap-3">
+                    <h4 className="text-4xl font-black tracking-tighter">₲ 7.420</h4>
+                    <span className="text-sm font-black mb-1.5 opacity-60">/ 1$</span>
+                </div>
+            </motion.div>
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({ value, subtitle, icon, color, trend, extra }: {
-  title: string; value: string; subtitle: string; icon: React.ReactNode;
-  color: string; trend?: number; extra?: React.ReactNode;
-}) {
-  const colorMap: Record<string, { bg: string; iconBg: string; iconColor: string }> = {
-    emerald: { bg: 'bg-emerald-50', iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600' },
-    red: { bg: 'bg-red-50', iconBg: 'bg-red-100', iconColor: 'text-red-600' },
-    blue: { bg: 'bg-blue-50', iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-    purple: { bg: 'bg-purple-50', iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
+function StatCard({ title, value, desc, icon, color, index }: any) {
+  const themes = {
+    emerald: 'bg-emerald-50/50 text-emerald-600 border-emerald-100',
+    rose: 'bg-rose-50/50 text-rose-600 border-rose-100',
+    indigo: 'bg-indigo-50/50 text-indigo-600 border-indigo-100',
+    amber: 'bg-amber-50/50 text-amber-600 border-amber-100',
   };
-  const c = colorMap[color] || colorMap.blue;
-
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className={`w-10 h-10 rounded-xl ${c.iconBg} ${c.iconColor} flex items-center justify-center`}>
-          {icon}
-        </div>
-        {trend !== undefined && (
-          <div className={`flex items-center gap-0.5 text-xs font-semibold ${trend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {trend >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {Math.abs(trend)}%
-          </div>
-        )}
-      </div>
-      <div className="mt-3">
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>
-        {extra}
-      </div>
-    </div>
-  );
-}
-
-function QuickAction({ icon, label, desc, color, onClick }: {
-  icon: string; label: string; desc: string; color: string; onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 bg-white hover:border-gray-200 hover:shadow-md transition-all text-left group"
-    >
-      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl"
-        style={{ backgroundColor: color + '15' }}>
-        {icon}
-      </div>
-      <div className="flex-1">
-        <p className="font-semibold text-gray-900 text-sm">{label}</p>
-        <p className="text-xs text-gray-500">{desc}</p>
-      </div>
-      <ArrowUpRight size={16} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
-    </button>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }} whileHover={{ y: -5 }} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative">
+      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-sm ${themes[color as keyof typeof themes]}`}>{icon}</div>
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{title}</p>
+      <h4 className="text-2xl font-black text-gray-900 mb-1">{value}</h4>
+      <p className="text-xs text-gray-400 font-medium">{desc}</p>
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50/50 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform -z-0" />
+    </motion.div>
   );
 }
