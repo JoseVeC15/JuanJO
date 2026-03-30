@@ -48,6 +48,7 @@ export default function Facturas() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showOCR, setShowOCR] = useState(false);
   const [showAddManual, setShowAddManual] = useState(false);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
   
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -61,6 +62,18 @@ export default function Facturas() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, type, data }: { id: string, type: 'gastos' | 'ingresos', data: any }) => {
+      const table = type === 'gastos' ? 'facturas_gastos' : 'ingresos';
+      const { error } = await supabase.from(table).update(data).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
+      setEditingItem(null);
     }
   });
 
@@ -86,31 +99,42 @@ export default function Facturas() {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
+    
     setUploading(true);
-    setUploadStatus('idle');
+    setUploadStatus('idle'); // Reset status immediately on new selection
+    
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64String = (reader.result as string).split(',')[1];
-        const webhookUrl = (import.meta as any).env?.VITE_N8N_WEBHOOK_URL || '';
-        const response = await fetch(webhookUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            user_id: user.id, 
-            image_base64: base64String, 
-            type: activeTab === 'gastos' ? 'expense' : 'income' 
-          })
-        });
-        if (response.ok) {
-          setUploadStatus('success');
-        } else {
+        try {
+          const base64String = (reader.result as string).split(',')[1];
+          const webhookUrl = (import.meta as any).env?.VITE_N8N_WEBHOOK_URL || '';
+          
+          const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              user_id: user.id, 
+              image_base64: base64String, 
+              type: activeTab === 'gastos' ? 'expense' : 'income' 
+            })
+          });
+          
+          if (response.ok) {
+            setUploadStatus('success');
+          } else {
+            setUploadStatus('error');
+          }
+        } catch (innerError) {
+          console.error('Upload error:', innerError);
           setUploadStatus('error');
+        } finally {
+          setUploading(false);
         }
-        setUploading(false);
       };
       reader.readAsDataURL(file);
     } catch (error) {
+      console.error('Reader error:', error);
       setUploadStatus('error');
       setUploading(false);
     } finally {
@@ -295,6 +319,7 @@ export default function Facturas() {
                   isExpanded={expandedId === item.id}
                   onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
                   onDelete={() => deleteMutation.mutate({ id: item.id, type: activeTab })}
+                  onEdit={() => setEditingItem(item)}
                 />
               ))}
             </motion.div>
@@ -380,7 +405,12 @@ export default function Facturas() {
                                             <ImageIcon size={16} /> Ver Documento SET
                                           </a>
                                         )}
-                                        <button className="flex items-center gap-2 bg-white border border-gray-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"><Edit2 size={16} /> Corregir Datos</button>
+                                        <button 
+  onClick={(e) => { e.stopPropagation(); setEditingItem(f); }}
+  className="flex items-center gap-2 bg-white border border-gray-200 text-slate-700 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm"
+>
+  <Edit2 size={16} /> Corregir Datos
+</button>
                                       </div>
                                       <div className="flex items-center gap-4">
                                         <div className="text-right">
@@ -437,11 +467,23 @@ export default function Facturas() {
              </motion.div>
            </div>
       )}
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editingItem && (
+          <EditInvoiceModal 
+            item={editingItem} 
+            onClose={() => setEditingItem(null)} 
+            onSave={(data: any) => updateMutation.mutate({ id: editingItem.id, type: activeTab, data })}
+            isSaving={updateMutation.isPending}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
+function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit }: any) {
   const isGasto = type === 'gastos';
   const data = item as any;
   const isVeryNew = data.created_at ? (Date.now() - new Date(data.created_at).getTime()) < 10000 : false;
@@ -522,7 +564,12 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
                     <ImageIcon size={16} /> Ver Documento SET
                   </a>
                 )}
-                <button className="flex items-center gap-2 bg-slate-100 text-slate-900 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"><Edit2 size={16} /> Corregir Datos</button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                  className="flex items-center gap-2 bg-slate-100 text-slate-900 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                >
+                  <Edit2 size={16} /> Corregir Datos
+                </button>
               </div>
               <div className="flex items-center gap-4">
                   <div className="text-right">
@@ -542,26 +589,26 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete }: any) {
 }
 
 function DetailBox({ label, value, desc, icon }: any) {
-  return (
-    <div>
-      <div className="flex items-center gap-1.5 mb-1.5">
-          {icon && <span className="text-gray-400">{icon}</span>}
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em]">{label}</p>
+    return (
+      <div>
+        <div className="flex items-center gap-1.5 mb-1.5">
+            {icon && <span className="text-gray-400">{icon}</span>}
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.1em]">{label}</p>
+        </div>
+        <p className="font-black text-slate-900 text-lg tracking-tight">{value || '-'}</p>
+        {desc && <p className="text-[10px] text-emerald-500 font-black mt-0.5">{desc}</p>}
       </div>
-      <p className="font-black text-slate-900 text-lg tracking-tight">{value || '-'}</p>
-      {desc && <p className="text-[10px] text-emerald-500 font-black mt-0.5">{desc}</p>}
-    </div>
-  );
+    );
 }
 
 function SummaryCard({ label, value, desc, color }: { label: string; value: string; desc: string; color: string }) {
-  return (
-    <div className={`rounded-[2rem] p-8 border shadow-sm transition-all hover:shadow-lg ${color}`}>
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">{label}</p>
-      <p className="text-2xl font-black mb-1">{value}</p>
-      <p className="text-[10px] font-bold opacity-50">{desc}</p>
-    </div>
-  );
+    return (
+      <div className={`rounded-[2rem] p-8 border shadow-sm transition-all hover:shadow-lg ${color}`}>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">{label}</p>
+        <p className="text-2xl font-black mb-1">{value}</p>
+        <p className="text-[10px] font-bold opacity-50">{desc}</p>
+      </div>
+    );
 }
 
 function InputGroup({ label, placeholder, type = "text" }: any) {
@@ -573,6 +620,135 @@ function InputGroup({ label, placeholder, type = "text" }: any) {
                 placeholder={placeholder}
                 className="w-full px-5 py-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500/20" 
             />
+        </div>
+    );
+}
+
+function ModalInput({ label, value, onChange, type = "text" }: any) {
+    return (
+        <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{label}</label>
+            <input 
+                type={type} 
+                value={value || ''}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-inner" 
+            />
+        </div>
+    );
+}
+
+function EditInvoiceModal({ item, onClose, onSave, isSaving }: any) {
+    const isGasto = !!item.proveedor;
+    const [formData, setFormData] = useState({
+        ...item,
+        created_at: undefined,
+        id: undefined,
+        processed_by_n8n: undefined
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
+    return (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md overflow-y-auto">
+            <motion.div 
+                initial={{ scale: 0.9, opacity: 0 }} 
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-[2.5rem] w-full max-w-4xl p-8 lg:p-12 shadow-2xl relative my-auto"
+            >
+                <div className="flex justify-between items-center mb-10">
+                    <div>
+                        <h3 className="text-3xl font-black text-gray-900 tracking-tight">Corregir Documento</h3>
+                        <p className="text-gray-400 font-medium text-sm mt-1">Ajuste de datos fiscales para conciliación SET.</p>
+                    </div>
+                    <button onClick={onClose} className="p-3 bg-gray-50 rounded-2xl text-gray-400 hover:text-gray-600 hover:rotate-90 transition-all">
+                        <X size={24} />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="col-span-1 md:col-span-2">
+                             <ModalInput 
+                                label={isGasto ? "Razón Social Proveedor" : "Nombre del Cliente"} 
+                                value={isGasto ? formData.proveedor : formData.cliente} 
+                                onChange={(val: string) => setFormData({...formData, [isGasto ? 'proveedor' : 'cliente']: val})}
+                             />
+                        </div>
+                        <ModalInput 
+                            label="RUC" 
+                            value={isGasto ? formData.ruc_proveedor : formData.ruc_cliente} 
+                            onChange={(val: string) => setFormData({...formData, [isGasto ? 'ruc_proveedor' : 'ruc_cliente']: val})}
+                        />
+                        <ModalInput 
+                            label="Nro. Factura" 
+                            value={formData.numero_factura} 
+                            onChange={(val: string) => setFormData({...formData, numero_factura: val})}
+                        />
+                        <ModalInput 
+                            label="Timbrado" 
+                            value={formData.timbrado} 
+                            onChange={(val: string) => setFormData({...formData, timbrado: val})}
+                        />
+                        <ModalInput 
+                            label="Fecha" 
+                            type="date"
+                            value={isGasto ? formData.fecha_factura : (formData.fecha || formData.fecha_emision)} 
+                            onChange={(val: string) => setFormData({...formData, [isGasto ? 'fecha_factura' : (formData.fecha ? 'fecha' : 'fecha_emision')]: val})}
+                        />
+                        <ModalInput 
+                            label="Monto Bruto (₲)" 
+                            type="number"
+                            value={formData.monto} 
+                            onChange={(val: any) => setFormData({...formData, monto: Number(val)})}
+                        />
+                         <ModalInput 
+                            label="IVA 10% (₲)" 
+                            type="number"
+                            value={formData.iva_10 || 0} 
+                            onChange={(val: any) => setFormData({...formData, iva_10: Number(val)})}
+                        />
+                         <ModalInput 
+                            label="IVA 5% (₲)" 
+                            type="number"
+                            value={formData.iva_5 || 0} 
+                            onChange={(val: any) => setFormData({...formData, iva_5: Number(val)})}
+                        />
+                        <ModalInput 
+                            label="Exentas (₲)" 
+                            type="number"
+                            value={formData.exentas || 0} 
+                            onChange={(val: any) => setFormData({...formData, exentas: Number(val)})}
+                        />
+                        <div className="col-span-1 md:col-span-2 lg:col-span-3">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Estado del Documento</label>
+                            <div className="flex flex-wrap gap-3">
+                                {['pendiente_clasificar', 'registrada', 'en_proceso_pago', 'pagada', 'pendiente', 'pagado'].filter(k => isGasto ? !['pendiente', 'pagado'].includes(k) : ['pendiente', 'pagado'].includes(k)).map(est => (
+                                    <button
+                                        key={est}
+                                        type="button"
+                                        onClick={() => setFormData({...formData, estado: est})}
+                                        className={`px-4 py-2 rounded-xl font-bold text-[10px] uppercase transition-all ${formData.estado === est ? 'bg-slate-900 text-white shadow-lg' : 'bg-gray-100 text-gray-400'}`}
+                                    >
+                                        {est.replace('_', ' ')}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 pt-6">
+                        <button type="submit" disabled={isSaving} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl disabled:opacity-50">
+                            {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
+                        <button type="button" onClick={onClose} className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest">Cancelar</button>
+                    </div>
+                </form>
+            </motion.div>
         </div>
     );
 }
