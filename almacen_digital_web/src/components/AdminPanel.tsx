@@ -48,7 +48,7 @@ export default function AdminPanel() {
     try {
       // LLAMADA A EDGE FUNCTION (TIP)
       // Nota: Asumimos que la function se llama 'create-client-user'
-      const { data, error } = await supabase.functions.invoke('create-client-user', {
+      const { error } = await supabase.functions.invoke('create-client-user', {
         body: formData
       });
 
@@ -73,13 +73,13 @@ export default function AdminPanel() {
     }
   };
 
-  const handleAdminOp = async (action: 'DELETE' | 'UPDATE_NAME' | 'RESET_PASSWORD', userId: string, payload?: any) => {
-    console.log(`[ADMIN OP] Inicia: ${action} para ${userId}`, payload);
+  const handleAdminOp = async (action: 'delete_user' | 'update_user' | 'reset_password', userId: string, dataObj?: any) => {
+    console.log(`[ADMIN OP] Inicia: ${action} para ${userId}`, dataObj);
     setIsSubmitting(true);
     setStatus(null);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
-        body: { action, userId, payload }
+      const { error } = await supabase.functions.invoke('admin-manage-user', {
+        body: { action, userId, data: dataObj }
       });
 
       console.log(`[ADMIN OP] Resultado:`, { data, error });
@@ -351,7 +351,7 @@ export default function AdminPanel() {
                 Cancelar
               </button>
               <button 
-                onClick={() => handleAdminOp('UPDATE_NAME', editData.id, { nombre_completo: editData.name })}
+                onClick={() => handleAdminOp('update_user', editData.id, { nombre_completo: editData.name })}
                 disabled={isSubmitting}
                 className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
               >
@@ -396,7 +396,7 @@ export default function AdminPanel() {
               </button>
               <button 
                 onClick={() => {
-                  if (resetData.newPass) handleAdminOp('RESET_PASSWORD', resetData.id, { newPassword: resetData.newPass });
+                  if (resetData.newPass) handleAdminOp('reset_password', resetData.id, { new_password: resetData.newPass });
                 }}
                 disabled={isSubmitting || !resetData.newPass}
                 className="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
@@ -430,7 +430,7 @@ export default function AdminPanel() {
                 </div>
               )}
               <button 
-                onClick={() => handleAdminOp('DELETE', deleteId)}
+                onClick={() => handleAdminOp('delete_user', deleteId)}
                 disabled={isSubmitting}
                 className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-red-100 transition-all disabled:opacity-50"
               >
