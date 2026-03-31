@@ -4,11 +4,16 @@ Toda la información del panel se unifica en la vista de **Análisis**, una secc
 
 ![Vista del Panel de Análisis y Reportes](/manuales/analisis.png)
 
-## Herramientas de Inteligencia Analítica:
+## 💹 Herramientas de Inteligencia Analítica:
 
-*   **Progreso de Margen y EBITA:** Verifica el indicador central de Margen (Ingresos - Gastos). Tu KPI empresarial por excelencia.
-*   **Ranking de Confiabilidad:** Identifica qué clientes o proyectos son el origen de la mayor parte de tu facturación. Analiza quién concentra los costos empresariales.
-*   **Proyección y Predicciones Mensuales:** Los gráficos en la vista de análisis comparan tus resultados mes a mes o día a día.
+- **Margen de Contribución:** Porcentaje de ganancia que te deja cada peso facturado después de pagar tus costos operativos.
+- **EBITA (Earnings Before Interest, Taxes, and Amortization):** Indicador de los beneficios brutos de tu actividad antes de pagar intereses o amortizaciones. El pulso real de tu negocio.
+- **Gráfico de Evolución Mensual:** Compara tus ingresos netos y gastos directos mes a mes para una visión clara de tu crecimiento.
+
+## 🏆 Ranking de Confiabilidad y Rentabilidad
+
+- **Clientes que facturan más:** Identifica qué clientes o proyectos son el origen de la mayor parte de tu facturación.
+- **Costos por Categoría:** Analiza si estás gastando demasiado en alimentación, transporte o subcontratación en relación a lo que facturas.
 
 ---
 

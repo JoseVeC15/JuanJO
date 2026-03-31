@@ -4,11 +4,19 @@ Lleva el control de rentabilidad de cada uno de tus **Proyectos** de forma centr
 
 ![Vista del Centro de Proyectos](/manuales/proyectos.png)
 
-## Beneficios Estratégicos:
+## 🎯 Proyectos: Rentabilidad por Iniciativa
 
--   **Rentabilidad por Iniciativa:** Vincula tus facturas (gastos e ingresos) a un Proyecto y calcula instantáneamente cuál es tu margen real usando el panel independiente del proyecto.
--   **Tiempos y Fases:** Gestiona las fechas de inicio, estado y conclusión para evitar retrasos que aumentan los costes.
--   **Reporte Dedicado:** Genera un estado general separado por cliente o por iniciativa para no mezclar los gastos empresariales generales de los operativos.
+ FINANCE PRO te ayuda a separar los gastos de tu negocio de los gastos operativos de cada rodaje o edición:
+
+1.  **Vínculo Inteligente:** Cuando cargas una factura en *Gastos* o *Ingresos*, asóciala a un proyecto específico.
+2.  **Cálculo de Margen:** El sistema resta todos los gastos (alquileres, honorarios, transporte) del monto facturado al cliente.
+3.  **Rentabilidad Real:** Sabrás instantáneamente cuánto dinero te quedó "en mano" tras descontar los costes directos de cada trabajo.
+
+## 📊 Presupuesto vs. Real
+
+- **Monto Presupuestado:** Es el valor inicial que cotizaste al cliente. Sirve como referencia de tu margen de ganancia teórica.
+- **Monto Facturado:** Es el dinero real que ya has solicitado cobrar o ya has recibido.
+- **Estados del Proyecto:** Desde **Cotización** hasta **Pagado**. Cambia el estado para que el sistema sepa si debe contar ese dinero en tu flujo de caja proyectado o confirmado.
 
 ---
 
