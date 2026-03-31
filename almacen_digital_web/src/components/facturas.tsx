@@ -79,8 +79,6 @@ export default function Facturas() {
       try {
         let newData: any = {
           monto: item.monto,
-          iva_10: item.iva_10,
-          iva_5: item.iva_5,
           numero_factura: item.numero_factura,
           timbrado: item.timbrado,
           user_id: user.id,
@@ -88,12 +86,12 @@ export default function Facturas() {
         };
 
         if (fromType === 'gastos') {
-          // Mover Gasto -> Ingreso (Evitamos campos que no existen en 'ingresos')
+          // Mover Gasto -> Ingreso (Campos que NO existen en 'ingresos' según errores reportados)
           newData.cliente = item.proveedor;
           newData.ruc_cliente = item.ruc_proveedor;
           newData.fecha_emision = item.fecha_factura;
           newData.estado = 'pendiente';
-          // No incluimos: exentas, fecha, imagen_url, processed_by_n8n
+          // No incluimos: exentas, fecha, imagen_url, processed_by_n8n, iva_10, iva_5
         } else {
           // Mover Ingreso -> Gasto
           newData.proveedor = item.cliente;
@@ -103,6 +101,8 @@ export default function Facturas() {
           newData.tipo_gasto = 'otros';
           
           // Gastos sí tiene estos campos en el esquema
+          newData.iva_10 = item.iva_10 || 0;
+          newData.iva_5 = item.iva_5 || 0;
           newData.exentas = item.exentas || 0;
           newData.imagen_url = item.imagen_url;
           newData.processed_by_n8n = item.processed_by_n8n;
