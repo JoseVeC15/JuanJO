@@ -81,36 +81,30 @@ export default function Facturas() {
           monto: item.monto,
           user_id: user.id,
           notas: item.notas || '',
-          // ingresos requiere proyecto_id (NOT NULL)
-          proyecto_id: item.proyecto_id || (proyectos?.[0]?.id) 
+          proyecto_id: item.proyecto_id,
+          // Campos universales (ahora soportados en ambas tablas)
+          numero_factura: item.numero_factura,
+          timbrado: item.timbrado,
+          iva_10: item.iva_10 || 0,
+          iva_5: item.iva_5 || 0,
+          exentas: item.exentas || 0,
+          imagen_url: item.imagen_url,
+          processed_by_n8n: item.processed_by_n8n
         };
 
         if (fromType === 'gastos') {
-          // Mover Gasto -> Ingreso (Solo campos existentes en schema.sql)
+          // Mover Gasto -> Ingreso
           newData.cliente = item.proveedor;
+          newData.ruc_cliente = item.ruc_proveedor;
           newData.fecha_emision = item.fecha_factura;
           newData.estado = 'pendiente';
-          // NO existen en ingresos: ruc_cliente, numero_factura, timbrado, iva_10, iva_5, exentas, imagen_url, processed_by_n8n, fecha
         } else {
           // Mover Ingreso -> Gasto
           newData.proveedor = item.cliente;
-          newData.ruc_proveedor = item.ruc_cliente; // Gasto sí tiene ruc_proveedor
+          newData.ruc_proveedor = item.ruc_cliente;
           newData.fecha_factura = item.fecha_emision;
           newData.estado = 'pendiente_clasificar';
           newData.tipo_gasto = 'otros';
-          
-          // Gastos sí tiene estos campos
-          newData.numero_factura = item.numero_factura;
-          newData.timbrado = item.timbrado;
-          newData.iva_10 = item.iva_10 || 0;
-          newData.iva_5 = item.iva_5 || 0;
-          newData.exentas = item.exentas || 0;
-          newData.imagen_url = item.imagen_url;
-          newData.processed_by_n8n = item.processed_by_n8n;
-        }
-
-        if (!newData.proyecto_id && toType === 'ingresos') {
-           throw new Error("No se puede mover a Ingresos sin un proyecto asociado. Por favor, asigna un proyecto primero.");
         }
 
         // 1. Insertar en nueva tabla
