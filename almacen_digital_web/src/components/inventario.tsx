@@ -40,14 +40,26 @@ export default function Inventario() {
     setIsSubmitting(true);
     
     try {
+      // Sanitize data: turn empty strings into nulls to avoid DB type errors (especially for DATE)
+      const submitData = {
+        ...formData,
+        tipo_propiedad: activeTab,
+        valor_actual: formData.valor_actual ? Number(formData.valor_actual) : null,
+        costo_renta_dia: formData.costo_renta_dia ? Number(formData.costo_renta_dia) : null,
+        fecha_fin_renta: formData.fecha_fin_renta.trim() === '' ? null : formData.fecha_fin_renta
+      };
+
+      // If it's Owned, remove Rental fields to be clean
+      if (activeTab === 'PROPIO') {
+        submitData.costo_renta_dia = null;
+        submitData.fecha_fin_renta = null;
+      } else {
+        submitData.valor_actual = null;
+      }
+
       const { error } = await supabase
         .from('inventario_equipo')
-        .insert([{
-          ...formData,
-          valor_actual: formData.valor_actual ? Number(formData.valor_actual) : null,
-          costo_renta_dia: formData.costo_renta_dia ? Number(formData.costo_renta_dia) : null,
-          tipo_propiedad: activeTab // User active tab pre-fills
-        }]);
+        .insert([submitData]);
 
       if (error) throw error;
       
