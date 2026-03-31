@@ -840,3 +840,16 @@ export const getGastoColor = (tipo: TipoGasto): string => {
   };
   return colors[tipo] || '#94A3B8';
 };
+
+export const calculateSuggestedVAT = (total: number) => {
+  // IVA 10% = Total / 11 (Standard in Paraguay)
+  // Assuming 10% is the default for most creative/biz services
+  const totalNum = Number(total);
+  if (isNaN(totalNum) || totalNum <= 0) return { iva10: 0, iva5: 0, exentas: 0 };
+  
+  return { 
+    iva10: Math.floor(totalNum / 11), 
+    iva5: 0, 
+    exentas: 0 
+  };
+};

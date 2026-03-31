@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { calculateSuggestedVAT } from '../data/sampleData';
 import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile } from '../data/sampleData';
 
 export function useSupabaseData() {
@@ -39,7 +40,7 @@ export function useSupabaseData() {
     }
   });
 
-  const { data: facturasGastos = [], isLoading: loadingFacturas, error: errorFacturas } = useQuery({
+  const { data: facturasGastosRaw = [], isLoading: loadingFacturas, error: errorFacturas } = useQuery({
     queryKey: ['facturas_gastos', sessionUser?.id],
     enabled: !!sessionUser,
     queryFn: async () => {
@@ -47,6 +48,13 @@ export function useSupabaseData() {
       if (error) throw error;
       return data as FacturaGasto[];
     }
+  });
+
+  const facturasGastos = facturasGastosRaw.map(g => {
+    if (g.monto > 0 && (g.iva_10 || 0) === 0 && (g.iva_5 || 0) === 0 && (g.exentas || 0) === 0) {
+      return { ...g, ...calculateSuggestedVAT(g.monto), is_suggested_vat: true };
+    }
+    return g;
   });
 
   const { data: inventarioEquipo = [], isLoading: loadingEquipo, error: errorEquipo } = useQuery({
@@ -59,7 +67,7 @@ export function useSupabaseData() {
     }
   });
 
-  const { data: ingresos = [], isLoading: loadingIngresos, error: errorIngresos } = useQuery({
+  const { data: ingresosRaw = [], isLoading: loadingIngresos, error: errorIngresos } = useQuery({
     queryKey: ['ingresos', sessionUser?.id],
     enabled: !!sessionUser,
     queryFn: async () => {
@@ -67,6 +75,13 @@ export function useSupabaseData() {
       if (error) throw error;
       return data as Ingreso[];
     }
+  });
+
+  const ingresos = ingresosRaw.map(i => {
+    if (i.monto > 0 && (i.iva_10 || 0) === 0 && (i.iva_5 || 0) === 0 && (i.exentas || 0) === 0) {
+      return { ...i, ...calculateSuggestedVAT(i.monto), is_suggested_vat: true };
+    }
+    return i;
   });
 
   useEffect(() => {
