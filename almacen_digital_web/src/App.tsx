@@ -95,19 +95,6 @@ function RouterWrapper() {
                   )}
                 </NavLink>
               ))}
-              {profile?.nivel_acceso === 1 && (
-                <NavLink
-                  to="/admin"
-                  className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative overflow-hidden group ${
-                    isActive
-                      ? 'bg-indigo-500/10 text-indigo-400 font-bold border border-indigo-500/20'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                  }`}
-                >
-                  <ShieldCheck size={20} className="relative z-10" />
-                  <span className="relative z-10 uppercase tracking-tighter text-xs">Admin Panel</span>
-                </NavLink>
-              )}
             </nav>
 
             <div className="p-4 border-t border-slate-800">
