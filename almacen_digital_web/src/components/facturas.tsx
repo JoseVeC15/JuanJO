@@ -65,6 +65,57 @@ export default function Facturas() {
     }
   });
 
+  const moveMutation = useMutation({
+    mutationFn: async ({ item, fromType }: { item: any, fromType: 'gastos' | 'ingresos' }) => {
+      if (!user) return;
+      const toType = fromType === 'gastos' ? 'ingresos' : 'gastos';
+      const fromTable = fromType === 'gastos' ? 'facturas_gastos' : 'ingresos';
+      const toTable = toType === 'gastos' ? 'facturas_gastos' : 'ingresos';
+
+      let newData: any = {
+        monto: item.monto,
+        iva_10: item.iva_10,
+        iva_5: item.iva_5,
+        exentas: item.exentas,
+        numero_factura: item.numero_factura,
+        timbrado: item.timbrado,
+        imagen_url: item.imagen_url,
+        processed_by_n8n: item.processed_by_n8n,
+        user_id: user.id,
+        notas: item.notas || ''
+      };
+
+      if (fromType === 'gastos') {
+        // Mover Gasto -> Ingreso
+        newData.cliente = item.proveedor;
+        newData.ruc_cliente = item.ruc_proveedor;
+        newData.fecha = item.fecha_factura;
+        newData.estado = 'pendiente';
+      } else {
+        // Mover Ingreso -> Gasto
+        newData.proveedor = item.cliente;
+        newData.ruc_proveedor = item.ruc_cliente;
+        newData.fecha_factura = item.fecha || item.fecha_emision;
+        newData.estado = 'pendiente_clasificar';
+        newData.tipo_gasto = 'otros';
+      }
+
+      // 1. Insertar en nueva tabla
+      const { error: insertError } = await supabase.from(toTable).insert(newData);
+      if (insertError) throw insertError;
+
+      // 2. Borrar de la anterior
+      const { error: deleteError } = await supabase.from(fromTable).delete().eq('id', item.id);
+      if (deleteError) throw deleteError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
+      queryClient.invalidateQueries({ queryKey: ['ingresos'] });
+      setEditingItem(null);
+      setExpandedId(null);
+    }
+  });
+
   const updateMutation = useMutation({
     mutationFn: async ({ id, type, data }: { id: string, type: 'gastos' | 'ingresos', data: any }) => {
       const table = type === 'gastos' ? 'facturas_gastos' : 'ingresos';
@@ -116,7 +167,9 @@ export default function Facturas() {
             body: JSON.stringify({ 
               user_id: user.id, 
               image_base64: base64String, 
-              type: activeTab === 'gastos' ? 'expense' : 'income' 
+              type: activeTab === 'gastos' ? 'expense' : 'income',
+              category_intent: activeTab === 'gastos' ? 'gastos' : 'ingresos',
+              force_category: true // Explicit override for n8n
             })
           });
           
@@ -320,6 +373,8 @@ export default function Facturas() {
                   onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
                   onDelete={() => deleteMutation.mutate({ id: item.id, type: activeTab })}
                   onEdit={() => setEditingItem(item)}
+                  onMove={(item: any, fromType: any) => moveMutation.mutate({ item, fromType })}
+                  isMoving={moveMutation.isPending}
                 />
               ))}
             </motion.div>
@@ -419,6 +474,17 @@ export default function Facturas() {
                                         </div>
                                         <div className="w-px h-8 bg-gray-100 mx-2" />
                                         <span className="text-[10px] text-gray-300 font-bold italic">ID: {f.id.split('-')[0]}...</span>
+                                        <button 
+                                          onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            confirm(`¿Cambiar este documento a la sección de ${activeTab === 'gastos' ? 'INGRESOS' : 'GASTOS'}?`) && 
+                                            moveMutation.mutate({ item: f, fromType: activeTab }); 
+                                          }} 
+                                          className="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                        >
+                                          {moveMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />} 
+                                          Mover a {activeTab === 'gastos' ? 'Ingresos' : 'Gastos'}
+                                        </button>
                                         <button onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); }} className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"><Trash2 size={20} /></button>
                                       </div>
                                     </div>
@@ -475,7 +541,8 @@ export default function Facturas() {
             item={editingItem} 
             onClose={() => setEditingItem(null)} 
             onSave={(data: any) => updateMutation.mutate({ id: editingItem.id, type: activeTab, data })}
-            isSaving={updateMutation.isPending}
+            onMove={(item: any, fromType: any) => moveMutation.mutate({ item, fromType })}
+            isSaving={updateMutation.isPending || moveMutation.isPending}
           />
         )}
       </AnimatePresence>
@@ -483,7 +550,7 @@ export default function Facturas() {
   );
 }
 
-function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit }: any) {
+function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, isMoving }: any) {
   const isGasto = type === 'gastos';
   const data = item as any;
   const isVeryNew = data.created_at ? (Date.now() - new Date(data.created_at).getTime()) < 10000 : false;
@@ -578,6 +645,17 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit }: any) {
                   </div>
                   <div className="w-px h-8 bg-gray-200 mx-2" />
                   <span className="text-[10px] text-gray-300 font-bold italic">ID: {data.id.split('-')[0]}...</span>
+                  <button 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      confirm(`¿Cambiar este documento a la sección de ${isGasto ? 'INGRESOS' : 'GASTOS'}?`) && 
+                      onMove(data, type); 
+                    }} 
+                    className="w-12 h-12 flex items-center justify-center text-indigo-500 bg-indigo-50 hover:bg-indigo-500 hover:text-white rounded-2xl transition-all shadow-sm"
+                    title={`Mover a ${isGasto ? 'Ingresos' : 'Gastos'}`}
+                  >
+                    {isMoving ? <Loader2 size={20} className="animate-spin" /> : <Shield size={20} />}
+                  </button>
                   <button onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && onDelete(); }} className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><Trash2 size={20} /></button>
               </div>
             </div>
@@ -638,7 +716,7 @@ function ModalInput({ label, value, onChange, type = "text" }: any) {
     );
 }
 
-function EditInvoiceModal({ item, onClose, onSave, isSaving }: any) {
+function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
     const isGasto = !!item.proveedor;
     const [formData, setFormData] = useState({
         ...item,
@@ -744,6 +822,16 @@ function EditInvoiceModal({ item, onClose, onSave, isSaving }: any) {
                     <div className="flex gap-4 pt-6">
                         <button type="submit" disabled={isSaving} className="flex-1 bg-slate-900 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl disabled:opacity-50">
                             {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => { 
+                                confirm(`¿Mover este documento a la sección de ${isGasto ? 'INGRESOS' : 'GASTOS'}?`) && 
+                                onMove(item, isGasto ? 'gastos' : 'ingresos');
+                            }} 
+                            className="px-6 py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                        >
+                            Pasar a {isGasto ? 'Ingreso' : 'Gasto'}
                         </button>
                         <button type="button" onClick={onClose} className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest">Cancelar</button>
                     </div>
