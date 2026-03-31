@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Wallet,
   ArrowUpRight, Loader2,
@@ -20,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => void }) {
   const { proyectos, facturasGastos, ingresos, loading } = useSupabaseData();
   const { user } = useAuth();
+  const [showUpgradeAlert, setShowUpgradeAlert] = useState(false);
   
   // Default to current month YYYY-MM
   const currentMonthStr = new Date().toISOString().substring(0, 7);
@@ -125,14 +126,37 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
         </motion.div>
         
         <div className="flex items-center gap-3">
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={() => onNavigate('facturas')} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">
+          <motion.button onClick={() => onNavigate('facturas')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">
             <Plus size={18} className="text-emerald-500" /> Nuevo Doc (SET)
           </motion.button>
-          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 bg-slate-900 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-slate-200">
+          <motion.button onClick={() => setShowUpgradeAlert(true)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 bg-slate-900 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
             <DollarSign size={18} className="text-emerald-400" /> Emitir Factura
           </motion.button>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showUpgradeAlert && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, scale: 0.9 }} 
+            animate={{ opacity: 1, y: 0, scale: 1 }} 
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 lg:bottom-10 lg:right-10 bg-slate-900 text-white p-6 rounded-3xl shadow-2xl shadow-emerald-900/40 z-50 flex items-start gap-4 max-w-sm border border-slate-700"
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shrink-0">
+               <ShieldCheck size={20} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <h4 className="font-black tracking-tight text-white mb-1">Función Premium</h4>
+              <p className="text-sm text-slate-400 font-medium leading-relaxed">La emisión de facturas electrónicas no está incluida en tu plan actual. Contáctanos para habilitar esta red en tu licencia.</p>
+              <button onClick={() => setShowUpgradeAlert(false)} className="mt-4 text-[10px] font-black bg-white/10 px-4 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/20 transition-all uppercase tracking-widest">
+                Entendido
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" />
