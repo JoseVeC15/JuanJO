@@ -106,7 +106,8 @@ export interface Ingreso {
   iva_10?: number;
   iva_5?: number;
   exentas?: number;
-  fecha: string;
+  fecha?: string;
+  fecha_emision?: string; // alias used by n8n
   estado: 'pendiente' | 'pagado' | 'parcial' | 'vencido';
   metodo_pago: MetodoPago | null;
   imagen_url?: string | null;

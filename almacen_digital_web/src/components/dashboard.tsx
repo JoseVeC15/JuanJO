@@ -30,7 +30,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
     const months = new Set<string>();
     months.add(currentMonthStr);
     
-    ingresos.forEach(i => { if (i.fecha) months.add(i.fecha.substring(0, 7)); });
+    ingresos.forEach(i => { if (i.fecha_emision) months.add(i.fecha_emision.substring(0, 7)); });
     facturasGastos.forEach(f => { if (f.fecha_factura) months.add(f.fecha_factura.substring(0, 7)); });
     
     return Array.from(months).sort().reverse();
@@ -50,7 +50,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
     // Filter data by selected month for VAT calculation
     const filteredIngresos = selectedMonth === 'total' 
       ? ingresos 
-      : ingresos.filter(i => (i.fecha || '').startsWith(selectedMonth));
+      : ingresos.filter(i => (i.fecha_emision || '').startsWith(selectedMonth));
     
     const filteredGastos = selectedMonth === 'total' 
       ? facturasGastos 
