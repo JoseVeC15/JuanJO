@@ -251,7 +251,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
 
   return (
     <div className="space-y-6 pb-20">
-      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
+      <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,application/pdf" className="hidden" />
 
       {/* Tabs Selector */}
       <div className="flex p-1 bg-gray-100 rounded-2xl w-full sm:w-fit border border-gray-200/50 shadow-inner">
@@ -317,7 +317,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                         <Scan size={40} />
                     </div>
                     <h3 className="text-2xl font-black text-gray-900 mb-2">Análisis de Documento {activeTab === 'gastos' ? 'Compra' : 'Venta'}</h3>
-                    <p className="text-gray-500 mb-8 max-w-md mx-auto font-medium">Sube tu factura (JPEG/PNG) para que la IA extraiga el **Timbrado**, **RUC**, **Monto** e **IVA** automáticamente según normas de la SET.</p>
+                    <p className="text-gray-500 mb-8 max-w-md mx-auto font-medium">Sube tu factura (JPEG/PNG/PDF) para que la IA extraiga el **Timbrado**, **RUC**, **Monto** e **IVA** automáticamente según normas de la SET.</p>
                     
                     <div className="flex justify-center gap-4">
                         <button 
