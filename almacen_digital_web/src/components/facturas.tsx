@@ -83,18 +83,17 @@ export default function Facturas() {
           iva_5: item.iva_5,
           numero_factura: item.numero_factura,
           timbrado: item.timbrado,
-          imagen_url: item.imagen_url,
-          processed_by_n8n: item.processed_by_n8n,
           user_id: user.id,
           notas: item.notas || ''
         };
 
         if (fromType === 'gastos') {
-          // Mover Gasto -> Ingreso (Evitamos 'exentas' y 'fecha' ya que no existen en la tabla 'ingresos')
+          // Mover Gasto -> Ingreso (Evitamos campos que no existen en 'ingresos')
           newData.cliente = item.proveedor;
           newData.ruc_cliente = item.ruc_proveedor;
           newData.fecha_emision = item.fecha_factura;
           newData.estado = 'pendiente';
+          // No incluimos: exentas, fecha, imagen_url, processed_by_n8n
         } else {
           // Mover Ingreso -> Gasto
           newData.proveedor = item.cliente;
@@ -102,7 +101,11 @@ export default function Facturas() {
           newData.fecha_factura = item.fecha || item.fecha_emision;
           newData.estado = 'pendiente_clasificar';
           newData.tipo_gasto = 'otros';
-          newData.exentas = item.exentas || 0; // Gastos sí tiene exentas
+          
+          // Gastos sí tiene estos campos en el esquema
+          newData.exentas = item.exentas || 0;
+          newData.imagen_url = item.imagen_url;
+          newData.processed_by_n8n = item.processed_by_n8n;
         }
 
         // 1. Insertar en nueva tabla
