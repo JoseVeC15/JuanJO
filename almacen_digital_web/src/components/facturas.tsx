@@ -388,7 +388,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       {/* Main List Area */}
       <AnimatePresence mode="popLayout">
           {viewMode === 'cards' ? (
-            <motion.div layout className="space-y-4">
+            <motion.div className="space-y-4">
               {filteredData.map(item => (
                 <ItemCard 
                   key={item.id} 
@@ -582,7 +582,6 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, 
   
   return (
     <motion.div 
-      layout 
       initial={isVeryNew ? { boxShadow: '0 0 0 4px #10b981' } : {}}
       animate={isVeryNew ? { boxShadow: '0 0 0 0px #10b981' } : {}}
       transition={{ duration: 10 }}
