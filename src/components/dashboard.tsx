@@ -113,7 +113,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
   }
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 lg:space-y-8 pb-12 px-4 lg:px-0">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
@@ -125,13 +125,13 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
           <p className="text-gray-500 mt-1 font-medium italic">Visión consolidada alineada con DNIT/SET (PY).</p>
         </motion.div>
         
-        <div className="flex items-center gap-3">
-          <motion.button onClick={() => onNavigate('facturas')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-sm">
-            <Plus size={18} className="text-emerald-500" /> Nuevo Doc (SET)
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+          <motion.button onClick={() => onNavigate('facturas')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-3 lg:px-6 lg:py-3.5 rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-sm transition-all">
+            <Plus size={16} className="text-emerald-500 lg:w-[18px]" /> Nuevo Doc
           </motion.button>
-          <motion.button onClick={() => setShowUpgradeAlert(true)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex items-center gap-2 bg-slate-900 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 relative overflow-hidden group">
+          <motion.button onClick={() => setShowUpgradeAlert(true)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-3 lg:px-7 lg:py-3.5 rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 relative overflow-hidden group transition-all">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-            <DollarSign size={18} className="text-emerald-400" /> Emitir Factura
+            <DollarSign size={16} className="text-emerald-400 lg:w-[18px]" /> Emitir
           </motion.button>
         </div>
       </div>
@@ -165,8 +165,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
         <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 p-10 shadow-sm relative overflow-hidden">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-3xl lg:rounded-[2.5rem] border border-gray-100 p-6 lg:p-10 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-10" />
           <h3 className="font-black text-gray-900 text-xl mb-10">Proyección Mensual Consolidada</h3>
           <div className="h-[300px] w-full">
@@ -187,8 +187,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
           </div>
         </motion.div>
 
-        <div className="space-y-8">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden group">
+        <div className="space-y-6 lg:space-y-8">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-3xl lg:rounded-[2.5rem] p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden group">
                 <div className="flex items-center justify-between gap-3 mb-8">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform"><Shield size={24} /></div>
@@ -237,7 +237,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
                 </div>
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="bg-emerald-500 rounded-[2rem] p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="bg-emerald-500 rounded-2xl lg:rounded-[2rem] p-6 lg:p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10">
                 <div className="flex justify-between items-center mb-5">
                     <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Monitor PYG/USD</span>
                     <ArrowUpRight size={18} className="text-slate-900/40" />
@@ -261,8 +261,8 @@ function StatCard({ title, value, desc, icon, color, index }: any) {
     amber: 'bg-amber-50/50 text-amber-600 border-amber-100',
   };
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }} whileHover={{ y: -5 }} className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative">
-      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 shadow-sm ${themes[color as keyof typeof themes]}`}>{icon}</div>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }} whileHover={{ y: -5 }} className="bg-white p-5 lg:p-8 rounded-3xl lg:rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative">
+      <div className={`w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center mb-4 lg:mb-6 transition-transform group-hover:scale-110 shadow-sm ${themes[color as keyof typeof themes]}`}>{icon}</div>
       <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{title}</p>
       <h4 className="text-2xl font-black text-gray-900 mb-1">{value}</h4>
       <p className="text-xs text-gray-400 font-medium">{desc}</p>
