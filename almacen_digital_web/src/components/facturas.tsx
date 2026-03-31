@@ -103,6 +103,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           newData.cliente = item.proveedor;
           newData.ruc_cliente = item.ruc_proveedor;
           newData.fecha_emision = item.fecha_factura;
+          newData.condicion_venta = item.condicion_venta || 'contado';
           newData.estado = 'pendiente';
         } else {
           // Mover Ingreso -> Gasto
@@ -633,9 +634,8 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, 
         <div className="text-gray-300 ml-2">{isExpanded ? <ChevronUp size={22} /> : <ChevronDown size={22} />}</div>
       </div>
 
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="px-8 pb-8 border-t border-gray-50 pt-8 mt-2">
+      {isExpanded && (
+          <div className="px-8 pb-8 border-t border-gray-50 pt-8 mt-2">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
                 <DetailBox label={isGasto ? "RUC Emisor (Proveedor)" : "RUC Receptor (Cliente)"} value={isGasto ? data.ruc_proveedor : data.ruc_cliente} icon={<Shield size={14} />} />
                 <DetailBox label="Timbrado SET" value={data.timbrado} desc={data.vencimiento_timbrado ? `Vence: ${data.vencimiento_timbrado}` : 'Vigente'} />
@@ -689,9 +689,8 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, 
                   <button onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && onDelete(); }} className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-2xl transition-all shadow-sm"><Trash2 size={20} /></button>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </motion.div>
   );
 }
