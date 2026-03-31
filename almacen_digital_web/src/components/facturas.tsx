@@ -81,7 +81,6 @@ export default function Facturas() {
           monto: item.monto,
           iva_10: item.iva_10,
           iva_5: item.iva_5,
-          exentas: item.exentas,
           numero_factura: item.numero_factura,
           timbrado: item.timbrado,
           imagen_url: item.imagen_url,
@@ -91,10 +90,9 @@ export default function Facturas() {
         };
 
         if (fromType === 'gastos') {
-          // Mover Gasto -> Ingreso
+          // Mover Gasto -> Ingreso (Evitamos 'exentas' ya que parece no existir en la tabla 'ingresos')
           newData.cliente = item.proveedor;
           newData.ruc_cliente = item.ruc_proveedor;
-          // Sincronizamos nombres de columnas de fecha
           newData.fecha = item.fecha_factura;
           newData.fecha_emision = item.fecha_factura;
           newData.estado = 'pendiente';
@@ -105,6 +103,7 @@ export default function Facturas() {
           newData.fecha_factura = item.fecha || item.fecha_emision;
           newData.estado = 'pendiente_clasificar';
           newData.tipo_gasto = 'otros';
+          newData.exentas = item.exentas || 0; // Gastos sí tiene exentas
         }
 
         // 1. Insertar en nueva tabla
