@@ -27,7 +27,7 @@ export default function Inventario() {
     nombre: '',
     marca_modelo: '',
     numero_serie: '',
-    tipo: 'EQUIPO',
+    tipo: 'camara',
     condicion: 'bueno',
     tipo_propiedad: 'PROPIO',
     valor_actual: '',
@@ -66,7 +66,7 @@ export default function Inventario() {
       setIsAdding(false);
       setFormData({
         nombre: '', marca_modelo: '', numero_serie: '',
-        tipo: 'EQUIPO', condicion: 'bueno',
+        tipo: 'camara', condicion: 'bueno',
         tipo_propiedad: 'PROPIO', valor_actual: '',
         costo_renta_dia: '', fecha_fin_renta: ''
       });
@@ -212,12 +212,17 @@ export default function Inventario() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Tipo</label>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Categoría</label>
                   <select value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold">
-                    <option value="EQUIPO">Cámara/Lente</option>
-                    <option value="LUCES">Luces</option>
-                    <option value="AUDIO">Audio</option>
-                    <option value="ACCESORIO">Accesorio</option>
+                    <option value="camara">Cámara</option>
+                    <option value="lente">Lente</option>
+                    <option value="iluminacion">Luces/Iluminación</option>
+                    <option value="audio">Audio</option>
+                    <option value="drone">Drone</option>
+                    <option value="estabilizador">Gimbal/Estabilizador</option>
+                    <option value="computo">Edición/PC</option>
+                    <option value="accesorios">Accesorio</option>
+                    <option value="otro">Otro</option>
                   </select>
                 </div>
                 <div className="col-span-2">
