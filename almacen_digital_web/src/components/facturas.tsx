@@ -38,7 +38,7 @@ const estadoConfig: Record<string, { label: string; color: string; icon: React.R
 
 export default function Facturas() {
   const queryClient = useQueryClient();
-  const { facturasGastos, ingresos, loading: dataLoading } = useSupabaseData();
+  const { proyectos, facturasGastos, ingresos, loading: dataLoading } = useSupabaseData();
   const { user } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos'>('gastos');
@@ -82,7 +82,7 @@ export default function Facturas() {
           user_id: user.id,
           notas: item.notas || '',
           // ingresos requiere proyecto_id (NOT NULL)
-          proyecto_id: item.proyecto_id || (projectsQueryResult.data?.[0]?.id) 
+          proyecto_id: item.proyecto_id || (proyectos?.[0]?.id) 
         };
 
         if (fromType === 'gastos') {
