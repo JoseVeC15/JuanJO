@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import {
   formatGsShort, getEquipmentIcon,
 } from '../data/sampleData';
@@ -16,6 +17,7 @@ const condConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function Inventario() {
+  const { user } = useAuth();
   const { inventarioEquipo, loading } = useSupabaseData();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'PROPIO' | 'RENTADO'>('PROPIO');
@@ -37,16 +39,21 @@ export default function Inventario() {
 
   const handleAddAsset = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+      alert('Debes iniciar sesión para agregar equipos');
+      return;
+    }
     setIsSubmitting(true);
     
     try {
       // Sanitize data: turn empty strings into nulls to avoid DB type errors (especially for DATE)
-      const submitData = {
+      const submitData: any = {
         ...formData,
+        perfil_id: user.id, // REQUIRED for RLS
         tipo_propiedad: activeTab,
         valor_actual: formData.valor_actual ? Number(formData.valor_actual) : null,
         costo_renta_dia: formData.costo_renta_dia ? Number(formData.costo_renta_dia) : null,
-        fecha_fin_renta: formData.fecha_fin_renta.trim() === '' ? null : formData.fecha_fin_renta
+        fecha_fin_renta: (formData.fecha_fin_renta || '').trim() === '' ? null : formData.fecha_fin_renta
       };
 
       // If it's Owned, remove Rental fields to be clean
