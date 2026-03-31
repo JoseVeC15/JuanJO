@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import {
-  Search, Package, Shield, PenTool, ExternalLink,
-  ChevronDown, ChevronUp, AlertCircle, Loader2
+  Search, AlertCircle, Loader2, Plus, X
 } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import { supabase } from '../lib/supabase';
 import {
   formatGsShort, getEquipmentIcon,
 } from '../data/sampleData';
@@ -19,7 +19,52 @@ export default function Inventario() {
   const { inventarioEquipo, loading } = useSupabaseData();
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState<'PROPIO' | 'RENTADO'>('PROPIO');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  
+  // ADD MODAL STATE
+  const [isAdding, setIsAdding] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    marca_modelo: '',
+    numero_serie: '',
+    tipo: 'EQUIPO',
+    condicion: 'bueno',
+    tipo_propiedad: 'PROPIO',
+    valor_actual: '',
+    costo_renta_dia: '',
+    fecha_fin_renta: ''
+  });
+
+  const handleAddAsset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase
+        .from('inventario_equipo')
+        .insert([{
+          ...formData,
+          valor_actual: formData.valor_actual ? Number(formData.valor_actual) : null,
+          costo_renta_dia: formData.costo_renta_dia ? Number(formData.costo_renta_dia) : null,
+          tipo_propiedad: activeTab // User active tab pre-fills
+        }]);
+
+      if (error) throw error;
+      
+      setIsAdding(false);
+      setFormData({
+        nombre: '', marca_modelo: '', numero_serie: '',
+        tipo: 'EQUIPO', condicion: 'bueno',
+        tipo_propiedad: 'PROPIO', valor_actual: '',
+        costo_renta_dia: '', fecha_fin_renta: ''
+      });
+    } catch (err) {
+      console.error('Error adding asset:', err);
+      alert('Error al agregar el equipo');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -47,9 +92,17 @@ export default function Inventario() {
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Inventario y Equipos</h1>
           <p className="text-gray-500 mt-1">{inventarioEquipo.length} equipos en total</p>
         </div>
-        <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
-          <TabBtn label={`Propio (${totalPropio})`} active={activeTab === 'PROPIO'} onClick={() => setActiveTab('PROPIO')} />
-          <TabBtn label={`Rentado (${totalRentado})`} active={activeTab === 'RENTADO'} onClick={() => setActiveTab('RENTADO')} />
+        <div className="flex items-center gap-3">
+          <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+            <TabBtn label={`Propio (${totalPropio})`} active={activeTab === 'PROPIO'} onClick={() => setActiveTab('PROPIO')} />
+            <TabBtn label={`Rentado (${totalRentado})`} active={activeTab === 'RENTADO'} onClick={() => setActiveTab('RENTADO')} />
+          </div>
+          <button 
+            onClick={() => setIsAdding(true)}
+            className="flex items-center gap-2 bg-emerald-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95"
+          >
+            <Plus size={18} /> Nuevo
+          </button>
         </div>
       </div>
 
@@ -66,7 +119,6 @@ export default function Inventario() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filtered.map(equipo => {
-          const isExpanded = expandedId === equipo.id;
           const cond = condConfig[equipo.condicion] || condConfig.bueno;
 
           return (
@@ -111,6 +163,83 @@ export default function Inventario() {
           );
         })}
       </div>
+
+      {/* ADD ASSET MODAL */}
+      {isAdding && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-xl font-black text-gray-900">Agregar Nuevo Activo</h2>
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">Sección {activeTab}</p>
+              </div>
+              <button onClick={() => setIsAdding(false)} className="text-gray-400 hover:text-gray-600 p-2"><X size={24} /></button>
+            </div>
+            
+            <form onSubmit={handleAddAsset} className="p-8 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Nombre del Equipo</label>
+                  <input required value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold" placeholder="Eje: Sony A7IV" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Marca / Modelo</label>
+                  <input value={formData.marca_modelo} onChange={e => setFormData({...formData, marca_modelo: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold" placeholder="Eje: Sony" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Nº Serie</label>
+                  <input value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold" placeholder="Eje: SN-1234..." />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Condición</label>
+                  <select value={formData.condicion} onChange={e => setFormData({...formData, condicion: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold">
+                    <option value="nuevo">Nuevo</option>
+                    <option value="bueno">Bueno</option>
+                    <option value="regular">Regular</option>
+                    <option value="reparacion">En Reparación</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Tipo</label>
+                  <select value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold">
+                    <option value="EQUIPO">Cámara/Lente</option>
+                    <option value="LUCES">Luces</option>
+                    <option value="AUDIO">Audio</option>
+                    <option value="ACCESORIO">Accesorio</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  {activeTab === 'PROPIO' ? (
+                    <div>
+                      <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Valor Estimado (₲)</label>
+                      <input type="number" value={formData.valor_actual} onChange={e => setFormData({...formData, valor_actual: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold" placeholder="0" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Costo/Día (₲)</label>
+                        <input type="number" value={formData.costo_renta_dia} onChange={e => setFormData({...formData, costo_renta_dia: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold" placeholder="0" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-gray-400 uppercase mb-2">Fin de Renta</label>
+                        <input type="date" value={formData.fecha_fin_renta} onChange={e => setFormData({...formData, fecha_fin_renta: e.target.value})} className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-emerald-400 focus:bg-white bg-gray-50 outline-none transition-all font-bold" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-2xl shadow-slate-200 hover:bg-slate-800 transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : 'Guardar en Inventario'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
