@@ -67,52 +67,67 @@ export default function Facturas() {
 
   const moveMutation = useMutation({
     mutationFn: async ({ item, fromType }: { item: any, fromType: 'gastos' | 'ingresos' }) => {
-      if (!user) return;
+      if (!user) {
+        alert("Error: Usuario no identificado.");
+        return;
+      }
+      
       const toType = fromType === 'gastos' ? 'ingresos' : 'gastos';
       const fromTable = fromType === 'gastos' ? 'facturas_gastos' : 'ingresos';
       const toTable = toType === 'gastos' ? 'facturas_gastos' : 'ingresos';
 
-      let newData: any = {
-        monto: item.monto,
-        iva_10: item.iva_10,
-        iva_5: item.iva_5,
-        exentas: item.exentas,
-        numero_factura: item.numero_factura,
-        timbrado: item.timbrado,
-        imagen_url: item.imagen_url,
-        processed_by_n8n: item.processed_by_n8n,
-        user_id: user.id,
-        notas: item.notas || ''
-      };
+      try {
+        let newData: any = {
+          monto: item.monto,
+          iva_10: item.iva_10,
+          iva_5: item.iva_5,
+          exentas: item.exentas,
+          numero_factura: item.numero_factura,
+          timbrado: item.timbrado,
+          imagen_url: item.imagen_url,
+          processed_by_n8n: item.processed_by_n8n,
+          user_id: user.id,
+          notas: item.notas || ''
+        };
 
-      if (fromType === 'gastos') {
-        // Mover Gasto -> Ingreso
-        newData.cliente = item.proveedor;
-        newData.ruc_cliente = item.ruc_proveedor;
-        newData.fecha = item.fecha_factura;
-        newData.estado = 'pendiente';
-      } else {
-        // Mover Ingreso -> Gasto
-        newData.proveedor = item.cliente;
-        newData.ruc_proveedor = item.ruc_cliente;
-        newData.fecha_factura = item.fecha || item.fecha_emision;
-        newData.estado = 'pendiente_clasificar';
-        newData.tipo_gasto = 'otros';
+        if (fromType === 'gastos') {
+          // Mover Gasto -> Ingreso
+          newData.cliente = item.proveedor;
+          newData.ruc_cliente = item.ruc_proveedor;
+          // Sincronizamos nombres de columnas de fecha
+          newData.fecha = item.fecha_factura;
+          newData.fecha_emision = item.fecha_factura;
+          newData.estado = 'pendiente';
+        } else {
+          // Mover Ingreso -> Gasto
+          newData.proveedor = item.cliente;
+          newData.ruc_proveedor = item.ruc_cliente;
+          newData.fecha_factura = item.fecha || item.fecha_emision;
+          newData.estado = 'pendiente_clasificar';
+          newData.tipo_gasto = 'otros';
+        }
+
+        // 1. Insertar en nueva tabla
+        const { error: insertError } = await supabase.from(toTable).insert(newData);
+        if (insertError) throw insertError;
+
+        // 2. Borrar de la anterior
+        const { error: deleteError } = await supabase.from(fromTable).delete().eq('id', item.id);
+        if (deleteError) throw deleteError;
+        
+        return true;
+      } catch (err: any) {
+        console.error("Error en moveMutation:", err);
+        alert(`Error al mover la factura: ${err.message || "Error desconocido"}`);
+        throw err;
       }
-
-      // 1. Insertar en nueva tabla
-      const { error: insertError } = await supabase.from(toTable).insert(newData);
-      if (insertError) throw insertError;
-
-      // 2. Borrar de la anterior
-      const { error: deleteError } = await supabase.from(fromTable).delete().eq('id', item.id);
-      if (deleteError) throw deleteError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
       queryClient.invalidateQueries({ queryKey: ['ingresos'] });
       setEditingItem(null);
       setExpandedId(null);
+      alert("¡Factura trasladada con éxito!");
     }
   });
 
