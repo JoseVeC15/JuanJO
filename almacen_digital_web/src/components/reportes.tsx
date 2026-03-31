@@ -1,10 +1,10 @@
 import { 
   BarChart3, PieChart as PieIcon, ArrowUpRight, ArrowDownRight, 
-  Calendar, Download, Loader2 
+  Download, Loader2 
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line 
+  ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGs, formatGsShort, getGastoLabel, getGastoColor } from '../data/sampleData';
@@ -53,9 +53,9 @@ export default function Reportes() {
         {/* Main Stats */}
         <div className="lg:col-span-2 space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ReportCard label="Utilidad Neta" value={formatGs(utilidad)} trend={+5.2} color="emerald" />
-            <ReportCard label="Márgen Bruto" value={totalIngresos > 0 ? ((utilidad/totalIngresos)*100).toFixed(1)+'%' : '0%'} trend={+2.4} color="blue" />
-            <ReportCard label="Retención IVA" value={formatGsShort(facturasGastos.reduce((s,f) => s + Number(f.iva_10 || 0), 0))} trend={0} color="slate" />
+            <ReportCard label="Utilidad Neta" value={formatGs(utilidad)} trend={+5.2} />
+            <ReportCard label="Márgen Bruto" value={totalIngresos > 0 ? ((utilidad/totalIngresos)*100).toFixed(1)+'%' : '0%'} trend={+2.4} />
+            <ReportCard label="Retención IVA" value={formatGsShort(facturasGastos.reduce((s,f) => s + Number(f.iva_10 || 0), 0))} trend={0} />
           </div>
 
           <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
@@ -107,12 +107,7 @@ export default function Reportes() {
   );
 }
 
-function ReportCard({ label, value, trend, color }: { label: string; value: string; trend: number; color: string }) {
-  const colors: any = {
-    emerald: 'text-emerald-600 bg-emerald-50',
-    blue: 'text-blue-600 bg-blue-50',
-    slate: 'text-slate-600 bg-slate-50',
-  };
+function ReportCard({ label, value, trend }: { label: string; value: string; trend: number }) {
   return (
     <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
       <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">{label}</p>

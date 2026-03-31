@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Folder, Plus, Calendar, Wallet, Loader2, ArrowUpRight } from 'lucide-react';
+import { Plus, Calendar, Wallet, Loader2, ArrowUpRight } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGsShort, getServiceIcon, getStatusLabel, getStatusColor } from '../data/sampleData';
 
 export default function Projects() {
   const { proyectos, loading } = useSupabaseData();
-  const [filter, setFilter] = useState('todos');
+  const [filter] = useState('todos');
 
   if (loading) {
     return (
