@@ -70,7 +70,7 @@ export default function Settings() {
         meta: {
             user: user?.email,
             exported_at: new Date().toISOString(),
-            version: 'V9-PRO'
+            version: 'v2'
         },
         profile,
         facturas: facturasGastos,

@@ -136,7 +136,7 @@ export default function LoginScreen() {
               <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">
-              FINANCE PRO v9.0.0 Stable
+              FINANCE PRO v2.0.0 Stable
             </p>
           </div>
         </div>
