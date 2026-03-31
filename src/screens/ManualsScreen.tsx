@@ -236,7 +236,7 @@ export default function ManualsScreen() {
                </div>
                <div>
                   <p className="text-xs font-black text-slate-900 uppercase tracking-tighter">FINANCE PRO DOCUMENTATION</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">v9.0.0 Stable</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">v2.0.0 Stable</p>
                </div>
             </div>
             <div className="flex items-center gap-4">

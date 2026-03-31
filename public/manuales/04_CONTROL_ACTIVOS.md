@@ -2,6 +2,8 @@
 
 Todo tu patrimonio empresarial (hardware, licencias, mobiliario) merece un seguimiento exhaustivo de su deterioro financiero. El módulo de **Activos** te ayuda a gestionar todo ello de forma centralizada.
 
+![Módulo de Gestión de Activos](/manuales/activos.png)
+
 ## Funcionalidades Clave de Inventario:
 
 1.  **Registro y Categorización:** Almacena todos tus bienes ingresando el coste de origen y asignándolos a categorías (ej. Electrónica).

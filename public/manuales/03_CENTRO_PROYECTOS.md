@@ -2,6 +2,8 @@
 
 Lleva el control de rentabilidad de cada uno de tus **Proyectos** de forma centralizada e independiente.
 
+![Vista del Centro de Proyectos](/manuales/proyectos.png)
+
 ## Beneficios Estratégicos:
 
 -   **Rentabilidad por Iniciativa:** Vincula tus facturas (gastos e ingresos) a un Proyecto y calcula instantáneamente cuál es tu margen real usando el panel independiente del proyecto.
