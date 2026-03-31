@@ -732,7 +732,7 @@ function InputGroup({ label, placeholder, type = "text" }: any) {
     );
 }
 
-function ModalInput({ label, value, onChange, type = "text" }: any) {
+function ModalInput({ label, value, onChange, type = "text", className = "" }: any) {
     return (
         <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{label}</label>
@@ -740,7 +740,7 @@ function ModalInput({ label, value, onChange, type = "text" }: any) {
                 type={type} 
                 value={value || ''}
                 onChange={(e) => onChange(e.target.value)}
-                className="w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-inner" 
+                className={`w-full px-6 py-4 bg-gray-50 rounded-2xl border-none font-bold text-gray-800 outline-none focus:ring-2 focus:ring-emerald-500/20 shadow-inner ${className}`} 
             />
         </div>
     );
@@ -820,11 +820,12 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
                               type="number"
                               value={formData.iva_10 || 0} 
                               onChange={(val: any) => setFormData({...formData, iva_10: Number(val)})}
+                              className="pr-12"
                           />
                           <button 
                             type="button"
                             onClick={() => setFormData({ ...formData, ...calculateSuggestedVAT(formData.monto) })}
-                            className="absolute right-2 top-8 p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
+                            className="absolute right-3 top-9 p-1.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm border border-indigo-100 group-hover:scale-110 active:scale-95"
                             title="Auto-calcular IVA 10%"
                           >
                             <Scan size={14} />
