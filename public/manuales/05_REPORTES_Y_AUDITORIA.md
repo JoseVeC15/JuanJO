@@ -2,6 +2,8 @@
 
 Toda la información del panel se unifica en la vista de **Análisis**, una sección de Inteligencia de Negocios para auditar y planificar el mes en curso.
 
+![Vista del Panel de Análisis y Reportes](/manuales/analisis.png)
+
 ## Herramientas de Inteligencia Analítica:
 
 *   **Progreso de Margen y EBITA:** Verifica el indicador central de Margen (Ingresos - Gastos). Tu KPI empresarial por excelencia.
