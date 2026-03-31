@@ -81,21 +81,21 @@ export default function Facturas() {
           monto: item.monto,
           user_id: user.id,
           notas: item.notas || '',
-          proyecto_id: item.proyecto_id // Requerido en ingresos según el esquema
+          // ingresos requiere proyecto_id (NOT NULL)
+          proyecto_id: item.proyecto_id || (projectsQueryResult.data?.[0]?.id) 
         };
 
         if (fromType === 'gastos') {
-          // Mover Gasto -> Ingreso (Campos según schema.sql)
+          // Mover Gasto -> Ingreso (Solo campos existentes en schema.sql)
           newData.cliente = item.proveedor;
-          newData.ruc_cliente = item.ruc_proveedor;
           newData.fecha_emision = item.fecha_factura;
           newData.estado = 'pendiente';
-          // NO existen en ingresos: numero_factura, timbrado, iva_10, iva_5, exentas, imagen_url, processed_by_n8n, fecha
+          // NO existen en ingresos: ruc_cliente, numero_factura, timbrado, iva_10, iva_5, exentas, imagen_url, processed_by_n8n, fecha
         } else {
           // Mover Ingreso -> Gasto
           newData.proveedor = item.cliente;
-          newData.ruc_proveedor = item.ruc_cliente;
-          newData.fecha_factura = item.fecha || item.fecha_emision;
+          newData.ruc_proveedor = item.ruc_cliente; // Gasto sí tiene ruc_proveedor
+          newData.fecha_factura = item.fecha_emision;
           newData.estado = 'pendiente_clasificar';
           newData.tipo_gasto = 'otros';
           
@@ -107,6 +107,10 @@ export default function Facturas() {
           newData.exentas = item.exentas || 0;
           newData.imagen_url = item.imagen_url;
           newData.processed_by_n8n = item.processed_by_n8n;
+        }
+
+        if (!newData.proyecto_id && toType === 'ingresos') {
+           throw new Error("No se puede mover a Ingresos sin un proyecto asociado. Por favor, asigna un proyecto primero.");
         }
 
         // 1. Insertar en nueva tabla
