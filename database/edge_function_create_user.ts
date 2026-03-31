@@ -35,7 +35,10 @@ Deno.serve(async (req) => {
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: nombre_completo }
+      user_metadata: { 
+        full_name: nombre_completo,
+        must_change_password: true 
+      }
     })
 
     if (authError) {

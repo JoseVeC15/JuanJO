@@ -46,7 +46,7 @@ Click en **"Environment"** y agregar:
 ```env
 # Supabase
 SUPABASE_URL=https://db.yfktdnpcmdpjrdlhqrls.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmZXRkbnBjbWRwanJkaGpxcmxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTE3OTIzNzYsImV4cCI6MjAyNzM2ODM3Nn0.DJxjXyDfJx8qJx8qJx8qJx8qJx8qJx8qJx8qJx8qJx8
+SUPABASE_ANON_KEY=sb_publishable_bcIFK_FA8uduHv6r2VeIGg_AE3882-e
 
 # n8n (si usas n8n separado)
 N8N_HOST=https://n8nlocal.josevec.uk
