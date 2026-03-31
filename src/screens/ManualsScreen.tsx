@@ -154,7 +154,69 @@ export default function ManualsScreen() {
                   </motion.div>
                 </div>
               ) : (
-                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                 <ReactMarkdown 
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      blockquote: ({node, children, ...props}) => {
+                        // Extract text deep from react node to check if it's an alert
+                        let text = '';
+                        try {
+                           const childNode = Array.isArray(children) ? children[0] : children;
+                           if (childNode?.props?.children) {
+                               text = String(childNode.props.children[0] || childNode.props.children);
+                           }
+                        } catch(e) {}
+
+                        const isNote = text.includes('[!NOTE]');
+                        const isTip = text.includes('[!TIP]');
+                        const isImport = text.includes('[!IMPORTANT]');
+                        const isWarn = text.includes('[!WARNING]');
+                        const isCaution = text.includes('[!CAUTION]');
+
+                        if (isNote || isTip || isImport || isWarn || isCaution) {
+                           let bgClass = 'bg-slate-100 border-slate-300';
+                           let icon = 'ℹ️';
+                           let title = 'NOTA';
+                           let titleClass = 'text-slate-700';
+
+                           if (isTip) { bgClass = 'bg-emerald-50 border-emerald-200'; icon = '💡'; title = 'CONSEJO'; titleClass = 'text-emerald-800'; }
+                           if (isImport) { bgClass = 'bg-blue-50 border-blue-200'; icon = '⭐'; title = 'IMPORTANTE'; titleClass = 'text-blue-800'; }
+                           if (isWarn) { bgClass = 'bg-amber-50 border-amber-200'; icon = '⚠️'; title = 'ADVERTENCIA'; titleClass = 'text-amber-800'; }
+                           if (isCaution) { bgClass = 'bg-red-50 border-red-200'; icon = '🛑'; title = 'PRECAUCIÓN'; titleClass = 'text-red-800'; }
+
+                           // Clean up the bracket text from children
+                           const cleanChildren = React.Children.map(children, child => {
+                              if (React.isValidElement(child)) {
+                                  const childEl = child as React.ReactElement<any>;
+                                  const textVal = childEl.props.children;
+                                  if (typeof textVal === 'string') {
+                                      return React.cloneElement(childEl, {}, textVal.replace(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/g, ''));
+                                  }
+                                  if (Array.isArray(textVal)) {
+                                      const cleanedArray = textVal.map((t: any) => typeof t === 'string' ? t.replace(/\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/g, '') : t);
+                                      return React.cloneElement(childEl, {}, cleanedArray);
+                                  }
+                              }
+                              return child;
+                           });
+
+                           return (
+                             <div className={`my-6 rounded-xl border-l-4 p-4 ${bgClass}`}>
+                               <div className={`font-bold text-xs flex items-center gap-2 mb-2 uppercase tracking-widest ${titleClass}`}>
+                                  <span>{icon}</span> {title}
+                               </div>
+                               <div className="text-sm m-0 [&>p]:m-0 opacity-90">
+                                 {cleanChildren}
+                               </div>
+                             </div>
+                           );
+                        }
+
+                        // Default blockquote
+                        return <blockquote className="border-l-4 border-slate-200 pl-4 italic text-slate-500 my-6" {...props}>{children}</blockquote>;
+                      }
+                    }}
+                 >
                   {content}
                  </ReactMarkdown>
               )}

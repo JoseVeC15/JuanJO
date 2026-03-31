@@ -1,15 +1,14 @@
 # Dashboard Estratégico 📊
 
-El Dashboard de **Finance Pro** es el centro neurálgico de tu operación financiera. Te proporciona una visibilidad en tiempo real sin precedentes.
+El **Dashboard** de Finance Pro es tu panel de control principal. Aquí consolidas toda la información de flujos de caja y rentabilidad de manera gráfica y directa.
 
-## Características Principales:
+## Beneficios Principales:
 
-1.  **Resumen Ejecutivo:** Consulta de un vistazo tu saldo actual, ingresos esperados y gastos pendientes.
-2.  **Gráficos Dinámicos:** Visualiza la evolución de tus finanzas mes a mes con gráficos interactivos que te permiten profundizar en cada dato.
-3.  **Alertas Tempranas:** Recibe notificaciones automáticas sobre desviaciones presupuestarias o vencimientos próximos.
-4.  **Acciones Rápidas:** Sube documentos, crea proyectos o revisa facturas directamente desde el panel principal.
+*   **Visión 360°:** Consulta rápidamente el saldo actual, ingresos esperados y gastos recurrentes de tu negocio.
+*   **Balance Histórico:** Utiliza los gráficos interactivos de barras y líneas para ver tu evolución a lo largo del año.
+*   **Acceso Directo:** Sube nuevos recibos, crea proyectos o revisa facturas directamente desde este panel unificado.
 
 ---
 
 > [!TIP]
-> Utiliza los filtros por periodo para analizar tendencias históricas y proyectar el flujo de caja futuro con mayor precisión.
+> Filtra la vista del dashboard por rango de fechas (ej. "Últimos 30 días") para identificar picos de gasto estacional y mejorar tu previsibilidad financiera.

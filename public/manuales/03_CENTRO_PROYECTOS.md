@@ -1,15 +1,14 @@
-# Centro de Gestión de Proyectos 🚀
+# Centro de Proyectos 🚀
 
-Lleva el control de rentabilidad de cada uno de tus proyectos de manera independiente y detallada.
+Lleva el control de rentabilidad de cada uno de tus **Proyectos** de forma centralizada e independiente.
 
-## Beneficios:
+## Beneficios Estratégicos:
 
--   **Seguimiento por Proyecto:** Asigna ingresos y gastos a proyectos específicos para conocer su margen real.
--   **Tiempos y Plazos:** Gestiona fechas de inicio y fin para evitar retrasos y sobrecostes.
--   **Asignación de Recursos:** Controla qué activos o personas están vinculados a cada iniciativa.
--   **Reportes Específicos:** Genera estados de cuenta individuales para presentar a clientes o socios.
+-   **Rentabilidad por Iniciativa:** Vincula tus facturas (gastos e ingresos) a un Proyecto y calcula instantáneamente cuál es tu margen real usando el panel independiente del proyecto.
+-   **Tiempos y Fases:** Gestiona las fechas de inicio, estado y conclusión para evitar retrasos que aumentan los costes.
+-   **Reporte Dedicado:** Genera un estado general separado por cliente o por iniciativa para no mezclar los gastos empresariales generales de los operativos.
 
 ---
 
 > [!NOTE]
-> La vinculación de gastos a proyectos se realiza en el momento de la carga manual o automática, lo que asegura una trazabilidad total desde el primer día.
+> Recuerda que un gasto cargado a un proyecto se reducirá del "presupuesto asignado" inicial para darte una visión clara de los desvíos financieros que podrías afrontar.

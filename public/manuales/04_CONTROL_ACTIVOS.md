@@ -1,15 +1,15 @@
-# Control de Activos Empresariales 🛡️
+# Control de Activos 🛡️
 
-Tu patrimonio empresarial merece un seguimiento exhaustivo. **Finance Pro** te ayuda a gestionar cada activo con total precisión.
+Todo tu patrimonio empresarial (hardware, licencias, mobiliario) merece un seguimiento exhaustivo de su deterioro financiero. El módulo de **Activos** te ayuda a gestionar todo ello de forma centralizada.
 
-## Funcionalidades de Inventario:
+## Funcionalidades Clave de Inventario:
 
-1.  **Registro Detallado:** Almacena números de serie, fechas de compra, valor inicial e imágenes del activo.
-2.  **Ubicación y Asignación:** Sepa en qué oficina o con qué empleado se encuentra cada recurso.
-3.  **Depreciación Automática:** Calcule automáticamente el valor actual de sus activos con el paso del tiempo.
-4.  **Mantenimientos:** Organice fechas de revisión para equipos críticos.
+1.  **Registro y Categorización:** Almacena todos tus bienes ingresando el coste de origen y asignándolos a categorías (ej. Electrónica).
+2.  **Depreciación Avanzada:** Configura la tasa de depreciación en meses y el sistema deducirá automáticamente su valor real a día de hoy.
+3.  **Seguimiento de Responsables:** Asigna los activos al empleado o departamento pertinente (Ubicación / Asignado).
+4.  **Trazabilidad Financiera:** Evita sobrecostes, pérdidas misteriosas o pagos redundantes a plataformas y licencias, controlando el patrimonio bruto.
 
 ---
 
 > [!IMPORTANT]
-> Recuerde subir fotos de las facturas originales en la sección de archivos adjuntos del activo para asegurar el cumplimiento legal y de seguros.
+> El sistema recalcula la **Depreciación Mensual** y el **Valor Actual** siempre que ingresas al módulo, teniendo en cuenta la fecha de registro en el calendario. Es crucial definir una tasa de depreciación lógica al dar de alta el activo.

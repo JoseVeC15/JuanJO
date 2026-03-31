@@ -1,15 +1,14 @@
-# Análisis Profundo: Reportes y Auditoría 📈
+# Análisis Financiero y Reportes 📈
 
-La información es poder solo si es analizable. **Finance Pro** ofrece potentes herramientas de reporte diseñadas para auditar y planificar.
+Toda la información del panel se unifica en la vista de **Análisis**, una sección de Inteligencia de Negocios para auditar y planificar el mes en curso.
 
-## Herramientas de Análisis:
+## Herramientas de Inteligencia Analítica:
 
-*   **Libros Diarios:** Consulta cronológicamente todos los movimientos validados.
-*   **Balance de Resultados:** Compara ingresos frente a gastos proyectados.
-*   **Auditoría de Documentos:** Verifique que cada transacción tenga un respaldo documental válido.
-*   **Exportación Total:** Descargue toda su información en formatos compatibles para su gestoría o contabilidad externa.
+*   **Progreso de Margen y EBITA:** Verifica el indicador central de Margen (Ingresos - Gastos). Tu KPI empresarial por excelencia.
+*   **Ranking de Confiabilidad:** Identifica qué clientes o proyectos son el origen de la mayor parte de tu facturación. Analiza quién concentra los costos empresariales.
+*   **Proyección y Predicciones Mensuales:** Los gráficos en la vista de análisis comparan tus resultados mes a mes o día a día.
 
 ---
 
-> [!TIP]
-> Realice auditorías internas mensuales utilizando el buscador avanzado por categorías para identificar ahorros potenciales de manera proactiva.
+> [!WARNING]
+> La sección Análisis se nutre 100% de la carga previa que realices en *Gastos* e *Ingresos*. Para tener estadísticas vitales y predecibles, procura llevar al día tus libros. Un gasto omitido distorsionará tu rentabilidad operativa real.
