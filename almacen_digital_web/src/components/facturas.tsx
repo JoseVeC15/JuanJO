@@ -90,10 +90,9 @@ export default function Facturas() {
         };
 
         if (fromType === 'gastos') {
-          // Mover Gasto -> Ingreso (Evitamos 'exentas' ya que parece no existir en la tabla 'ingresos')
+          // Mover Gasto -> Ingreso (Evitamos 'exentas' y 'fecha' ya que no existen en la tabla 'ingresos')
           newData.cliente = item.proveedor;
           newData.ruc_cliente = item.ruc_proveedor;
-          newData.fecha = item.fecha_factura;
           newData.fecha_emision = item.fecha_factura;
           newData.estado = 'pendiente';
         } else {
