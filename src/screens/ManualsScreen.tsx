@@ -57,9 +57,9 @@ export default function ManualsScreen() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col lg:flex-row lg:overflow-hidden font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-[#f8fafc] grid grid-cols-1 lg:grid-cols-[320px_1fr] lg:overflow-hidden font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Sidebar */}
-      <aside className="w-full lg:w-80 bg-white border-b lg:border-r border-slate-200 flex flex-col h-auto lg:h-screen shrink-0 shadow-sm z-20">
+      <aside className="bg-white border-b lg:border-r border-slate-200 flex flex-col h-auto lg:h-screen shadow-sm z-20">
         <div className="p-6 border-b border-slate-100 bg-white/50 backdrop-blur-sm sticky top-0">
           <button 
             onClick={() => navigate('/')}
@@ -90,7 +90,7 @@ export default function ManualsScreen() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar max-h-[35vh] lg:max-h-none">
+        <nav className="flex-1 overflow-y-auto p-4 custom-scrollbar max-h-[35vh] lg:max-h-none grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
           {filteredManuals.map((manual) => (
             <button
                key={manual.id}
@@ -138,8 +138,8 @@ export default function ManualsScreen() {
       </aside>
 
       {/* Content Area */}
-      <main id="manual-content" className="flex-1 h-auto lg:h-screen overflow-y-auto bg-white relative selection:bg-emerald-100 selection:text-emerald-900">
-        <div className="max-w-4xl mx-auto px-6 py-12 lg:px-12 lg:py-20">
+      <main id="manual-content" className="w-full h-auto lg:h-screen overflow-y-auto bg-white relative selection:bg-emerald-100 selection:text-emerald-900 flex flex-col">
+        <div className="w-full max-w-4xl mx-auto px-6 py-12 lg:px-12 lg:py-20 flex-1">
           <AnimatePresence mode="wait">
             <motion.div
               key={selectedManual.id}
