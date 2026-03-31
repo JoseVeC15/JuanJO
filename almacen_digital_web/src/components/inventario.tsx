@@ -49,7 +49,7 @@ export default function Inventario() {
       // Sanitize data: turn empty strings into nulls to avoid DB type errors (especially for DATE)
       const submitData: any = {
         ...formData,
-        perfil_id: user.id, // REQUIRED for RLS
+        user_id: user.id, // REQUIRED for RLS
         tipo_propiedad: activeTab,
         valor_actual: formData.valor_actual ? Number(formData.valor_actual) : null,
         costo_renta_dia: formData.costo_renta_dia ? Number(formData.costo_renta_dia) : null,
