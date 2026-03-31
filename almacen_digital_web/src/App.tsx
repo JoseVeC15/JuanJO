@@ -51,7 +51,6 @@ function RouterWrapper() {
   }
 
   return (
-    <BrowserRouter>
       <SuspensionGuard>
         <div className="min-h-screen bg-slate-50 flex">
           {/* Sidebar Desktop */}
@@ -231,7 +230,6 @@ function RouterWrapper() {
           </div>
         </div>
       </SuspensionGuard>
-    </BrowserRouter>
   );
 }
 
