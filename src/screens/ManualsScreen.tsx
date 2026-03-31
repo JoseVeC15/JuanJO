@@ -159,13 +159,14 @@ export default function ManualsScreen() {
                     components={{
                       blockquote: ({node, children, ...props}) => {
                         // Extract text deep from react node to check if it's an alert
-                        let text = '';
-                        try {
-                           const childNode = Array.isArray(children) ? children[0] : children;
-                           if (childNode?.props?.children) {
-                               text = String(childNode.props.children[0] || childNode.props.children);
-                           }
-                        } catch(e) {}
+                        const extractText = (elem: any): string => {
+                          if (typeof elem === 'string') return elem;
+                          if (Array.isArray(elem)) return elem.map(extractText).join('');
+                          if (elem && elem.props && elem.props.children) return extractText(elem.props.children);
+                          return '';
+                        };
+                        
+                        const text = extractText(children);
 
                         const isNote = text.includes('[!NOTE]');
                         const isTip = text.includes('[!TIP]');
