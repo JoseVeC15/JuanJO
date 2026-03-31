@@ -2,6 +2,8 @@
 
 El **Dashboard** de Finance Pro es tu panel de control principal. Aquí consolidas toda la información de flujos de caja y rentabilidad de manera gráfica y directa.
 
+![Panel Principal del Dashboard](/manuales/dashboard.png)
+
 ## Beneficios Principales:
 
 *   **Visión 360°:** Consulta rápidamente el saldo actual, ingresos esperados y gastos recurrentes de tu negocio.

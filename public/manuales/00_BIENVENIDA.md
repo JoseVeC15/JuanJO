@@ -2,6 +2,8 @@
 
 Optimiza la gestión financiera de tu empresa con nuestra plataforma de última generación. **Finance Pro** ha sido diseñado para centralizar, automatizar y simplificar el control de tus flujos de caja, proyectos y activos.
 
+![Vista Principal de Finance Pro](/manuales/dashboard.png)
+
 ## ¿Qué puedes hacer con Finance Pro?
 
 *   **Centralización Total:** Olvida las hojas de cálculo dispersas. Todos tus movimientos bancarios, facturas y contratos en un solo lugar.

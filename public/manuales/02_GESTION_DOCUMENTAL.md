@@ -2,6 +2,8 @@
 
 Centraliza tus transacciones y automatiza el procesamiento documental. La plataforma de **Gastos e Ingresos** te libera de la tarea manual y mantiene tus libros ordenados.
 
+![Módulo de Gastos e Ingresos](/manuales/gastos.png)
+
 ## ¿Cómo funciona la Carga y Automatización?
 
 Nuestro sistema utiliza OCR inteligente para analizar cada imagen o PDF y autocompletar la información comercial:
