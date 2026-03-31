@@ -1,12 +1,7 @@
-import { useState, useRef, useMemo, Fragment } from 'react';
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Search, FileText, CheckCircle, Clock, AlertCircle,
-  ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon,
-  Trash2, Edit2, X, Table as TableIcon, LayoutGrid,
-  Download,
-  ArrowUpRight, ArrowDownLeft, Plus, Shield
-} from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search } from 'lucide-react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
@@ -36,12 +31,22 @@ const estadoConfig: Record<string, { label: string; color: string; icon: React.R
   pagado: { label: 'Cobrado', color: '#10B981', icon: <CheckCircle size={14} /> },
 };
 
-export default function Facturas() {
+interface FacturasProps {
+  initialTab?: 'gastos' | 'ingresos';
+}
+
+export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const queryClient = useQueryClient();
-  const { proyectos, facturasGastos, ingresos, loading: dataLoading } = useSupabaseData();
+  const navigate = useNavigate();
+  const { facturasGastos, ingresos, loading: dataLoading } = useSupabaseData();
   const { user } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos'>('gastos');
+  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos'>(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
@@ -61,7 +66,8 @@ export default function Facturas() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
+      queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
+      queryClient.invalidateQueries({ queryKey: ['ingresos'] });
     }
   });
 
@@ -138,7 +144,8 @@ export default function Facturas() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
+      queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
+      queryClient.invalidateQueries({ queryKey: ['ingresos'] });
       setEditingItem(null);
     }
   });
@@ -167,14 +174,16 @@ export default function Facturas() {
     if (!file || !user) return;
     
     setUploading(true);
-    setUploadStatus('idle'); // Reset status immediately on new selection
+    setUploadStatus('idle');
     
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
         try {
           const base64String = (reader.result as string).split(',')[1];
-          const webhookUrl = (import.meta as any).env?.VITE_N8N_WEBHOOK_URL || '';
+          const webhookUrl = activeTab === 'ingresos' 
+            ? (import.meta as any).env?.VITE_N8N_WEBHOOK_URL_INGRESOS 
+            : (import.meta as any).env?.VITE_N8N_WEBHOOK_URL_GASTOS;
           
           const response = await fetch(webhookUrl, {
             method: 'POST',
@@ -184,7 +193,7 @@ export default function Facturas() {
               image_base64: base64String, 
               type: activeTab === 'gastos' ? 'expense' : 'income',
               category_intent: activeTab === 'gastos' ? 'gastos' : 'ingresos',
-              force_category: true // Explicit override for n8n
+              force_category: true
             })
           });
           
@@ -246,14 +255,14 @@ export default function Facturas() {
       {/* Tabs Selector */}
       <div className="flex p-1 bg-gray-100 rounded-2xl w-full sm:w-fit border border-gray-200/50 shadow-inner">
         <button 
-          onClick={() => { setActiveTab('gastos'); setFilterEstado('todos'); }}
+          onClick={() => { setActiveTab('gastos'); navigate('/gastos'); setFilterEstado('todos'); }}
           className={`flex-1 sm:flex-none flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${activeTab === 'gastos' ? 'bg-white text-slate-900 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <ArrowDownLeft size={16} className={activeTab === 'gastos' ? 'text-rose-500' : ''} />
           Gastos (Compras)
         </button>
         <button 
-          onClick={() => { setActiveTab('ingresos'); setFilterEstado('todos'); }}
+          onClick={() => { setActiveTab('ingresos'); navigate('/ingresos'); setFilterEstado('todos'); }}
           className={`flex-1 sm:flex-none flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${activeTab === 'ingresos' ? 'bg-white text-slate-900 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}
         >
           <ArrowUpRight size={16} className={activeTab === 'ingresos' ? 'text-emerald-500' : ''} />

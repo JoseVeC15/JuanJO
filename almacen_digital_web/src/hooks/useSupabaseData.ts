@@ -82,9 +82,21 @@ export function useSupabaseData() {
         queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
       }).subscribe();
 
+    const ingresosSubscription = supabase.channel('public:ingresos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ingresos' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['ingresos'] });
+      }).subscribe();
+
+    const equipmentSubscription = supabase.channel('public:inventario_equipo')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventario_equipo' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['inventario_equipo'] });
+      }).subscribe();
+
     return () => {
       supabase.removeChannel(projectsSubscription);
       supabase.removeChannel(invoicesSubscription);
+      supabase.removeChannel(ingresosSubscription);
+      supabase.removeChannel(equipmentSubscription);
     };
   }, [sessionUser, queryClient]);
 
