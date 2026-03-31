@@ -79,19 +79,18 @@ export default function Facturas() {
       try {
         let newData: any = {
           monto: item.monto,
-          numero_factura: item.numero_factura,
-          timbrado: item.timbrado,
           user_id: user.id,
-          notas: item.notas || ''
+          notas: item.notas || '',
+          proyecto_id: item.proyecto_id // Requerido en ingresos según el esquema
         };
 
         if (fromType === 'gastos') {
-          // Mover Gasto -> Ingreso (Campos que NO existen en 'ingresos' según errores reportados)
+          // Mover Gasto -> Ingreso (Campos según schema.sql)
           newData.cliente = item.proveedor;
           newData.ruc_cliente = item.ruc_proveedor;
           newData.fecha_emision = item.fecha_factura;
           newData.estado = 'pendiente';
-          // No incluimos: exentas, fecha, imagen_url, processed_by_n8n, iva_10, iva_5
+          // NO existen en ingresos: numero_factura, timbrado, iva_10, iva_5, exentas, imagen_url, processed_by_n8n, fecha
         } else {
           // Mover Ingreso -> Gasto
           newData.proveedor = item.cliente;
@@ -100,7 +99,9 @@ export default function Facturas() {
           newData.estado = 'pendiente_clasificar';
           newData.tipo_gasto = 'otros';
           
-          // Gastos sí tiene estos campos en el esquema
+          // Gastos sí tiene estos campos
+          newData.numero_factura = item.numero_factura;
+          newData.timbrado = item.timbrado;
           newData.iva_10 = item.iva_10 || 0;
           newData.iva_5 = item.iva_5 || 0;
           newData.exentas = item.exentas || 0;
