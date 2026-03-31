@@ -748,12 +748,17 @@ function ModalInput({ label, value, onChange, type = "text", className = "" }: a
 
 function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
     const isGasto = !!item.proveedor;
-    const [formData, setFormData] = useState({
-        ...item,
-        created_at: undefined,
-        id: undefined,
-        processed_by_n8n: undefined
-    });
+
+    // Auto-suggest IVA 10% if total exists but all tax fields are zero
+    const initialData = (() => {
+        const base = { ...item, created_at: undefined, id: undefined, processed_by_n8n: undefined, is_suggested_vat: undefined };
+        if (base.monto > 0 && !base.iva_10 && !base.iva_5 && !base.exentas) {
+            return { ...base, ...calculateSuggestedVAT(base.monto) };
+        }
+        return base;
+    })();
+
+    const [formData, setFormData] = useState(initialData);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
