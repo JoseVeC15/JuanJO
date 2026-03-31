@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Search, AlertCircle, Loader2, Plus, X
 } from 'lucide-react';
@@ -17,6 +18,7 @@ const condConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function Inventario() {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { inventarioEquipo, loading } = useSupabaseData();
   const [search, setSearch] = useState('');
@@ -69,6 +71,9 @@ export default function Inventario() {
         .insert([submitData]);
 
       if (error) throw error;
+      
+      // Force immediate refresh even if subscription is slow
+      queryClient.invalidateQueries({ queryKey: ['inventario_equipo'] });
       
       setIsAdding(false);
       setFormData({
