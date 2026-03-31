@@ -183,7 +183,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           const base64String = (reader.result as string).split(',')[1];
           const webhookUrl = activeTab === 'ingresos' 
             ? (import.meta as any).env?.VITE_N8N_WEBHOOK_URL_INGRESOS 
-            : (import.meta as any).env?.VITE_N8N_WEBHOOK_URL_GASTOS;
+            : ((import.meta as any).env?.VITE_N8N_WEBHOOK_URL_GASTOS || (import.meta as any).env?.VITE_N8N_WEBHOOK_URL);
           
           const response = await fetch(webhookUrl, {
             method: 'POST',
