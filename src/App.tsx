@@ -13,11 +13,16 @@ import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as Set
 import AdminPanel from './components/AdminPanel';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import SuspensionGuard from './components/SuspensionGuard';
+import ManualsScreen from './screens/ManualsScreen';
 
 function RouterWrapper() {
   const { user, loading, mustChangePassword, signOut } = useAuth();
   const { profile } = useSupabaseData();
   const location = useLocation();
+
+  if (location.pathname === '/manuales') {
+    return <ManualsScreen />;
+  }
 
   if (loading) {
     return (

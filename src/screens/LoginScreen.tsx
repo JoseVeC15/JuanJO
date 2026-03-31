@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
+import { LogIn, Mail, Lock, Loader2, BookOpen, ChevronRight } from 'lucide-react';
 
 export default function LoginScreen() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,16 +22,19 @@ export default function LoginScreen() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl shadow-lg shadow-emerald-500/20 mb-4">
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+          {/* Decorative element */}
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl opacity-50"></div>
+          
+          <div className="text-center mb-8 relative z-10">
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl shadow-lg shadow-emerald-500/20 mb-4 ring-4 ring-emerald-500/10">
               🏙️
             </div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">FINANCE</h1>
-            <p className="text-slate-400 mt-2">Acceso Seguro al Portal FINANCE</p>
+            <h1 className="text-3xl font-bold text-white tracking-tight uppercase">FINANCE <span className="text-emerald-400">PRO</span></h1>
+            <p className="text-slate-400 mt-2 font-medium">Acceso Seguro al Portal Empresarial</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4 relative z-10">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300 ml-1">Email</label>
               <div className="relative">
@@ -39,7 +44,7 @@ export default function LoginScreen() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all placeholder:text-slate-600"
                   placeholder="tu@email.com"
                 />
               </div>
@@ -54,14 +59,14 @@ export default function LoginScreen() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all placeholder:text-slate-600"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg text-center">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl text-center">
                 {error}
               </div>
             )}
@@ -69,7 +74,7 @@ export default function LoginScreen() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : <LogIn size={20} />}
               Ingresar al Dashboard
@@ -81,7 +86,7 @@ export default function LoginScreen() {
               <div className="w-full border-t border-white/10"></div>
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-slate-900 px-2 text-slate-500">O continuar con</span>
+              <span className="bg-[#1e293b] px-4 text-slate-500 font-bold tracking-widest">O continuar con</span>
             </div>
           </div>
 
@@ -98,7 +103,7 @@ export default function LoginScreen() {
               setLoading(false);
             }}
             disabled={loading}
-            className="w-full bg-white/5 border border-white/10 text-white font-semibold py-3 rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-3 group"
+            className="w-full bg-white/5 border border-white/10 text-white font-semibold py-3.5 rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-3 group"
           >
             <svg className="w-5 h-5 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
               <path
@@ -121,9 +126,19 @@ export default function LoginScreen() {
             Acceder con Google
           </button>
 
-          <p className="text-center text-slate-500 text-xs mt-8">
-            Sistema de Gestión Financiera • v2.0
-          </p>
+          <div className="mt-8 flex flex-col items-center gap-4">
+            <button 
+              onClick={() => navigate('/manuales')}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-emerald-400 hover:bg-emerald-500/10 transition-all font-bold text-xs uppercase tracking-widest group"
+            >
+              <BookOpen size={16} />
+              Manuales de Uso
+              <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
+            </button>
+            <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">
+              FINANCE PRO v9.0.0 Stable
+            </p>
+          </div>
         </div>
       </div>
     </div>
