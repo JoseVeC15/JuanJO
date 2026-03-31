@@ -1,8 +1,0 @@
-{
-  "name": "juanjo-root",
-  "version": "1.0.0",
-  "scripts": {
-    "build": "chmod +x build.sh && ./build.sh",
-    "install": "cd almacen_digital_web && npm install"
-  }
-}
