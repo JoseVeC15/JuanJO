@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrendingUp, Wallet,
   ArrowUpRight, Loader2,
   Activity, DollarSign, Plus,
-  ShieldCheck, AlertTriangle, Target, Shield
+  ShieldCheck, AlertTriangle, Target, Shield, Calendar
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -20,6 +20,21 @@ import { useAuth } from '../contexts/AuthContext';
 export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => void }) {
   const { proyectos, facturasGastos, ingresos, loading } = useSupabaseData();
   const { user } = useAuth();
+  
+  // Default to current month YYYY-MM
+  const currentMonthStr = new Date().toISOString().substring(0, 7);
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
+
+  // Generate available periods from data
+  const availablePeriods = useMemo(() => {
+    const months = new Set<string>();
+    months.add(currentMonthStr);
+    
+    ingresos.forEach(i => { if (i.fecha) months.add(i.fecha.substring(0, 7)); });
+    facturasGastos.forEach(f => { if (f.fecha_factura) months.add(f.fecha_factura.substring(0, 7)); });
+    
+    return Array.from(months).sort().reverse();
+  }, [ingresos, facturasGastos, currentMonthStr]);
 
   const stats = useMemo(() => {
     if (loading) return null;
@@ -32,18 +47,28 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
     const currentYear = new Date().getFullYear();
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     
+    // Filter data by selected month for VAT calculation
+    const filteredIngresos = selectedMonth === 'total' 
+      ? ingresos 
+      : ingresos.filter(i => (i.fecha || '').startsWith(selectedMonth));
+    
+    const filteredGastos = selectedMonth === 'total' 
+      ? facturasGastos 
+      : facturasGastos.filter(f => (f.fecha_factura || '').startsWith(selectedMonth));
+
     // REAL IVA CALCULATION (SET COMPLIANT)
     // IVA Débito: Total from Issued Invoices (ingresos)
-    const ivaDebito10 = ingresos.reduce((s, i) => s + (Number(i.iva_10 || 0)), 0);
-    const ivaDebito5 = ingresos.reduce((s, i) => s + (Number(i.iva_5 || 0)), 0);
+    const ivaDebito10 = filteredIngresos.reduce((s, i) => s + (Number(i.iva_10 || 0)), 0);
+    const ivaDebito5 = filteredIngresos.reduce((s, i) => s + (Number(i.iva_5 || 0)), 0);
     const ivaDebitoTotal = ivaDebito10 + ivaDebito5;
 
     // IVA Crédito: Total from Expenses (facturas_gastos)
-    const ivaCredito10 = facturasGastos.reduce((s, f) => s + (Number(f.iva_10 || 0)), 0);
-    const ivaCredito5 = facturasGastos.reduce((s, f) => s + (Number(f.iva_5 || 0)), 0);
+    const ivaCredito10 = filteredGastos.reduce((s, f) => s + (Number(f.iva_10 || 0)), 0);
+    const ivaCredito5 = filteredGastos.reduce((s, f) => s + (Number(f.iva_5 || 0)), 0);
     const ivaCreditoTotal = ivaCredito10 + ivaCredito5;
 
-    const ivaAPagar = Math.max(0, ivaDebitoTotal - ivaCreditoTotal);
+    const netIvaBalance = ivaDebitoTotal - ivaCreditoTotal;
+    const ivaAPagar = Math.max(0, netIvaBalance);
 
     const monthlyData = months.map((m, i) => {
       const monthStr = (i + 1).toString().padStart(2, '0');
@@ -76,11 +101,11 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
     return { 
         totalIngresos, totalGastos, margen, proyectosActivos, 
         monthlyData: finalMonthlyData, pieData, activeProjectsList,
-        ivaAPagar, ivaDebitoTotal, ivaCreditoTotal,
+        ivaAPagar, netIvaBalance, ivaDebitoTotal, ivaCreditoTotal,
         iva10: ivaDebito10 - ivaCredito10,
         iva5: ivaDebito5 - ivaCredito5
     };
-  }, [loading, ingresos, facturasGastos, proyectos]);
+  }, [loading, ingresos, facturasGastos, proyectos, selectedMonth]);
 
   if (loading || !stats) {
     return <div className="flex items-center justify-center h-64"><Loader2 className="text-emerald-500 animate-spin" size={32} /></div>;
@@ -140,9 +165,25 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
 
         <div className="space-y-8">
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden group">
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform"><Shield size={24} /></div>
-                    <h3 className="font-bold text-xl tracking-tight">Resguardo DNIT</h3>
+                <div className="flex items-center justify-between gap-3 mb-8">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform"><Shield size={24} /></div>
+                        <h3 className="font-bold text-xl tracking-tight">Resguardo DNIT</h3>
+                    </div>
+                    {/* Period Selector */}
+                    <div className="relative">
+                        <select 
+                            value={selectedMonth} 
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none cursor-pointer pr-8"
+                        >
+                            <option value="total">Histórico</option>
+                            {availablePeriods.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                            ))}
+                        </select>
+                        <Calendar size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    </div>
                 </div>
                 <div className="space-y-5">
                     <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGs(stats.ivaDebitoTotal)}</span></div>
@@ -150,8 +191,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
                     <div className="h-px bg-slate-800 my-4" />
                     <div className="p-5 bg-white/5 rounded-3xl flex justify-between items-center border border-white/5">
                         <div>
-                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Saldo Liquidable</p>
-                            <p className="text-2xl font-black">{formatGs(stats.ivaAPagar)}</p>
+                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">
+                                {stats.netIvaBalance >= 0 ? 'Saldo a Pagar' : 'Crédito Fiscal'}
+                            </p>
+                            <p className={`text-2xl font-black ${stats.netIvaBalance < 0 ? 'text-emerald-400' : ''}`}>
+                                {formatGs(stats.netIvaBalance)}
+                            </p>
                         </div>
                         {stats.ivaAPagar > 2000000 && <AlertTriangle className="text-amber-500" size={28} />}
                     </div>
