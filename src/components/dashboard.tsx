@@ -261,12 +261,22 @@ function StatCard({ title, value, desc, icon, color, index }: any) {
     amber: 'bg-amber-50/50 text-amber-600 border-amber-100',
   };
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * index }} whileHover={{ y: -5 }} className="bg-white p-5 lg:p-8 rounded-3xl lg:rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative">
-      <div className={`w-12 h-12 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl flex items-center justify-center mb-4 lg:mb-6 transition-transform group-hover:scale-110 shadow-sm ${themes[color as keyof typeof themes]}`}>{icon}</div>
-      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{title}</p>
-      <h4 className="text-2xl font-black text-gray-900 mb-1">{value}</h4>
-      <p className="text-xs text-gray-400 font-medium">{desc}</p>
-      <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50/50 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform -z-0" />
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ delay: 0.1 * index }} 
+      whileHover={{ y: -5 }} 
+      className="bg-white p-4 lg:p-8 rounded-3xl lg:rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-0"
+    >
+      <div className={`w-12 h-12 lg:w-14 lg:h-14 shrink-0 rounded-xl lg:rounded-2xl flex items-center justify-center mb-0 lg:mb-6 transition-transform group-hover:scale-110 shadow-sm ${themes[color as keyof typeof themes]}`}>
+        {icon}
+      </div>
+      <div className="flex-1">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 lg:mb-2">{title}</p>
+        <h4 className="text-lg lg:text-2xl font-black text-gray-900 mb-0.5 lg:mb-1 leading-none">{value}</h4>
+        <p className="text-[10px] lg:text-xs text-gray-400 font-medium leading-tight">{desc}</p>
+      </div>
+      <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50/50 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform -z-0 pointer-events-none" />
     </motion.div>
   );
 }
