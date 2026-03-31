@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  formatGs, formatGsShort
+  formatGs, formatGsShort, calculateSuggestedVAT
 } from '../data/sampleData';
 
 const formatDateTime = (dateStr: string) => {
@@ -641,8 +641,14 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, 
                 <DetailBox label="Timbrado SET" value={data.timbrado} desc={data.vencimiento_timbrado ? `Vence: ${data.vencimiento_timbrado}` : 'Vigente'} />
                 <DetailBox label="Condición / CDC" value={data.condicion_venta ? data.condicion_venta.toUpperCase() : 'CONTADO'} desc={data.cdc || 'Factura Pre-impresa'} />
                 <div className="space-y-3 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                    <div className="flex justify-between items-center text-[11px] font-black text-gray-500 uppercase tracking-tighter"><span>IVA 10%</span><span className="text-blue-600">{formatGs(data.iva_10 || 0)}</span></div>
-                    <div className="flex justify-between items-center text-[11px] font-black text-gray-500 uppercase tracking-tighter"><span>IVA 5%</span><span className="text-indigo-600">{formatGs(data.iva_5 || 0)}</span></div>
+                    <div className="flex justify-between items-center text-[11px] font-black text-gray-500 uppercase tracking-tighter">
+                      <span>IVA 10% {data.is_suggested_vat && <span className="text-[9px] text-blue-400 normal-case font-bold ml-1">(IA Sugerido)</span>}</span>
+                      <span className="text-blue-600">{formatGs(data.iva_10 || 0)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[11px] font-black text-gray-500 uppercase tracking-tighter">
+                      <span>IVA 5%</span>
+                      <span className="text-indigo-600">{formatGs(data.iva_5 || 0)}</span>
+                    </div>
                     <div className="h-px bg-gray-200" />
                     <div className="flex justify-between items-center text-[11px] font-black text-slate-800 uppercase tracking-tighter"><span>Exentas</span><span>{formatGs(data.exentas || 0)}</span></div>
                 </div>
@@ -808,12 +814,22 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
                             value={formData.monto} 
                             onChange={(val: any) => setFormData({...formData, monto: Number(val)})}
                         />
-                         <ModalInput 
-                            label="IVA 10% (₲)" 
-                            type="number"
-                            value={formData.iva_10 || 0} 
-                            onChange={(val: any) => setFormData({...formData, iva_10: Number(val)})}
-                        />
+                        <div className="relative group">
+                          <ModalInput 
+                              label="IVA 10% (₲)" 
+                              type="number"
+                              value={formData.iva_10 || 0} 
+                              onChange={(val: any) => setFormData({...formData, iva_10: Number(val)})}
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => setFormData({ ...formData, ...calculateSuggestedVAT(formData.monto) })}
+                            className="absolute right-2 top-8 p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-blue-100"
+                            title="Auto-calcular IVA 10%"
+                          >
+                            <Scan size={14} />
+                          </button>
+                        </div>
                          <ModalInput 
                             label="IVA 5% (₲)" 
                             type="number"
