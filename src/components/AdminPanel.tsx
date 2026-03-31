@@ -10,8 +10,36 @@ import { Profile } from '../data/sampleData';
 
 export default function AdminPanel() {
   const queryClient = useQueryClient();
-  const { profile: adminProfile } = useSupabaseData();
+  const { profile: adminProfile, loading } = useSupabaseData();
   const [search, setSearch] = useState('');
+
+  if (!loading && adminProfile?.nivel_acceso !== 1) {
+    return (
+       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4 p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm animate-in fade-in zoom-in duration-300">
+          <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mb-2">
+            <Lock className="text-rose-500" size={40} />
+          </div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Acceso Restringido</h2>
+          <p className="text-slate-500 max-w-xs mx-auto italic font-medium leading-relaxed">Lo sentimos, esta sección es exclusiva para Súper Administradores. Tu nivel de acceso actual no permite esta operación.</p>
+          <div className="pt-4">
+            <button 
+              onClick={() => window.location.href = '/dashboard'} 
+              className="bg-slate-900 text-white px-8 py-3.5 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl shadow-slate-200 active:scale-95 transition-all"
+            >
+              Volver al Dashboard Principal
+            </button>
+          </div>
+       </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="animate-spin text-indigo-500" size={40} />
+      </div>
+    );
+  }
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error', msg: string } | null>(null);
