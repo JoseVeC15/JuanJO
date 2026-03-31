@@ -57,9 +57,9 @@ export default function ManualsScreen() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col lg:flex-row overflow-hidden font-sans selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col lg:flex-row lg:overflow-hidden font-sans selection:bg-emerald-100 selection:text-emerald-900">
       {/* Sidebar */}
-      <aside className="w-full lg:w-80 bg-white border-r border-slate-200 flex flex-col h-screen shrink-0 shadow-sm z-20">
+      <aside className="w-full lg:w-80 bg-white border-b lg:border-r border-slate-200 flex flex-col h-auto lg:h-screen shrink-0 shadow-sm z-20">
         <div className="p-6 border-b border-slate-100 bg-white/50 backdrop-blur-sm sticky top-0">
           <button 
             onClick={() => navigate('/')}
@@ -90,11 +90,16 @@ export default function ManualsScreen() {
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar max-h-[35vh] lg:max-h-none">
           {filteredManuals.map((manual) => (
             <button
                key={manual.id}
-              onClick={() => setSelectedManual(manual)}
+              onClick={() => {
+                setSelectedManual(manual);
+                if (window.innerWidth < 1024) {
+                   setTimeout(() => document.getElementById('manual-content')?.scrollIntoView({ behavior: 'smooth' }), 100);
+                }
+              }}
               className={`w-full flex items-center gap-4 p-4 rounded-2xl transition-all relative group ${
                 selectedManual.id === manual.id 
                   ? 'bg-emerald-50 border-emerald-100' 
@@ -133,7 +138,7 @@ export default function ManualsScreen() {
       </aside>
 
       {/* Content Area */}
-      <main className="flex-1 h-screen overflow-y-auto bg-white relative selection:bg-emerald-100 selection:text-emerald-900">
+      <main id="manual-content" className="flex-1 h-auto lg:h-screen overflow-y-auto bg-white relative selection:bg-emerald-100 selection:text-emerald-900">
         <div className="max-w-4xl mx-auto px-6 py-12 lg:px-12 lg:py-20">
           <AnimatePresence mode="wait">
             <motion.div
