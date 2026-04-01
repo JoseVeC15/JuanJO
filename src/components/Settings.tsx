@@ -43,7 +43,7 @@ export default function Settings() {
       punto_expedicion: '001'
   });
 
-  const [certData, setCertData] = useState<{name: string, file: File | null}>({name: '', file: null});
+  const [certData, setCertData] = useState<{name: string, file: File | null, password?: string}>({name: '', file: null, password: ''});
   const [certStatus, setCertStatus] = useState<'none' | 'uploaded' | 'expired'>('none');
 
   useEffect(() => {
@@ -86,11 +86,15 @@ export default function Settings() {
 
               const { data: cert } = await supabase
                 .from('certificados_digitales')
-                .select('alias, vencimiento, estado')
+                .select('alias, vencimiento, estado, password_p12')
                 .single();
               
               if (cert) {
-                  setCertData(prev => ({...prev, name: cert.alias || 'Certificado Registrado'}));
+                  setCertData(prev => ({
+                      ...prev, 
+                      name: cert.alias || 'Certificado Registrado',
+                      password: cert.password_p12 || ''
+                  }));
                   setCertStatus(cert.estado === 'activo' ? 'uploaded' : 'expired');
               }
           }
@@ -181,7 +185,8 @@ export default function Settings() {
                             .upsert({
                                 user_id: user?.id,
                                 certificate_base64: base64,
-                                password_cifrada: 'PENDING_SERVER_ENCRYPTION',
+                                password_p12: certData.password || '', // Contraseña para firma automática
+                                password_cifrada: 'ENCRYPTED_ON_CLIENT_OR_SERVER', // Placeholder para cifrado
                                 vencimiento: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
                                 alias: certData.name,
                                 estado: 'activo'
@@ -439,13 +444,25 @@ export default function Settings() {
                                     className="hidden" 
                                     onChange={(e) => {
                                         const file = e.target.files?.[0];
-                                        if (file) setCertData({name: file.name, file});
+                                        if (file) setCertData({...certData, name: file.name, file});
                                     }}
                                 />
                                 <span className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg inline-block hover:scale-105 transition-all">
                                     {certStatus === 'uploaded' ? 'Cambiar Archivo' : 'Subir Archivo'}
                                 </span>
                             </label>
+                         </div>
+                         <div className="space-y-1.5 w-full">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                <Clock size={12} className="text-slate-400" /> Contraseña del Certificado
+                            </label>
+                            <input 
+                                type="password" 
+                                value={certData.password}
+                                onChange={(e) => setCertData({...certData, password: e.target.value})}
+                                placeholder="Clave del archivo .p12"
+                                className="w-full px-5 py-3 bg-gray-50/50 rounded-2xl border border-gray-100 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
+                            />
                          </div>
                       </div>
                   </div>
