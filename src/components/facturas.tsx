@@ -331,13 +331,15 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             </button>
           )}
 
-          <button
-            onClick={() => { setShowOCR(!showOCR); setUploadStatus('idle'); }}
-            className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
-          >
-            {uploading ? <Loader2 className="animate-spin" size={18} /> : <Scan size={18} />}
-            {uploading ? 'Segundos...' : 'Subir SET (IA)'}
-          </button>
+          {activeTab !== 'sifen' && (
+            <button
+              onClick={() => { setShowOCR(!showOCR); setUploadStatus('idle'); }}
+              className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
+            >
+              {uploading ? <Loader2 className="animate-spin" size={18} /> : <Scan size={18} />}
+              {uploading ? 'Segundos...' : 'Subir SET (IA)'}
+            </button>
+          )}
         </div>
       </div>
 
