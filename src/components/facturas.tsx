@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import * as XLSX from 'xlsx';
 
 // Configuración del worker de PDF.js para procesamiento en segundo plano
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -269,10 +270,10 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     }
   };
 
-  const exportToCSV = () => {
+  const exportToExcel = () => {
     const headers = activeTab === 'gastos'
-      ? ['Fecha', 'Proveedor', 'RUC', 'Nro Factura', 'Timbrado', 'Monto', 'IVA 10', 'IVA 5', 'Estado']
-      : ['Fecha', 'Cliente', 'RUC', 'Nro Factura', 'Timbrado', 'Condicion', 'Monto', 'IVA 10', 'IVA 5', 'Exentas', 'Estado'];
+      ? ['Fecha', 'Proveedor', 'RUC', 'Nro Factura', 'Timbrado', 'Monto Total', 'IVA 10%', 'IVA 5%', 'Estado']
+      : ['Fecha', 'Cliente', 'RUC', 'Nro Factura', 'Timbrado', 'Condicion', 'Monto Total', 'IVA 10%', 'IVA 5%', 'Exentas', 'Estado'];
 
     const rows = filteredData.map(f => {
       if (activeTab === 'gastos') {
@@ -284,12 +285,11 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       }
     });
 
-    const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${activeTab}_set_finance_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, activeTab.toUpperCase());
+    
+    XLSX.writeFile(workbook, `${activeTab}_set_finance_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   if (dataLoading) {
@@ -317,8 +317,8 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             <button onClick={() => setViewMode('cards')} className={`p-2 rounded-xl transition-all ${viewMode === 'cards' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><LayoutGrid size={20} /></button>
             <button onClick={() => setViewMode('table')} className={`p-2 rounded-xl transition-all ${viewMode === 'table' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><TableIcon size={20} /></button>
           </div>
-          <button onClick={exportToCSV} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-3 rounded-2xl font-bold shadow-sm hover:border-emerald-200 hover:text-emerald-600 transition-all">
-            <Download size={18} /> SET CSV
+          <button onClick={exportToExcel} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-3 rounded-2xl font-bold shadow-sm hover:border-emerald-200 hover:text-emerald-600 transition-all">
+            <Download size={18} /> SET XLSX
           </button>
 
           {activeTab === 'sifen' && perfilFiscal && configSifen && (
