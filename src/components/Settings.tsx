@@ -31,6 +31,7 @@ export default function Settings() {
       ruc: '',
       dv: '',
       razon_social: '',
+      direccion: 'Asunción, PY',
       ambiente: 'test' as 'test' | 'prod'
   });
 
@@ -64,6 +65,7 @@ export default function Settings() {
                   ruc: data.ruc,
                   dv: data.dv.toString(),
                   razon_social: data.razon_social,
+                  direccion: data.direccion || 'Asunción, PY',
                   ambiente: data.ambiente
               });
               
@@ -143,6 +145,7 @@ export default function Settings() {
                 ruc: perfilFiscal.ruc,
                 dv: parseInt(perfilFiscal.dv) || 0,
                 razon_social: perfilFiscal.razon_social,
+                direccion: perfilFiscal.direccion || 'Asunción, PY',
                 ambiente: perfilFiscal.ambiente,
                 updated_at: new Date().toISOString()
             });
