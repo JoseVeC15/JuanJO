@@ -17,12 +17,33 @@ import {
   getGastoLabel, getGastoColor
 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from 'react';
 
 export default function Dashboard() {
   const { proyectos, facturasGastos, ingresos, configSifen, loading, profile } = useSupabaseData();
   const { user } = useAuth();
   const [showSifenEmitter, setShowSifenEmitter] = useState(false);
   const [showUpgradeAlert, setShowUpgradeAlert] = useState(false);
+  const [exchangeRate, setExchangeRate] = useState<number>(7550); // Default fallback
+  const [loadingRate, setLoadingRate] = useState(true);
+
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        setLoadingRate(true);
+        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await response.json();
+        if (data && data.rates && data.rates.PYG) {
+          setExchangeRate(data.rates.PYG);
+        }
+      } catch (error) {
+        console.error("Error fetching exchange rate:", error);
+      } finally {
+        setLoadingRate(false);
+      }
+    };
+    fetchRate();
+  }, []);
   
   // Default to current month YYYY-MM
   const currentMonthStr = new Date().toISOString().substring(0, 7);
@@ -244,15 +265,27 @@ export default function Dashboard() {
               </motion.div>
             )}
 
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="bg-emerald-500 rounded-2xl lg:rounded-[2rem] p-6 lg:p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10">
+            <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                transition={{ delay: 0.6 }} 
+                className={`${loadingRate ? 'bg-emerald-600' : 'bg-emerald-500'} rounded-2xl lg:rounded-[2rem] p-6 lg:p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10 transition-colors`}
+            >
                 <div className="flex justify-between items-center mb-5">
                     <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Monitor PYG/USD</span>
-                    <ArrowUpRight size={18} className="text-slate-900/40" />
+                    <div className="flex items-center gap-2">
+                        {loadingRate ? <Loader2 size={14} className="animate-spin opacity-40" /> : <ArrowUpRight size={18} className="text-slate-900/40" />}
+                    </div>
                 </div>
                 <div className="flex items-end gap-3">
-                    <h4 className="text-4xl font-black tracking-tighter">₲ 7.420</h4>
+                    <h4 className="text-4xl font-black tracking-tighter">
+                        ₲ {exchangeRate.toLocaleString('es-PY')}
+                    </h4>
                     <span className="text-sm font-black mb-1.5 opacity-60">/ 1$</span>
                 </div>
+                {loadingRate && (
+                    <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[2px] rounded-[inherit] pointer-events-none" />
+                )}
             </motion.div>
         </div>
       </div>
