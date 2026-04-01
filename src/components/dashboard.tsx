@@ -149,10 +149,9 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" />
-        {profile?.facturacion_habilitada && (
+        {(profile?.facturacion_habilitada || profile?.nivel_acceso === 1) && (
           <>
             <StatCard index={1} title="Ventas del Período" value={formatGs(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" />
             <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" />
@@ -184,7 +183,7 @@ export default function Dashboard() {
         </motion.div>
 
         <div className="space-y-6 lg:space-y-8">
-            {profile?.facturacion_habilitada ? (
+            {(profile?.facturacion_habilitada || profile?.nivel_acceso === 1) ? (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-3xl lg:rounded-[2.5rem] p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden group">
                   <div className="flex items-center justify-between gap-3 mb-8">
                       <div className="flex items-center gap-3">

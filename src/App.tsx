@@ -58,8 +58,10 @@ function RouterWrapper() {
     (navItems as any).push({ key: 'admin', path: '/admin', label: 'Admin Panel', icon: <ShieldCheck size={20} className="text-indigo-400" /> });
   }
 
-  // Filtrar módulos de facturación si no está habilitado
-  const filteredNavItems = profile?.facturacion_habilitada 
+  // El Super Admin tiene acceso total, los demás dependen del flag facturacion_habilitada
+  const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
+
+  const filteredNavItems = hasBillingAccess 
     ? navItems 
     : navItems.filter(item => !['ingresos', 'sifen', 'clientes'].includes(item.key));
 
@@ -146,7 +148,7 @@ function RouterWrapper() {
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   
                   {/* Rutas Protegidas de Facturación */}
-                  {!(profile?.facturacion_habilitada) && (
+                  {!(hasBillingAccess) && (
                     <>
                       <Route path="/ingresos" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/sifen" element={<Navigate to="/dashboard" replace />} />
