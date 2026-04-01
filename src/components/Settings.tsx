@@ -138,6 +138,7 @@ export default function Settings() {
   const guardarPerfilFiscal = async () => {
       setSavingStatus('saving');
       try {
+          // 1. Guardar Perfil Fiscal
           const { error } = await supabase
             .from('perfiles_fiscales')
             .upsert({
@@ -152,6 +153,7 @@ export default function Settings() {
           
           if (error) throw error;
 
+          // 2. Guardar Configuración SIFEN
           const { error: configError } = await supabase
             .from('configuracion_sifen')
             .upsert({
@@ -166,31 +168,40 @@ export default function Settings() {
 
           if (configError) throw configError;
           
+          // 3. Procesar Certificado (si existe)
           if (certData.file) {
-              const reader = new FileReader();
-              reader.readAsDataURL(certData.file);
-              reader.onload = async () => {
-                  const base64 = (reader.result as string).split(',')[1];
-                  const { error: certError } = await supabase
-                    .from('certificados_digitales')
-                    .upsert({
-                        user_id: user?.id,
-                        certificate_base64: base64,
-                        password_cifrada: 'PENDING_SERVER_ENCRYPTION', // Lógica de cifrado en server recomendada
-                        vencimiento: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0], // +1 año default
-                        alias: certData.name,
-                        estado: 'activo'
-                    });
-                  if (certError) console.error(certError);
-              };
+              await new Promise((resolve, reject) => {
+                  const reader = new FileReader();
+                  reader.readAsDataURL(certData.file as File);
+                  reader.onload = async () => {
+                      try {
+                          const base64 = (reader.result as string).split(',')[1];
+                          const { error: certError } = await supabase
+                            .from('certificados_digitales')
+                            .upsert({
+                                user_id: user?.id,
+                                certificate_base64: base64,
+                                password_cifrada: 'PENDING_SERVER_ENCRYPTION',
+                                vencimiento: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
+                                alias: certData.name,
+                                estado: 'activo'
+                            });
+                          if (certError) throw certError;
+                          resolve(true);
+                      } catch (err) {
+                          reject(err);
+                      }
+                  };
+                  reader.onerror = reject;
+              });
           }
 
           setSavingStatus('saved');
-          setTimeout(() => setSavingStatus('idle'), 2000);
-      } catch (e) {
+          setTimeout(() => setSavingStatus('idle'), 2500);
+      } catch (e: any) {
           console.error(e);
           setSavingStatus('idle');
-          alert('Error al guardar el perfil fiscal. Asegúrate de haber ejecutado la migración SQL.');
+          alert(`Error al guardar: ${e.message || 'Error desconocido'}`);
       }
   };
 
@@ -495,9 +506,14 @@ export default function Settings() {
                       <button 
                         onClick={guardarPerfilFiscal}
                         disabled={savingStatus === 'saving'}
-                        className="px-10 py-4 bg-emerald-500 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 disabled:opacity-50"
+                        className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all ${
+                          savingStatus === 'saved' ? 'bg-indigo-600 text-white shadow-indigo-500/20' : 
+                          'bg-emerald-500 text-slate-900 shadow-emerald-500/20'
+                        } disabled:opacity-50`}
                       >
-                          {savingStatus === 'saving' ? 'Guardando...' : 'Guardar Identidad Fiscal'}
+                          {savingStatus === 'saving' ? 'Guardando...' : 
+                           savingStatus === 'saved' ? '¡Datos Sincronizados! ✨' : 
+                           'Guardar Identidad Fiscal'}
                       </button>
                   </div>
               </motion.div>
