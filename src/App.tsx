@@ -58,6 +58,11 @@ function RouterWrapper() {
     (navItems as any).push({ key: 'admin', path: '/admin', label: 'Admin Panel', icon: <ShieldCheck size={20} className="text-indigo-400" /> });
   }
 
+  // Filtrar módulos de facturación si no está habilitado
+  const filteredNavItems = profile?.facturacion_habilitada 
+    ? navItems 
+    : navItems.filter(item => !['ingresos', 'sifen', 'clientes'].includes(item.key));
+
   return (
       <SuspensionGuard>
         <div className="min-h-screen bg-slate-50 flex">
@@ -79,7 +84,7 @@ function RouterWrapper() {
             </div>
 
             <nav className="flex-1 p-4 space-y-1 mt-4">
-              {navItems.map((item) => (
+              {filteredNavItems.map((item) => (
                 <NavLink
                   key={item.key}
                   to={item.path}
@@ -139,6 +144,15 @@ function RouterWrapper() {
               <AnimatePresence mode="wait">
                 <Routes location={location} key={location.pathname}>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  
+                  {/* Rutas Protegidas de Facturación */}
+                  {!(profile?.facturacion_habilitada) && (
+                    <>
+                      <Route path="/ingresos" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/sifen" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/clientes" element={<Navigate to="/dashboard" replace />} />
+                    </>
+                  )}
                   <Route path="/dashboard" element={
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                       <Dashboard />
@@ -198,7 +212,7 @@ function RouterWrapper() {
 
             {/* Mobile Nav Bottom */}
             <nav className="lg:hidden bg-white/80 backdrop-blur-md border-t border-slate-200 px-2 py-2 flex items-center justify-around sticky bottom-0 z-50">
-              {navItems.filter(item => item.key !== 'settings').map((item) => (
+              {filteredNavItems.filter(item => item.key !== 'settings').map((item) => (
                 <NavLink
                    key={item.key}
                    to={item.path}

@@ -19,6 +19,7 @@ export interface Profile {
   email?: string;
   nivel_acceso: 1 | 2;
   estado?: 'activo' | 'suspendido';
+  facturacion_habilitada?: boolean;
   created_at: string;
 }
 

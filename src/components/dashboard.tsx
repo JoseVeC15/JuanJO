@@ -19,7 +19,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Dashboard() {
-  const { proyectos, facturasGastos, ingresos, configSifen, loading } = useSupabaseData();
+  const { proyectos, facturasGastos, ingresos, configSifen, loading, profile } = useSupabaseData();
   const { user } = useAuth();
   const [showSifenEmitter, setShowSifenEmitter] = useState(false);
   const [showUpgradeAlert, setShowUpgradeAlert] = useState(false);
@@ -152,9 +152,13 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" />
-        <StatCard index={1} title="Ventas del Período" value={formatGs(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" />
-        <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" />
-        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" />
+        {profile?.facturacion_habilitada && (
+          <>
+            <StatCard index={1} title="Ventas del Período" value={formatGs(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" />
+            <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" />
+            <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" />
+          </>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
@@ -180,54 +184,66 @@ export default function Dashboard() {
         </motion.div>
 
         <div className="space-y-6 lg:space-y-8">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-3xl lg:rounded-[2.5rem] p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden group">
-                <div className="flex items-center justify-between gap-3 mb-8">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform"><Shield size={24} /></div>
-                        <h3 className="font-bold text-xl tracking-tight">Resguardo DNIT</h3>
-                    </div>
-                    {/* Period Selector */}
-                    <div className="relative">
-                        <select 
-                            value={selectedMonth} 
-                            onChange={(e) => setSelectedMonth(e.target.value)}
-                            className="bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none cursor-pointer pr-8"
-                        >
-                            <option value="total">Histórico</option>
-                            {availablePeriods.map(p => (
-                                <option key={p} value={p}>{p}</option>
-                            ))}
-                        </select>
-                        <Calendar size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                    </div>
+            {profile?.facturacion_habilitada ? (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-3xl lg:rounded-[2.5rem] p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden group">
+                  <div className="flex items-center justify-between gap-3 mb-8">
+                      <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform"><Shield size={24} /></div>
+                          <h3 className="font-bold text-xl tracking-tight">Resguardo DNIT</h3>
+                      </div>
+                      {/* Period Selector */}
+                      <div className="relative">
+                          <select 
+                              value={selectedMonth} 
+                              onChange={(e) => setSelectedMonth(e.target.value)}
+                              className="bg-slate-800 border border-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500/50 appearance-none cursor-pointer pr-8"
+                          >
+                              <option value="total">Histórico</option>
+                              {availablePeriods.map(p => (
+                                  <option key={p} value={p}>{p}</option>
+                              ))}
+                          </select>
+                          <Calendar size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                      </div>
+                  </div>
+                  <div className="space-y-5">
+                      <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGs(stats.ivaDebitoTotal)}</span></div>
+                      <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Crédito (Compras)</span><span className="text-sm font-bold text-rose-400">-{formatGs(stats.ivaCreditoTotal)}</span></div>
+                      <div className="h-px bg-slate-800 my-4" />
+                      <div className="p-5 bg-white/5 rounded-3xl flex justify-between items-center border border-white/5">
+                          <div>
+                              <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">
+                                  {stats.netIvaBalance >= 0 ? 'Saldo a Pagar' : 'Crédito Fiscal'}
+                              </p>
+                              <p className={`text-2xl font-black ${stats.netIvaBalance < 0 ? 'text-emerald-400' : ''}`}>
+                                  {formatGs(stats.netIvaBalance)}
+                              </p>
+                          </div>
+                          {stats.ivaAPagar > 2000000 && <AlertTriangle className="text-amber-500" size={28} />}
+                      </div>
+                  </div>
+                  <div className="mt-6 flex gap-3">
+                      <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Tasa 10%</p>
+                          <p className="text-xs font-black text-blue-400">{formatGsShort(stats.iva10)}</p>
+                      </div>
+                      <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                          <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Tasa 5%</p>
+                          <p className="text-xs font-black text-indigo-400">{formatGsShort(stats.iva5)}</p>
+                      </div>
+                  </div>
+              </motion.div>
+            ) : (
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-3xl lg:rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden group border border-slate-700">
+                <div className="relative z-10">
+                  <div className="w-14 h-14 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-6"><ShieldCheck size={32} /></div>
+                  <h3 className="text-xl font-black mb-2">Servicios Avanzados</h3>
+                  <p className="text-slate-400 text-sm font-medium leading-relaxed mb-6">Habilita el módulo de Facturación SIFEN e Ingresos para acceder a este panel de control fiscal en tiempo real.</p>
+                  <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-500 transition-all">Saber Más</button>
                 </div>
-                <div className="space-y-5">
-                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGs(stats.ivaDebitoTotal)}</span></div>
-                    <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Crédito (Compras)</span><span className="text-sm font-bold text-rose-400">-{formatGs(stats.ivaCreditoTotal)}</span></div>
-                    <div className="h-px bg-slate-800 my-4" />
-                    <div className="p-5 bg-white/5 rounded-3xl flex justify-between items-center border border-white/5">
-                        <div>
-                            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">
-                                {stats.netIvaBalance >= 0 ? 'Saldo a Pagar' : 'Crédito Fiscal'}
-                            </p>
-                            <p className={`text-2xl font-black ${stats.netIvaBalance < 0 ? 'text-emerald-400' : ''}`}>
-                                {formatGs(stats.netIvaBalance)}
-                            </p>
-                        </div>
-                        {stats.ivaAPagar > 2000000 && <AlertTriangle className="text-amber-500" size={28} />}
-                    </div>
-                </div>
-                <div className="mt-6 flex gap-3">
-                    <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5 text-center">
-                        <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Tasa 10%</p>
-                        <p className="text-xs font-black text-blue-400">{formatGsShort(stats.iva10)}</p>
-                    </div>
-                    <div className="flex-1 bg-white/5 p-3 rounded-xl border border-white/5 text-center">
-                        <p className="text-[9px] text-slate-500 font-bold uppercase mb-1">Tasa 5%</p>
-                        <p className="text-xs font-black text-indigo-400">{formatGsShort(stats.iva5)}</p>
-                    </div>
-                </div>
-            </motion.div>
+                <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-indigo-500/10 rounded-full blur-3xl" />
+              </motion.div>
+            )}
 
             <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="bg-emerald-500 rounded-2xl lg:rounded-[2rem] p-6 lg:p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10">
                 <div className="flex justify-between items-center mb-5">

@@ -15,7 +15,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, nombre_completo, email, nivel_acceso, estado, created_at')
+        .select('id, nombre_completo, email, nivel_acceso, estado, facturacion_habilitada, created_at')
         .eq('id', sessionUser?.id)
         .single();
       if (error) throw error;
