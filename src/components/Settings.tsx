@@ -46,6 +46,11 @@ export default function Settings() {
   const [certData, setCertData] = useState<{name: string, file: File | null, password?: string}>({name: '', file: null, password: ''});
   const [certStatus, setCertStatus] = useState<'none' | 'uploaded' | 'expired'>('none');
 
+  const hashSecret = async (secret: string) => {
+    const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+    return Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+
   useEffect(() => {
     fetchRates();
     const saved = localStorage.getItem(`finance_cats_${user?.id}`);
@@ -58,6 +63,7 @@ export default function Settings() {
           const { data, error } = await supabase
             .from('perfiles_fiscales')
             .select('*')
+            .eq('user_id', user.id)
             .single();
           
           if (data && !error) {
@@ -72,6 +78,7 @@ export default function Settings() {
               const { data: config } = await supabase
                 .from('configuracion_sifen')
                 .select('*')
+                .eq('user_id', user.id)
                 .single();
               
               if (config) {
@@ -86,14 +93,15 @@ export default function Settings() {
 
               const { data: cert } = await supabase
                 .from('certificados_digitales')
-                .select('alias, vencimiento, estado, password_p12')
+                .select('alias, vencimiento, estado')
+                .eq('user_id', user.id)
                 .single();
               
               if (cert) {
                   setCertData(prev => ({
                       ...prev, 
                       name: cert.alias || 'Certificado Registrado',
-                      password: cert.password_p12 || ''
+                      password: ''
                   }));
                   setCertStatus(cert.estado === 'activo' ? 'uploaded' : 'expired');
               }
@@ -142,6 +150,14 @@ export default function Settings() {
   const guardarPerfilFiscal = async () => {
       setSavingStatus('saving');
       try {
+        if (!/^\d{3}$/.test(configSifen.establecimiento) || !/^\d{3}$/.test(configSifen.punto_expedicion)) {
+          throw new Error('Establecimiento y Punto de Expedicion deben tener 3 digitos (ej. 001).');
+        }
+
+        if (!configSifen.csc || configSifen.csc.length < 8 || Number.isNaN(parseInt(configSifen.id_csc))) {
+          throw new Error('CSC e ID CSC son obligatorios y deben ser validos antes de guardar.');
+        }
+
           // 1. Guardar Perfil Fiscal
           const { error } = await supabase
             .from('perfiles_fiscales')
@@ -180,13 +196,13 @@ export default function Settings() {
                   reader.onload = async () => {
                       try {
                           const base64 = (reader.result as string).split(',')[1];
+                    const passwordHash = certData.password ? await hashSecret(certData.password) : 'NO_PASSWORD';
                           const { error: certError } = await supabase
                             .from('certificados_digitales')
                             .upsert({
                                 user_id: user?.id,
-                                certificate_base64: base64,
-                                password_p12: certData.password || '', // Contraseña para firma automática
-                                password_cifrada: 'ENCRYPTED_ON_CLIENT_OR_SERVER', // Placeholder para cifrado
+                      certificado_base64: base64,
+                      password_cifrada: passwordHash,
                                 vencimiento: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
                                 alias: certData.name,
                                 estado: 'activo'
@@ -199,7 +215,27 @@ export default function Settings() {
                   };
                   reader.onerror = reject;
               });
+
+                try {
+                  await supabase.from('secret_rotation_audit').insert({
+                    user_id: user?.id,
+                    secret_scope: 'certificado_digital',
+                    notes: `Rotacion de certificado: ${certData.name || 'sin_nombre'}`
+                  });
+                } catch {
+                  // No bloqueamos el guardado principal por una auditoria secundaria.
+                }
           }
+
+              try {
+                await supabase.from('secret_rotation_audit').insert({
+                  user_id: user?.id,
+                  secret_scope: 'configuracion_sifen',
+                  notes: 'Actualizacion de CSC/ID CSC/Timbrado'
+                });
+              } catch {
+                // No bloqueamos el guardado principal por una auditoria secundaria.
+              }
 
           setSavingStatus('saved');
           setTimeout(() => setSavingStatus('idle'), 2500);

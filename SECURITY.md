@@ -35,4 +35,19 @@ Se han inyectado cabeceras de red para mitigar los ataques web más comunes:
 > [!IMPORTANT]
 > **Recomendación de Seguridad**: Nunca incluyas secretos o claves privadas (Service Role Keys) en variables que empiecen por `VITE_`. El Service Role Key solo debe usarse en funciones de servidor (Edge Functions) que corren fuera del navegador.
 
+---
+
+## 🔐 Politica de Secretos y Certificados
+
+- Las credenciales sensibles (`SUPABASE_SERVICE_ROLE_KEY`, CSC, password de certificado) deben rotarse como minimo cada 90 dias.
+- El frontend no debe persistir contraseñas de certificados en texto plano.
+- Toda rotacion debe registrarse en `secret_rotation_audit`.
+- El certificado digital debe validarse por estado y fecha de vencimiento antes de emitir documentos.
+
+## 📋 Auditoria Operativa
+
+- Cada emision SIFEN debe tener `request_id` para trazabilidad cruzada (UI, edge, logs SQL).
+- Registrar en `documentos_xml_logs` el estado (`exito/error`), `error_code` y `latency_ms`.
+- Monitorear `sifen_metricas_eventos` para tasa de fallos y latencia p95.
+
 **FINANCE PRO SECURITY PROTOCOL v2.0.0**

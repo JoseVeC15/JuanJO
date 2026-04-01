@@ -13,6 +13,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
     const [cargando, setCargando] = useState(false);
     const [paso, setPaso] = useState<'formulario' | 'estado'>('formulario');
     const [estadoEmision, setEstadoEmision] = useState<'pendiente' | 'exito' | 'error'>('pendiente');
+    const [errorDetalle, setErrorDetalle] = useState('');
 
     const [cliente, setCliente] = useState({
         razon_social: '',
@@ -53,10 +54,53 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
         return productos.reduce((suma, p) => suma + (p.cantidad * p.precio_unitario), 0);
     };
 
+    const getBusinessErrorMessage = (errorCode?: string) => {
+        const code = errorCode || 'UNEXPECTED';
+        const mensajes: Record<string, string> = {
+            CONFIG_INCOMPLETA: 'Configuración SIFEN incompleta. Verifica perfil fiscal, CSC e ID CSC en Configuración.',
+            CERTIFICADO_AUSENTE: 'No existe certificado digital cargado. Sube tu .p12/.pfx en Configuración.',
+            CERTIFICADO_VENCIDO: 'El certificado digital está vencido. Debes renovarlo para continuar.',
+            RUC_INVALIDO: 'El RUC del receptor tiene formato inválido. Corrígelo e intenta nuevamente.',
+            DOCUMENTO_NO_ENCONTRADO: 'No se encontró el documento generado. Vuelve a emitir para regenerarlo.',
+            BAD_REQUEST: 'Solicitud inválida. Revisa los datos de emisión.',
+            SIFEN_TIMEOUT: 'El servicio SIFEN tardó demasiado en responder. Intenta de nuevo en unos segundos.',
+            UNEXPECTED: 'Error inesperado en la emisión. Si persiste, contacta soporte.',
+        };
+        return mensajes[code] || mensajes.UNEXPECTED;
+    };
+
+    const invokeSifenWithRetry = async (facturaId: string, userId: string, maxAttempts = 3) => {
+        let attempt = 0;
+        let lastError: any = null;
+
+        while (attempt < maxAttempts) {
+            attempt += 1;
+
+            const { data: respuesta, error: errorMotor } = await supabase.functions.invoke('sifen-engine', {
+                body: { documento_id: facturaId, user_id: userId }
+            });
+
+            if (!errorMotor && respuesta?.success) {
+                return respuesta;
+            }
+
+            const errorCode = respuesta?.error_code || (errorMotor ? 'UNEXPECTED' : 'UNEXPECTED');
+            lastError = { errorCode, response: respuesta, raw: errorMotor };
+
+            const retryable = ['SIFEN_TIMEOUT', 'UNEXPECTED'].includes(errorCode);
+            if (!retryable || attempt >= maxAttempts) break;
+
+            await new Promise(resolve => setTimeout(resolve, 700 * attempt));
+        }
+
+        throw lastError;
+    };
+
     const procesarEmision = async () => {
         setCargando(true);
         setPaso('estado');
         setEstadoEmision('pendiente');
+        setErrorDetalle('');
 
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -100,20 +144,14 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
 
             if (errorItems) throw errorItems;
 
-            // 4. Disparar Motor SIFEN v2.0 (Edge Function)
-            const { data: respuesta, error: errorMotor } = await supabase.functions.invoke('sifen-engine', {
-                body: { documento_id: factura.id, user_id: user.id }
-            });
-
-            if (errorMotor || !respuesta.success) {
-                console.error("Error Motor SIFEN:", errorMotor || respuesta);
-                throw new Error("Fallo en la firma o transmisión oficial");
-            }
+            // 4. Disparar Motor SIFEN v2.0 (Edge Function) con reintentos controlados
+            await invokeSifenWithRetry(factura.id, user.id);
 
             setEstadoEmision('exito');
             alExito();
         } catch (e: any) {
             console.error("Error en proceso SIFEN:", e);
+            setErrorDetalle(getBusinessErrorMessage(e?.errorCode || e?.response?.error_code));
             setEstadoEmision('error');
         } finally {
             setCargando(false);
@@ -273,7 +311,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                             <AlertCircle size={40} />
                                         </div>
                                         <h3 className="text-2xl font-black text-slate-900">Error en Transmisión Fiscal</h3>
-                                        <p className="text-red-500 mt-2">No se pudo autorizar el documento. Verifica tu certificado o IdCSC.</p>
+                                        <p className="text-red-500 mt-2">{errorDetalle || 'No se pudo autorizar el documento en esta emisión.'}</p>
                                         <button onClick={() => setPaso('formulario')} className="mt-8 px-10 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs">Volver a Intentar</button>
                                     </>
                                 )}

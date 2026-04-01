@@ -1,27 +1,38 @@
+import { lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import LoginScreen from './screens/LoginScreen';
-import ChangePasswordScreen from './screens/ChangePasswordScreen';
-import Dashboard from './components/dashboard';
-import Facturas from './components/facturas';
-import Projects from './components/projects';
-import Inventario from './components/inventario';
-import Reportes from './components/reportes';
-import Settings from './components/Settings';
 import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
-import AdminPanel from './components/AdminPanel';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import SuspensionGuard from './components/SuspensionGuard';
-import ManualsScreen from './screens/ManualsScreen';
+
+const LoginScreen = lazy(() => import('./screens/LoginScreen'));
+const ChangePasswordScreen = lazy(() => import('./screens/ChangePasswordScreen'));
+const Dashboard = lazy(() => import('./components/dashboard'));
+const Facturas = lazy(() => import('./components/facturas'));
+const Projects = lazy(() => import('./components/projects'));
+const Inventario = lazy(() => import('./components/inventario'));
+const Reportes = lazy(() => import('./components/reportes'));
+const Settings = lazy(() => import('./components/Settings'));
+const AdminPanel = lazy(() => import('./components/AdminPanel'));
+const ManualsScreen = lazy(() => import('./screens/ManualsScreen'));
 
 function RouterWrapper() {
   const { user, loading, mustChangePassword, signOut } = useAuth();
   const { profile } = useSupabaseData();
   const location = useLocation();
+  const routeFallback = (
+    <div className="min-h-[40vh] flex items-center justify-center">
+      <Loader2 className="text-emerald-500 animate-spin" size={32} />
+    </div>
+  );
 
   if (location.pathname === '/manuales') {
-    return <ManualsScreen />;
+    return (
+      <Suspense fallback={routeFallback}>
+        <ManualsScreen />
+      </Suspense>
+    );
   }
 
   if (loading) {
@@ -33,11 +44,19 @@ function RouterWrapper() {
   }
 
   if (!user) {
-    return <LoginScreen />;
+    return (
+      <Suspense fallback={routeFallback}>
+        <LoginScreen />
+      </Suspense>
+    );
   }
 
   if (mustChangePassword) {
-    return <ChangePasswordScreen />;
+    return (
+      <Suspense fallback={routeFallback}>
+        <ChangePasswordScreen />
+      </Suspense>
+    );
   }
 
 
@@ -142,7 +161,8 @@ function RouterWrapper() {
 
             <main className="flex-1 p-4 lg:p-10 max-w-[1600px] mx-auto w-full bg-[#fcfdfe]">
               <AnimatePresence mode="wait">
-                <Routes location={location} key={location.pathname}>
+                <Suspense fallback={routeFallback}>
+                  <Routes location={location} key={location.pathname}>
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   
                   {/* Rutas Protegidas de Facturación */}
@@ -206,7 +226,8 @@ function RouterWrapper() {
                     } />
                   )}
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                </Routes>
+                  </Routes>
+                </Suspense>
               </AnimatePresence>
             </main>
 

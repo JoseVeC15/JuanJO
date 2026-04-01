@@ -1,10 +1,4 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
-import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
-
-// Configuración del worker de PDF.js para procesamiento en segundo plano
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search, Sparkles, UserPlus } from 'lucide-react';
@@ -30,6 +24,8 @@ const formatDateTime = (dateStr: string) => {
     minute: '2-digit'
   });
 };
+
+let pdfWorkerConfigured = false;
 
 const estadoConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   pendiente_clasificar: { label: 'Pendiente', color: '#F59E0B', icon: <Clock size={14} /> },
@@ -185,6 +181,12 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   // Esto es necesario porque el flujo de n8n con OpenAI Vision solo acepta imágenes
   const convertPdfToImage = async (file: File): Promise<string> => {
     try {
+      const pdfjsLib = await import('pdfjs-dist');
+      if (!pdfWorkerConfigured) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        pdfWorkerConfigured = true;
+      }
+
       const arrayBuffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const page = await pdf.getPage(1); // Solo procesamos la primera página de la factura
@@ -276,6 +278,11 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   };
 
   const exportToExcel = async () => {
+    const [{ default: ExcelJS }, { saveAs }] = await Promise.all([
+      import('exceljs'),
+      import('file-saver')
+    ]);
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(activeTab.toUpperCase());
 
