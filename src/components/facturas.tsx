@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 // Configuración del worker de PDF.js para procesamiento en segundo plano
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -270,26 +271,55 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     }
   };
 
-  const exportToExcel = () => {
-    const headers = activeTab === 'gastos'
+  const exportToExcel = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet(activeTab.toUpperCase());
+
+    const isGasto = activeTab === 'gastos';
+    const headers = isGasto
       ? ['Fecha', 'Proveedor', 'RUC', 'Nro Factura', 'Timbrado', 'Monto Total', 'IVA 10%', 'IVA 5%', 'Estado']
       : ['Fecha', 'Cliente', 'RUC', 'Nro Factura', 'Timbrado', 'Condicion', 'Monto Total', 'IVA 10%', 'IVA 5%', 'Exentas', 'Estado'];
 
-    const rows = filteredData.map(f => {
-      if (activeTab === 'gastos') {
-        const g = f as any;
-        return [g.fecha_factura, g.proveedor, g.ruc_proveedor, g.numero_factura, g.timbrado, g.monto, g.iva_10, g.iva_5, g.estado];
-      } else {
-        const i = f as any;
-        return [i.fecha, i.cliente, i.ruc_cliente, i.numero_factura, i.timbrado, i.condicion_venta, i.monto, i.iva_10, i.iva_5, i.exentas, i.estado];
+    // Setup columns with width and alignment
+    worksheet.columns = headers.map(h => ({
+      header: h,
+      key: h,
+      width: h.length + 10,
+      style: { font: { name: 'Arial', size: 10 } }
+    }));
+
+    // Bold headers
+    worksheet.getRow(1).font = { bold: true, size: 11 };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF5F5F5' } };
+
+    // Add rows
+    filteredData.forEach(item => {
+      const f = item as any;
+      const data = isGasto
+        ? [f.fecha_factura, f.proveedor, f.ruc_proveedor, f.numero_factura, f.timbrado, Number(f.monto), Number(f.iva_10 || 0), Number(f.iva_5 || 0), f.estado]
+        : [f.fecha || f.fecha_emision, f.cliente, f.ruc_cliente, f.numero_factura, f.timbrado, f.condicion_venta, Number(f.monto), Number(f.iva_10 || 0), Number(f.iva_5 || 0), Number(f.exentas || 0), f.estado];
+      
+      const row = worksheet.addRow(data);
+      
+      // Amount cell indices (1-indexed in ExcelJS row.getCell)
+      const amountIdx = isGasto ? 6 : 7;
+      const iva10Idx = isGasto ? 7 : 8;
+      const iva5Idx = isGasto ? 8 : 9;
+      
+      // Formatting numbers as Guaraníes (₲)
+      const currencyFormat = '"₲" #,##0';
+      row.getCell(amountIdx).numFmt = currencyFormat;
+      row.getCell(iva10Idx).numFmt = currencyFormat;
+      row.getCell(iva5Idx).numFmt = currencyFormat;
+
+      if (!isGasto) {
+        row.getCell(10).numFmt = currencyFormat; // Exentas
       }
     });
 
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, activeTab.toUpperCase());
-    
-    XLSX.writeFile(workbook, `${activeTab}_set_finance_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, `${activeTab}_set_finance_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   if (dataLoading) {
