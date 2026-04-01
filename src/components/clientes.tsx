@@ -19,7 +19,11 @@ interface Cliente {
     created_at: string;
 }
 
-export default function Clientes() {
+interface ClientesProps {
+    hideHeader?: boolean;
+}
+
+export default function Clientes({ hideHeader = false }: ClientesProps) {
     const { user } = useAuth();
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [loading, setLoading] = useState(true);
@@ -118,26 +122,28 @@ export default function Clientes() {
 
     return (
         <div className="space-y-8 pb-20">
-            <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-                <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-                    <div className="flex items-center gap-2 text-indigo-500 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
-                        <Users size={14} /> Gestión de Cartera
+            {!hideHeader && (
+                <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+                    <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+                        <div className="flex items-center gap-2 text-indigo-500 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
+                            <Users size={14} /> Gestión de Cartera
+                        </div>
+                        <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
+                            Directorio de Clientes
+                        </h1>
+                        <p className="text-gray-500 font-medium italic">Base de datos privada para facturación recurrente.</p>
+                    </motion.div>
+                    
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setShowAddModal(true)}
+                            className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-slate-800 transition-all flex items-center gap-2"
+                        >
+                            <UserPlus size={18} /> Nuevo Cliente
+                        </button>
                     </div>
-                    <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
-                        Directorio de Clientes
-                    </h1>
-                    <p className="text-gray-500 font-medium italic">Base de datos privada para facturación recurrente.</p>
-                </motion.div>
-                
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={() => setShowAddModal(true)}
-                        className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-slate-800 transition-all flex items-center gap-2"
-                    >
-                        <UserPlus size={18} /> Nuevo Cliente
-                    </button>
-                </div>
-            </header>
+                </header>
+            )}
 
             {/* RUC Search Engine */}
             <RucBuscador onSelect={handleAddFromRuc} />

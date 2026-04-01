@@ -7,12 +7,13 @@ import { saveAs } from 'file-saver';
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search, Sparkles } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search, Sparkles, UserPlus } from 'lucide-react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
 import SifenInvoiceEmitter from './SifenInvoiceEmitter';
+import Clientes from './clientes';
 import {
   formatGs, formatGsShort, calculateSuggestedVAT10, calculateSuggestedVAT5
 } from '../data/sampleData';
@@ -39,7 +40,7 @@ const estadoConfig: Record<string, { label: string; color: string; icon: React.R
 };
 
 interface FacturasProps {
-  initialTab?: 'gastos' | 'ingresos' | 'sifen';
+  initialTab?: 'gastos' | 'ingresos' | 'sifen' | 'clientes';
 }
 
 export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
@@ -47,7 +48,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const { facturasGastos, ingresos, loading: dataLoading, perfilFiscal, configSifen, documentosElectronicos } = useSupabaseData();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen' | 'clientes'>(initialTab);
   const [isEmitterOpen, setIsEmitterOpen] = useState(false);
 
   useEffect(() => {
@@ -338,11 +339,27 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
             {activeTab === 'gastos' ? 'Gestión de Compras' :
               activeTab === 'ingresos' ? 'Facturación Emitida' :
+              activeTab === 'clientes' ? 'Directorio de Clientes' :
                 'Documentos Electrónicos SIFEN'}
           </h1>
           <p className="text-gray-500 font-medium italic">Control avanzado de documentos con respaldo IA.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {/* Internal Tab Selector */}
+          <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
+             {['gastos', 'ingresos', 'sifen', 'clientes'].map((tab: any) => (
+               <button
+                 key={tab}
+                 onClick={() => setActiveTab(tab)}
+                 className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+               >
+                 {tab === 'sifen' ? 'E-DOCS' : tab}
+               </button>
+             ))}
+          </div>
+          
+          <div className="w-px h-8 bg-gray-200 mx-2 hidden lg:block" />
+          
           <div className="bg-white border border-gray-100 p-1.5 rounded-2xl flex shadow-sm">
             <button onClick={() => setViewMode('cards')} className={`p-2 rounded-xl transition-all ${viewMode === 'cards' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><LayoutGrid size={20} /></button>
             <button onClick={() => setViewMode('table')} className={`p-2 rounded-xl transition-all ${viewMode === 'table' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><TableIcon size={20} /></button>
@@ -361,7 +378,21 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             </button>
           )}
 
-          {activeTab !== 'sifen' && (
+          {activeTab === 'clientes' && (
+            <button
+              onClick={() => {
+                // We'll need a way to trigger the modal in the child or handle it here
+                // For now, we'll let Clientes handle its own "Nuevo Cliente" button if we can't easily bridge
+                // but the user said "QUE SE MANTENGA" (Keep it)
+              }}
+              className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30"
+            >
+              <UserPlus size={18} />
+              Nuevo Cliente
+            </button>
+          )}
+
+          {activeTab !== 'sifen' && activeTab !== 'clientes' && (
             <button
               onClick={() => { setShowOCR(!showOCR); setUploadStatus('idle'); }}
               className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
@@ -373,55 +404,59 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <SummaryCard label={activeTab === 'gastos' ? "Total Compras (IVA Incl)" : "Total Facturado (IVA Incl)"} value={formatGs(stats.total)} desc="Monto bruto registrado" color={activeTab === 'gastos' ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"} />
-        <SummaryCard label={activeTab === 'gastos' ? "IVA Crédito Fiscal (10%)" : "IVA Débito Fiscal (10%)"} value={formatGs(stats.iva10)} desc="Reserva impositiva 10%" color="bg-blue-50 text-blue-700 border-blue-100" />
-        <SummaryCard label="IVA 5%" value={formatGs(stats.iva5)} desc="Rubros tasa reducida" color="bg-indigo-50 text-indigo-700 border-indigo-100" />
-      </div>
+      {activeTab !== 'clientes' && (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <SummaryCard label={activeTab === 'gastos' ? "Total Compras (IVA Incl)" : "Total Facturado (IVA Incl)"} value={formatGs(stats.total)} desc="Monto bruto registrado" color={activeTab === 'gastos' ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-emerald-50 text-emerald-700 border-emerald-100"} />
+            <SummaryCard label={activeTab === 'gastos' ? "IVA Crédito Fiscal (10%)" : "IVA Débito Fiscal (10%)"} value={formatGs(stats.iva10)} desc="Reserva impositiva 10%" color="bg-blue-50 text-blue-700 border-blue-100" />
+            <SummaryCard label="IVA 5%" value={formatGs(stats.iva5)} desc="Rubros tasa reducida" color="bg-indigo-50 text-indigo-700 border-indigo-100" />
+          </div>
 
-      {/* OCR Dropbox UI */}
-      <AnimatePresence>
-        {showOCR && (
-          <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-12 text-center shadow-xl relative overflow-hidden group hover:border-emerald-400 transition-all">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-0 opacity-50" />
-            <div className="relative z-10">
-              <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:rotate-6 transition-transform">
-                <Scan size={40} />
-              </div>
-              <h3 className="text-2xl font-black text-gray-900 mb-2">Análisis de Documento {activeTab === 'gastos' ? 'Compra' : 'Venta'}</h3>
-              <p className="text-gray-500 mb-8 max-w-md mx-auto font-medium">Sube tu factura (JPEG/PNG/PDF) para que la IA extraiga el **Timbrado**, **RUC**, **Monto** e **IVA** automáticamente según normas de la SET.</p>
+          {/* OCR Dropbox UI */}
+          <AnimatePresence>
+            {showOCR && (
+              <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="bg-white border-2 border-dashed border-slate-200 rounded-[2.5rem] p-12 text-center shadow-xl relative overflow-hidden group hover:border-emerald-400 transition-all">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-0 opacity-50" />
+                <div className="relative z-10">
+                  <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 group-hover:rotate-6 transition-transform">
+                    <Scan size={40} />
+                  </div>
+                  <h3 className="text-2xl font-black text-gray-900 mb-2">Análisis de Documento {activeTab === 'gastos' ? 'Compra' : 'Venta'}</h3>
+                  <p className="text-gray-500 mb-8 max-w-md mx-auto font-medium">Sube tu factura (JPEG/PNG/PDF) para que la IA extraiga el **Timbrado**, **RUC**, **Monto** e **IVA** automáticamente según normas de la SET.</p>
 
-              <div className="flex justify-center gap-4">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {uploading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                  Seleccionar Archivo
-                </button>
-                <button onClick={() => setShowOCR(false)} className="bg-gray-100 text-gray-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">Cerrar</button>
-              </div>
+                  <div className="flex justify-center gap-4">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {uploading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+                      Seleccionar Archivo
+                    </button>
+                    <button onClick={() => setShowOCR(false)} className="bg-gray-100 text-gray-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 transition-all">Cerrar</button>
+                  </div>
 
-              {uploadStatus === 'success' && (
-                <div className="mt-6 flex flex-col items-center gap-4">
-                  <p className="text-emerald-600 font-bold flex items-center justify-center gap-2">
-                    <CheckCircle size={18} /> ¡Documento enviado a n8n con éxito!
-                  </p>
-                  <button
-                    onClick={() => setUploadStatus('idle')}
-                    className="bg-emerald-100 text-emerald-700 px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-200 transition-all"
-                  >
-                    Subir Otro de Seguido
-                  </button>
+                  {uploadStatus === 'success' && (
+                    <div className="mt-6 flex flex-col items-center gap-4">
+                      <p className="text-emerald-600 font-bold flex items-center justify-center gap-2">
+                        <CheckCircle size={18} /> ¡Documento enviado a n8n con éxito!
+                      </p>
+                      <button
+                        onClick={() => setUploadStatus('idle')}
+                        className="bg-emerald-100 text-emerald-700 px-6 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-200 transition-all"
+                      >
+                        Subir Otro de Seguido
+                      </button>
+                    </div>
+                  )}
+                  {uploadStatus === 'error' && <p className="mt-6 text-rose-500 font-bold flex items-center justify-center gap-2"><AlertCircle size={18} /> Error en la conexión con el servidor IA.</p>}
                 </div>
-              )}
-              {uploadStatus === 'error' && <p className="mt-6 text-rose-500 font-bold flex items-center justify-center gap-2"><AlertCircle size={18} /> Error en la conexión con el servidor IA.</p>}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
 
       {/* Filters & Actions */}
       <div className="bg-white rounded-[2rem] border border-gray-100 p-5 shadow-sm flex flex-col md:flex-row gap-5">
@@ -460,7 +495,11 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
 
       {/* Main List Area */}
       <AnimatePresence mode="popLayout">
-        {activeTab === 'sifen' ? (
+        {activeTab === 'clientes' ? (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <Clientes hideHeader />
+          </motion.div>
+        ) : activeTab === 'sifen' ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[1000px]">
               <thead>
