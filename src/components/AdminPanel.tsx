@@ -71,18 +71,33 @@ export default function AdminPanel() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validaciones de Cliente por Seguridad
+    if (!formData.nombre_completo || !formData.email || !formData.password) {
+      setStatus({ type: 'error', msg: 'Todos los campos son obligatorios.' });
+      return;
+    }
+
+    const emailRegex = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    if (!emailRegex.test(formData.email)) {
+      setStatus({ type: 'error', msg: 'El correo electrónico no es válido.' });
+      return;
+    }
+
+    if (formData.password.length < 8) {
+      setStatus({ type: 'error', msg: 'La contraseña temporal debe tener al menos 8 caracteres.' });
+      return;
+    }
+
     setIsSubmitting(true);
     setStatus(null);
 
     try {
-      // LLAMADA A EDGE FUNCTION (TIP)
-      // Nota: Asumimos que la function se llama 'create-client-user'
       const { error } = await supabase.functions.invoke('create-client-user', {
         body: formData
       });
 
       if (error) {
-        // Error de red o de la propia función
         let errorMsg = 'Error al registrar cliente';
         try {
           const body = await error.context?.json();
@@ -90,13 +105,19 @@ export default function AdminPanel() {
         } catch {
           errorMsg = error.message || 'Error desconocido en la función';
         }
-        throw new Error(`${errorMsg} (Status: ${error.status || '???'})`);
+        
+        // Mapeo amistoso de errores comunes de Auth
+        if (errorMsg.includes('User already registered')) errorMsg = 'Este correo electrónico ya está registrado en el sistema.';
+
+        throw new Error(`${errorMsg}`);
       }
 
-      setStatus({ type: 'success', msg: 'Cliente registrado con éxito.' });
+      setStatus({ type: 'success', msg: '¡Cliente registrado con éxito!' });
       setFormData({ email: '', password: '', nombre_completo: '' });
       queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
       setTimeout(() => setShowCreateModal(false), 2000);
+    } catch (err: any) {
+      setStatus({ type: 'error', msg: err.message });
     } finally {
       setIsSubmitting(false);
     }

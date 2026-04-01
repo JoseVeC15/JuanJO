@@ -18,8 +18,27 @@ export default function LoginScreen() {
     return 'Ha ocurrido un error inesperado. Por favor, inténtalo más tarde.';
   };
 
+  const validateEmail = (email: string) => {
+    return String(email)
+      .toLowerCase()
+      .match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+      );
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      setError('Por favor, completa todos los campos.');
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError('El formato del correo electrónico no es válido.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
