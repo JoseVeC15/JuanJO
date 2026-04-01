@@ -1,4 +1,9 @@
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configuración del worker de PDF.js para procesamiento en segundo plano
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search } from 'lucide-react';
@@ -170,6 +175,36 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     return { total, iva10, iva5 };
   }, [filteredData]);
 
+  // Función para convertir PDF a Imagen (Primera página)
+  // Esto es necesario porque el flujo de n8n con OpenAI Vision solo acepta imágenes
+  const convertPdfToImage = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1); // Solo procesamos la primera página de la factura
+      const viewport = page.getViewport({ scale: 2.0 }); // Escala 2.0 para alta resolución (300dpi aprox)
+
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('No se pudo crear el contexto del canvas');
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Asegurar fondo blanco para evitar que los PDFs transparentes se vean negros/vacíos
+      context.fillStyle = 'white';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      await page.render({ canvasContext: context, viewport, canvas }).promise;
+      
+      // Retornamos el base64 sin el prefijo data:image/jpeg;base64,
+      return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+    } catch (error) {
+      console.error('Error convirtiendo PDF:', error);
+      throw error;
+    }
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
@@ -178,44 +213,56 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     setUploadStatus('idle');
     
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64String = (reader.result as string).split(',')[1];
-          const webhookUrl = activeTab === 'ingresos' 
-            ? (import.meta as any).env?.VITE_N8N_WEBHOOK_URL_INGRESOS 
-            : ((import.meta as any).env?.VITE_N8N_WEBHOOK_URL_GASTOS || (import.meta as any).env?.VITE_N8N_WEBHOOK_URL);
-          
-          const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              user_id: user.id, 
-              image_base64: base64String, 
-              type: activeTab === 'gastos' ? 'expense' : 'income',
-              category_intent: activeTab === 'gastos' ? 'gastos' : 'ingresos',
-              force_category: true
-            })
-          });
-          
-          if (response.ok) {
-            setUploadStatus('success');
-          } else {
-            setUploadStatus('error');
-          }
-        } catch (innerError) {
-          console.error('Upload error:', innerError);
-          setUploadStatus('error');
-        } finally {
-          setUploading(false);
-        }
-      };
-      reader.readAsDataURL(file);
+      let base64String = '';
+      let mimeType = file.type;
+      let finalFileName = file.name;
+
+      if (file.type === 'application/pdf') {
+        // Conversión mágica: PDF -> Imagen
+        base64String = await convertPdfToImage(file);
+        mimeType = 'image/jpeg'; // Engañamos a n8n para que procese como imagen
+        finalFileName = file.name.replace(/\.pdf$/i, '.jpg');
+      } else {
+        // Manejo normal de imágenes
+        const reader = new FileReader();
+        base64String = await new Promise((resolve, reject) => {
+          reader.onloadend = () => {
+            const res = reader.result as string;
+            resolve(res.split(',')[1]);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      const webhookUrl = activeTab === 'ingresos' 
+        ? (import.meta as any).env?.VITE_N8N_WEBHOOK_URL_INGRESOS 
+        : ((import.meta as any).env?.VITE_N8N_WEBHOOK_URL_GASTOS || (import.meta as any).env?.VITE_N8N_WEBHOOK_URL);
+      
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: user.id, 
+          image_base64: base64String, 
+          mime_type: mimeType,
+          file_name: finalFileName,
+          type: activeTab === 'gastos' ? 'expense' : 'income',
+          category_intent: activeTab === 'gastos' ? 'gastos' : 'ingresos',
+          force_category: true
+        })
+      });
+      
+      if (response.ok) {
+        setUploadStatus('success');
+      } else {
+        setUploadStatus('error');
+      }
     } catch (error) {
-      console.error('Reader error:', error);
+      console.error('Error procesando archivo:', error);
       setUploadStatus('error');
-      setUploading(false);
     } finally {
+      setUploading(false);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }

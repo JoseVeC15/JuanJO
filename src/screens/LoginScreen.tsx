@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { LogIn, Mail, Lock, Loader2, BookOpen, ChevronRight } from 'lucide-react';
+import { LogIn, Mail, Lock, Loader2, BookOpen, ChevronRight, Wallet } from 'lucide-react';
 
 export default function LoginScreen() {
   const navigate = useNavigate();
@@ -27,8 +27,8 @@ export default function LoginScreen() {
           <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl opacity-50"></div>
           
           <div className="text-center mb-8 relative z-10">
-            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl mx-auto flex items-center justify-center text-white text-3xl shadow-lg shadow-emerald-500/20 mb-4 ring-4 ring-emerald-500/10">
-              🏙️
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg shadow-emerald-500/20 mb-4 ring-4 ring-emerald-500/10">
+              <Wallet size={32} />
             </div>
             <h1 className="text-3xl font-bold text-white tracking-tight uppercase">FINANCE <span className="text-emerald-400">PRO</span></h1>
             <p className="text-slate-400 mt-2 font-medium">Acceso Seguro al Portal Empresarial</p>
