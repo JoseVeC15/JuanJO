@@ -71,14 +71,16 @@ export default function LoginScreen() {
 
           <form onSubmit={handleLogin} className="space-y-4 relative z-10">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Email</label>
+              <label htmlFor="email" className="text-sm font-medium text-slate-300 ml-1">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input
+                  id="email"
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all placeholder:text-slate-600"
                   placeholder="tu@email.com"
                 />
@@ -86,14 +88,16 @@ export default function LoginScreen() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300 ml-1">Contraseña</label>
+              <label htmlFor="password" className="text-sm font-medium text-slate-300 ml-1">Contraseña</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                 <input
+                  id="password"
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-white focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all placeholder:text-slate-600"
                   placeholder="••••••••"
                 />
