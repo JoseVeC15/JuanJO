@@ -2,16 +2,14 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, X, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { generarCDC } from '../lib/sifen/cdc';
 
 interface PropiedadesEmisorSifen {
     onClose: () => void;
     onSuccess: () => void;
-    fiscalProfile: any;
     sifenConfig: any;
 }
 
-export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alExito, fiscalProfile: perfilFiscal, sifenConfig: configSifen }: PropiedadesEmisorSifen) {
+export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alExito, sifenConfig: configSifen }: PropiedadesEmisorSifen) {
     const [cargando, setCargando] = useState(false);
     const [paso, setPaso] = useState<'formulario' | 'estado'>('formulario');
     const [estadoEmision, setEstadoEmision] = useState<'pendiente' | 'exito' | 'error'>('pendiente');
@@ -44,32 +42,28 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
         setEstadoEmision('pendiente');
 
         try {
-            // 1. Generar CDC Localmente para auditoría
-            const cdc = generarCDC({
-                tipoDocumento: '01', // Factura Electrónica
-                ruc: perfilFiscal.ruc,
-                dvRuc: perfilFiscal.dv.toString(),
-                establecimiento: configSifen.establecimiento,
-                puntoExpedicion: configSifen.punto_expedicion,
-                numero: '0000001', // TODO: Lógica de numeración secuencial
-                tipoContribuyente: '2', // Jurídica por defecto
-                fecha: new Date().toISOString().split('T')[0].replace(/-/g, ''),
-                tipoEmision: '1',
-                codigoSeguridad: Math.floor(Math.random() * 1000000000).toString()
-            });
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("Usuario no autenticado");
 
-            // 2. Registrar en Base de Datos Local (Auditoría interna de Finance Pro)
+            // 1. Generar Código de Seguridad y Numeración
+            const codigoSeguridad = Math.floor(100000000 + Math.random() * 900000000).toString();
+            const nroFactura = Math.floor(Math.random() * 1000000); // En producción usar secuencia DB
+
+            // 2. Registrar en Base de Datos Local (Auditoría interna)
             const { data: factura, error: errorFactura } = await supabase
                 .from('documentos_electronicos')
                 .insert({
-                    user_id: (await supabase.auth.getUser()).data.user?.id,
+                    user_id: user.id,
                     tipo_documento: 'factura',
-                    numero_factura: `${configSifen.establecimiento}-${configSifen.punto_expedicion}-0000001`,
-                    cdc,
-                    estado_sifen: 'pendiente',
+                    nro_documento: nroFactura,
+                    punto_establecimiento: configSifen.establecimiento || '001',
+                    punto_expedicion: configSifen.punto_expedicion || '001',
+                    fecha_emision: new Date().toISOString().split('T')[0],
                     monto_total: calcularTotal(),
                     receptor_ruc: cliente.ruc,
-                    receptor_razon_social: cliente.razon_social
+                    receptor_razon_social: cliente.razon_social,
+                    codigo_seguridad: codigoSeguridad,
+                    estado_sifen: 'pendiente'
                 })
                 .select()
                 .single();
@@ -77,27 +71,32 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
             if (errorFactura) throw errorFactura;
 
             // 3. Registrar Ítems de la Factura
-            await supabase.from('documentos_items').insert(
+            const { error: errorItems } = await supabase.from('documentos_items').insert(
                 productos.map(p => ({
                     documento_id: factura.id,
                     descripcion: p.descripcion,
                     cantidad: p.cantidad,
                     precio_unitario: p.precio_unitario,
-                    iva_tipo: p.iva_tipo,
+                    iva_tipo: p.iva_tipo.toString(),
                     monto_total_item: p.cantidad * p.precio_unitario
                 }))
             );
 
-            // 4. Disparar Motor SIFEN (Edge Function en Supabase)
+            if (errorItems) throw errorItems;
+
+            // 4. Disparar Motor SIFEN v2.0 (Edge Function)
             const { data: respuesta, error: errorMotor } = await supabase.functions.invoke('sifen-engine', {
-                body: { document_id: factura.id }
+                body: { documento_id: factura.id, user_id: user.id }
             });
 
-            if (errorMotor || !respuesta.success) throw new Error("Fallo en la firma o transmisión oficial");
+            if (errorMotor || !respuesta.success) {
+                console.error("Error Motor SIFEN:", errorMotor || respuesta);
+                throw new Error("Fallo en la firma o transmisión oficial");
+            }
 
             setEstadoEmision('exito');
             alExito();
-        } catch (e) {
+        } catch (e: any) {
             console.error("Error en proceso SIFEN:", e);
             setEstadoEmision('error');
         } finally {

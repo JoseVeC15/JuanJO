@@ -19,7 +19,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => void }) {
-  const { proyectos, facturasGastos, ingresos, perfilFiscal, configSifen, loading } = useSupabaseData();
+  const { proyectos, facturasGastos, ingresos, configSifen, loading } = useSupabaseData();
   const { user } = useAuth();
   const [showSifenEmitter, setShowSifenEmitter] = useState(false);
   const [showUpgradeAlert, setShowUpgradeAlert] = useState(false);
@@ -260,7 +260,6 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
         <SifenInvoiceEmitter 
           onClose={() => setShowSifenEmitter(false)} 
           onSuccess={() => setShowSifenEmitter(false)}
-          fiscalProfile={perfilFiscal}
           sifenConfig={configSifen}
         />
       )}
