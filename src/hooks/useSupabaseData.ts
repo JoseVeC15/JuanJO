@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { calculateSuggestedVAT } from '../data/sampleData';
+import { calculateSuggestedVAT10 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
 import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile } from '../data/sampleData';
 
@@ -51,7 +51,7 @@ export function useSupabaseData() {
 
   const facturasGastos = useMemo(() => facturasGastosRaw.map(g => {
     if (g.monto > 0 && (g.iva_10 || 0) === 0 && (g.iva_5 || 0) === 0 && (g.exentas || 0) === 0) {
-      return { ...g, ...calculateSuggestedVAT(g.monto), is_suggested_vat: true };
+      return { ...g, ...calculateSuggestedVAT10(g.monto), is_suggested_vat: true };
     }
     return g;
   }), [facturasGastosRaw]);
@@ -84,7 +84,7 @@ export function useSupabaseData() {
 
   const ingresos = useMemo(() => ingresosRaw.map(i => {
     if (i.monto > 0 && (i.iva_10 || 0) === 0 && (i.iva_5 || 0) === 0 && (i.exentas || 0) === 0) {
-      return { ...i, ...calculateSuggestedVAT(i.monto), is_suggested_vat: true };
+      return { ...i, ...calculateSuggestedVAT10(i.monto), is_suggested_vat: true };
     }
     return i;
   }), [ingresosRaw]);
