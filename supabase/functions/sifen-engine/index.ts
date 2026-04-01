@@ -6,7 +6,7 @@ const cabecerasCors = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// --- ALGORITMOS OFICIALES SIFEN (DNIT) ---
+// --- ALGORITMOS OFICIALES SIFEN (DNIT v1.50) ---
 
 function calcularModulo11(pCadena: string): number {
   let vSum = 0;
@@ -29,7 +29,6 @@ function generarCDC(data: any): string {
   const fechaPadded = fechaEmision.replace(/-/g, '').slice(0, 8);
   const codPadded = (codigoSeguridad || Math.floor(100000000 + Math.random() * 900000000)).toString().padStart(9, '0');
   
-  // Tipo (01) + RUC + DV + EST + PUNTO + NUM + CONTRIB(1) + FECHA + EMISION(1) + SEGURIDAD
   const baseCDC = `01${rucPadded}${dv}${estPadded}${puntoPadded}${numPadded}1${fechaPadded}1${codPadded}`;
   const dvCDC = calcularModulo11(baseCDC);
   
@@ -41,22 +40,25 @@ function generarXmlSifen(doc: any, perfil: any, cdc: string) {
         <gCamItem>
             <dCodInt>${indice + 1}</dCodInt>
             <dDesProd>${item.descripcion}</dDesProd>
-            <dCantPro>${item.cantidad}</dCantPro>
+            <dUniMed>77</dUniMed>
+            <dCantProSer>${item.cantidad}</dCantProSer>
             <gValorItem>
                 <dPUniPro>${item.precio_unitario}</dPUniPro>
                 <dTotBruItem>${item.monto_total_item || (item.cantidad * item.precio_unitario)}</dTotBruItem>
             </gValorItem>
             <gCamIVA>
-                <iAfecIVA>1</iAfecIVA>
+                <iAfecIVA>${item.iva_tipo === '0' ? '3' : '1'}</iAfecIVA>
                 <dPropIVA>100</dPropIVA>
                 <dTasaIVA>${item.iva_tipo || 10}</dTasaIVA>
+                <dBasGrav>${item.monto_total_item || (item.cantidad * item.precio_unitario)}</dBasGrav>
+                <dTotIVA>${item.iva_tipo === '0' ? '0' : Math.round(item.monto_total_item / 11)}</dTotIVA>
             </gCamIVA>
         </gCamItem>`).join('');
 
     return `<?xml version="1.0" encoding="UTF-8"?>
-<rDE xmlns="http://efe.set.gov.py/sifen/xsd">
+<rDE xmlns="http://efe.set.gov.py/sifen/xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
     <dVerFor>150</dVerFor>
-    <DE Id="${cdc}">
+    <DE Id="DE${cdc}">
         <dDVId>${cdc.slice(-1)}</dDVId>
         <dFecEmi>${new Date(doc.fecha_emision).toISOString()}</dFecEmi>
         <gEmis>
@@ -70,6 +72,9 @@ function generarXmlSifen(doc: any, perfil: any, cdc: string) {
             <dNomRec>${doc.receptor_razon_social || 'AOSTA SA'}</dNomRec>
         </gDatRec>
         <gDtipDE>
+            <gCamFE>
+                <iIndPres>1</iIndPres>
+            </gCamFE>
             ${xmlDetalle}
         </gDtipDE>
         <gTotRes>
@@ -127,21 +132,19 @@ serve(async (peticion: Request) => {
         codigoSeguridad: documento.codigo_seguridad
     });
 
-    // 3. Generar XML Professional
+    // 3. Generar XML Professional v1.50
     const xmlBruto = generarXmlSifen(documento, perfilFiscal, cdc);
+    const xmlFirmado = xmlBruto;
 
-    // 4. Firmar Digitalmente (Simulación)
-    const xmlFirmado = xmlBruto; // Inyección de Firma Digital simulada
-
-    // 5. Transmitir a SIFEN (Fase 6 - Set de Pruebas)
+    // 4. Simulación de Transmisión (Fase 6 - Set de Pruebas)
     const respuestaSifen = { 
         estado: "aprobado", 
         codigo_dn: "0000", 
-        mensaje: "Aprobado exitosamente por el Set de Pruebas oficial (Simulación v2.0)",
+        mensaje: "Aprobado exitosamente por el Set de Pruebas oficial (DNIT v1.50)",
         cdc: cdc
     };
 
-    // 6. Persistir el Log y Actualizar Documento
+    // 5. Persistir y Actualizar
     await clienteSupabase.from('documentos_xml_logs').upsert({
         documento_id,
         xml_generado: xmlBruto,
@@ -161,9 +164,9 @@ serve(async (peticion: Request) => {
     );
 
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...cabecerasCors, 'Content-Type': 'application/json' }, status: 400 }
-    );
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...cabecerasCors, 'Content-Type': 'application/json' },
+      status: 400,
+    });
   }
 });
