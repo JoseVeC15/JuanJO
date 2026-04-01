@@ -132,22 +132,22 @@ export function useSupabaseData() {
     if (!sessionUser) return;
 
     const canales = [
-      { nombre: 'public:profiles', clave: 'profile' },
-      { nombre: 'public:proyectos', clave: 'proyectos' },
-      { nombre: 'public:facturas_gastos', clave: 'facturas_gastos' },
-      { nombre: 'public:ingresos', clave: 'ingresos' },
-      { nombre: 'public:inventario_equipo', clave: 'inventario_equipo' },
-      { nombre: 'public:perfiles_fiscales', clave: 'perfil_fiscal' },
-      { nombre: 'public:configuracion_sifen', clave: 'configuracion_sifen' },
-      { nombre: 'public:documentos_electronicos', clave: 'documentos_electronicos' }
-    ].map(({ nombre, clave }) => 
+      { nombre: 'public:profiles', clave: 'profile', tabla: 'profiles' },
+      { nombre: 'public:proyectos', clave: 'proyectos', tabla: 'proyectos' },
+      { nombre: 'public:facturas_gastos', clave: 'facturas_gastos', tabla: 'facturas_gastos' },
+      { nombre: 'public:ingresos', clave: 'ingresos', tabla: 'ingresos' },
+      { nombre: 'public:inventario_equipo', clave: 'inventario_equipo', tabla: 'inventario_equipo' },
+      { nombre: 'public:perfiles_fiscales', clave: 'perfil_fiscal', tabla: 'perfiles_fiscales' },
+      { nombre: 'public:configuracion_sifen', clave: 'configuracion_sifen', tabla: 'configuracion_sifen' },
+      { nombre: 'public:documentos_electronicos', clave: 'documentos_electronicos', tabla: 'documentos_electronicos' }
+    ].map(({ nombre, clave, tabla }) => 
       supabase.channel(nombre)
         .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: clave === 'profile' ? 'profiles' : (clave === 'perfil_fiscal' ? 'perfiles_fiscales' : (clave === 'configuracion_sifen' ? 'configuracion_sifen' : (clave === 'documentos_electronicos' ? 'documentos_electronicos' : clave))) 
+            table: tabla
         }, () => {
-          queryClient.invalidateQueries({ queryKey: clave === 'profile' ? ['profile', sessionUser?.id] : [clave] });
+          queryClient.invalidateQueries({ queryKey: [clave, sessionUser.id] });
         }).subscribe()
     );
 

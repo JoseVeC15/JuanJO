@@ -75,11 +75,11 @@ function generarXmlSifen(doc: any, perfil: any, cdc: string) {
                 <dTotBruItem>${item.monto_total_item || (item.cantidad * item.precio_unitario)}</dTotBruItem>
             </gValorItem>
             <gCamIVA>
-                <iAfecIVA>${item.iva_tipo === '0' ? '3' : '1'}</iAfecIVA>
+                <iAfecIVA>${Number(item.iva_tipo) === 0 ? '3' : '1'}</iAfecIVA>
                 <dPropIVA>100</dPropIVA>
-                <dTasaIVA>${item.iva_tipo || 10}</dTasaIVA>
+                <dTasaIVA>${Number(item.iva_tipo ?? 10)}</dTasaIVA>
                 <dBasGrav>${item.monto_total_item || (item.cantidad * item.precio_unitario)}</dBasGrav>
-                <dTotIVA>${item.iva_tipo === '0' ? '0' : Math.round(item.monto_total_item / 11)}</dTotIVA>
+                <dTotIVA>${Number(item.iva_tipo) === 0 ? '0' : Math.round(item.monto_total_item / 11)}</dTotIVA>
             </gCamIVA>
         </gCamItem>`).join('');
 
@@ -131,9 +131,26 @@ serve(async (peticion: Request) => {
 
     if (!documento) throw new Error("Documento no hallado");
 
-    const { data: perfil } = await clienteSupabase.from('perfiles_fiscales').select('*').single();
-    const { data: config } = await clienteSupabase.from('configuracion_sifen').select('*').single();
-    const { data: cert } = await clienteSupabase.from('certificados_digitales').select('*').single();
+        const { data: perfil } = await clienteSupabase
+            .from('perfiles_fiscales')
+            .select('*')
+            .eq('user_id', documento.user_id)
+            .single();
+        const { data: config } = await clienteSupabase
+            .from('configuracion_sifen')
+            .select('*')
+            .eq('user_id', documento.user_id)
+            .single();
+        const { data: cert } = await clienteSupabase
+            .from('certificados_digitales')
+            .select('*')
+            .eq('user_id', documento.user_id)
+            .single();
+
+        if (!perfil || !config) throw new Error('Falta perfil fiscal o configuracion SIFEN para este usuario');
+
+        const numeroSecuencial = Number((documento.numero_factura || '1').toString().split('-').pop() || '1');
+        const codigoSeguridad = Number(config.id_csc || 123456789);
 
     // 2. Generar CDC v1.50
     const cdc = generarCDC({
@@ -141,17 +158,17 @@ serve(async (peticion: Request) => {
         dv: perfil.dv,
         establecimiento: config.establecimiento || '001',
         puntoExpedicion: config.punto_expedicion || '001',
-        numero: documento.nro_documento || 1,
+                numero: numeroSecuencial,
         fechaEmision: documento.fecha_emision,
-        codigoSeguridad: documento.codigo_seguridad || 123456789
+                codigoSeguridad: codigoSeguridad
     });
 
     // 3. XML + Firma (Simulada si falta archivo)
     const xmlBruto = generarXmlSifen(documento, perfil, cdc);
-    const xmlFirmado = await firmarXmlSifen(xmlBruto, cert?.certificate_base64 || '', cert?.password_p12 || '');
+        const xmlFirmado = await firmarXmlSifen(xmlBruto, cert?.certificado_base64 || '', cert?.password_cifrada || '');
 
     // 4. LOGICA DE TRANSMISIÓN TEST (Set de Pruebas Phase 6)
-    const tieneCertificado = !!cert?.certificate_base64;
+        const tieneCertificado = !!cert?.certificado_base64;
     const respuestaSifen = { 
         estado: tieneCertificado ? "tramite" : "aprobado", 
         codigo_dn: "0000", 

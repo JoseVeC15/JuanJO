@@ -63,23 +63,22 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
             if (!user) throw new Error("Usuario no autenticado");
 
             // 1. Generar Código de Seguridad y Numeración
-            const codigoSeguridad = Math.floor(100000000 + Math.random() * 900000000).toString();
             const nroFactura = Math.floor(Math.random() * 1000000); // En producción usar secuencia DB
+            const establecimiento = configSifen.establecimiento || '001';
+            const puntoExpedicion = configSifen.punto_expedicion || '001';
+            const numeroFactura = `${establecimiento}-${puntoExpedicion}-${nroFactura.toString().padStart(7, '0')}`;
 
             // 2. Registrar en Base de Datos Local (Auditoría interna)
             const { data: factura, error: errorFactura } = await supabase
                 .from('documentos_electronicos')
                 .insert({
                     user_id: user.id,
-                    tipo_documento: 'factura',
-                    nro_documento: nroFactura,
-                    punto_establecimiento: configSifen.establecimiento || '001',
-                    punto_expedicion: configSifen.punto_expedicion || '001',
+                    tipo_documento: '1',
+                    numero_factura: numeroFactura,
                     fecha_emision: new Date().toISOString().split('T')[0],
                     monto_total: calcularTotal(),
                     receptor_ruc: cliente.ruc,
                     receptor_razon_social: cliente.razon_social,
-                    codigo_seguridad: codigoSeguridad,
                     estado_sifen: 'pendiente'
                 })
                 .select()
