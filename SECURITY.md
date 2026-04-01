@@ -1,33 +1,38 @@
-# Guía de Seguridad - FINANCE PRO 🛡️
+# Manual de Seguridad - FINANCE PRO 🛡️
 
-Este documento resume las medidas de seguridad implementadas y proporciona una guía para el mantenimiento y futuras actualizaciones del sistema.
-
-## 🔒 Implementaciones Realizadas (Abril 2026)
-
-### 1. Cabeceras HTTP (Vercel)
-Se configuraron cabeceras estrictas en `vercel.json`:
-- **CSP**: Bloquea la carga de recursos de dominios no autorizados.
-- **X-Frame-Options (DENY)**: Previene ataques de Clickjacking.
-- **HSTS**: Fuerza el uso de HTTPS por un año.
-- **Permissions-Policy**: Desactiva el acceso a hardware (cámara/micrófono) del navegador.
-
-### 2. Higiene de Datos y Logs
-- **envPrefix**: Limitación en `vite.config.ts` para que solo variables con prefijo `VITE_` se expongan al cliente.
-- **Log Cleaning**: Eliminación de `console.log` y mensajes de depuración en `AuthContext.tsx` y `AdminPanel.tsx`.
-
-### 3. Autenticación Robusta
-- **Error Mapping**: Los errores técnicos de la base de datos ahora se traducen a mensajes amigables en español en la pantalla de login.
-- **Silencing**: Los errores internos de sesión ya no se exponen en la consola del navegador.
+Este documento resume el blindaje implementado y las políticas de cumplimiento para mantener la plataforma segura, profesional y consistente bajo los estándares de 2026.
 
 ---
 
-## ✅ Checklist OWASP para Nuevos Despliegues
+## 🔒 Arquitectura de Blindaje (Implementado)
 
-- [ ] **Inyecciones**: Sanear todas las entradas de usuario (Supabase maneja esto por defecto).
-- [ ] **Sesión**: Purgar sesión correctamente al cerrar sesión.
-- [ ] **Acceso**: Mantener RLS (Row Level Security) activas en Supabase.
-- [ ] **Dependencias**: Ejecutar `npm audit` periódicamente.
-- [ ] **Headers**: Verificar cabeceras en [SecurityHeaders.com](https://securityheaders.com).
+### 1. Cabeceras de Seguridad HTTP (Vercel)
+Se han inyectado cabeceras de red para mitigar los ataques web más comunes:
+- **X-Frame-Options (DENY)**: Bloquea intentos de Clickjacking en iframes externos.
+- **Content-Security-Policy (CSP)**: Restringe la carga de recursos a fuentes de confianza (`self`, `supabase.co`, `google.com`).
+- **HSTS**: Fuerza el uso de conexiones cifradas (HTTPS) por 1 año.
+- **Permissions-Policy**: Desactiva hardware innecesario (cámara, micrófono, geolocalización).
 
-> [!TIP]
-> **Recomendación**: Realiza un escaneo de seguridad cada vez que añadas una nueva funcionalidad que involucre manejo de dinero o datos personales.
+### 2. Autenticación y Protección de Cuentas
+- **Password Hardening**: Se ha elevado el requisito mínimo de contraseña a **8 caracteres** en todas las pantallas (`Login`, `AdminPanel`, `ChangePassword`).
+- **Validación Proactiva**: Se implementó una comprobación por Regex de email en el cliente para dar feedback instantáneo y evitar peticiones basura al servidor.
+- **Mapeo de Errores**: Se tradujeron todos los códigos técnicos de Supabase a mensajes amigables y específicos en español.
+- **Error Silencing**: Los fallos internos de recuperación de sesión en `AuthContext.tsx` ahora se manejan de forma silenciosa para evitar fugas de información en la consola.
+
+### 3. Seguridad de APIs y Dominio
+- **CORS Restringido**: Las funciones de Supabase (`create-client-user`, `admin-manage-user`) ahora solo aceptan peticiones desde `https://finance.josevec.uk`.
+- **Higiene de Datos**: Configuración de `envPrefix: 'VITE_'` en Vite para que solo las variables de entorno autorizadas lleguen al navegador.
+
+---
+
+## ✅ Checklist OWASP para el futuro
+
+- [ ] **Mínimo Privilegio**: ¿Cada nueva tabla en Supabase tiene sus RLS (Row Level Security) activas?
+- [ ] **CORS**: ¿Cada nueva Edge Function tiene restringido el origen a `https://finance.josevec.uk`?
+- [ ] **Validación**: ¿Se valida la longitud y complejidad de cada campo de entrada de usuario?
+- [ ] **Dependencias**: ¿Se ha revisado `npm audit` para parches de seguridad recientes?
+
+> [!IMPORTANT]
+> **Recomendación de Seguridad**: Nunca incluyas secretos o claves privadas (Service Role Keys) en variables que empiecen por `VITE_`. El Service Role Key solo debe usarse en funciones de servidor (Edge Functions) que corren fuera del navegador.
+
+**FINANCE PRO SECURITY PROTOCOL v2.0.0**
