@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { motion } from 'framer-motion';
 import { 
   Settings as SettingsIcon, User, Globe, Save, 
   Plus, Trash2, RefreshCw, DollarSign, TrendingUp,
-  Database,
+  Database, ShieldCheck,
   AlertCircle as AlertIcon,
   Download,
   FileCode,
@@ -16,7 +17,7 @@ import { useSupabaseData } from '../hooks/useSupabaseData';
 export default function Settings() {
   const { user } = useAuth();
   const { profile, facturasGastos, proyectos, ingresos } = useSupabaseData();
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup' | 'billing'>('profile');
   
   const [customCategories, setCustomCategories] = useState<{id: string, label: string, color: string}[]>([]);
   const [newCatLabel, setNewCatLabel] = useState('');
@@ -25,11 +26,78 @@ export default function Settings() {
   const [loadingRates, setLoadingRates] = useState(false);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
+  // Estados Fiscales (SIFEN)
+  const [fiscalProfile, setFiscalProfile] = useState({
+      ruc: '',
+      dv: '',
+      razon_social: '',
+      ambiente: 'test' as 'test' | 'prod'
+  });
+
+  const [sifenConfig, setSifenConfig] = useState({
+      csc: '',
+      id_csc: '',
+      timbrado: '',
+      establecimiento: '001',
+      punto_expedicion: '001'
+  });
+
+  const [certData, setCertData] = useState<{name: string, file: File | null}>({name: '', file: null});
+  const [certStatus, setCertStatus] = useState<'none' | 'uploaded' | 'expired'>('none');
+
   useEffect(() => {
     fetchRates();
     const saved = localStorage.getItem(`finance_cats_${user?.id}`);
     if (saved) setCustomCategories(JSON.parse(saved));
   }, [user]);
+
+  useEffect(() => {
+      const loadFiscalProfile = async () => {
+          if (!user) return;
+          const { data, error } = await supabase
+            .from('tenant_fiscal_profile')
+            .select('*')
+            .single();
+          
+          if (data && !error) {
+              setFiscalProfile({
+                  ruc: data.ruc,
+                  dv: data.dv.toString(),
+                  razon_social: data.razon_social,
+                  ambiente: data.ambiente
+              });
+              
+              const { data: config } = await supabase
+                .from('tenant_sifen_config')
+                .select('*')
+                .single();
+              
+              if (config) {
+                  setSifenConfig({
+                      csc: config.csc,
+                      id_csc: config.id_csc.toString(),
+                      timbrado: config.timbrado,
+                      establecimiento: config.establecimiento,
+                      punto_expedicion: config.punto_expedicion
+                  });
+              }
+
+              const { data: cert } = await supabase
+                .from('tenant_certificates')
+                .select('alias, vencimiento, estado')
+                .single();
+              
+              if (cert) {
+                  setCertData(prev => ({...prev, name: cert.alias || 'Certificado Registrado'}));
+                  setCertStatus(cert.estado === 'activo' ? 'uploaded' : 'expired');
+              }
+          }
+      };
+      
+      if (activeTab === 'billing') {
+          loadFiscalProfile();
+      }
+  }, [activeTab, user]);
 
   const fetchRates = async () => {
     setLoadingRates(true);
@@ -63,6 +131,61 @@ export default function Settings() {
         setSavingStatus('saved');
         setTimeout(() => setSavingStatus('idle'), 2000);
     }, 800);
+  };
+
+  const handleSaveFiscalProfile = async () => {
+      setSavingStatus('saving');
+      try {
+          const { error } = await supabase
+            .from('tenant_fiscal_profile')
+            .upsert({
+                user_id: user?.id,
+                ...fiscalProfile,
+                updated_at: new Date().toISOString()
+            });
+          
+          if (error) throw error;
+
+          const { error: configError } = await supabase
+            .from('tenant_sifen_config')
+            .upsert({
+                user_id: user?.id,
+                csc: sifenConfig.csc,
+                id_csc: parseInt(sifenConfig.id_csc),
+                timbrado: sifenConfig.timbrado,
+                establecimiento: sifenConfig.establecimiento,
+                punto_expedicion: sifenConfig.punto_expedicion,
+                updated_at: new Date().toISOString()
+            });
+
+          if (configError) throw configError;
+          
+          if (certData.file) {
+              const reader = new FileReader();
+              reader.readAsDataURL(certData.file);
+              reader.onload = async () => {
+                  const base64 = (reader.result as string).split(',')[1];
+                  const { error: certError } = await supabase
+                    .from('tenant_certificates')
+                    .upsert({
+                        user_id: user?.id,
+                        certificate_base64: base64,
+                        password_encrypted: 'PENDING_SERVER_ENCRYPTION', // Lógica de cifrado en server recomendada
+                        vencimiento: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0], // +1 año default
+                        alias: certData.name,
+                        estado: 'activo'
+                    });
+                  if (certError) console.error(certError);
+              };
+          }
+
+          setSavingStatus('saved');
+          setTimeout(() => setSavingStatus('idle'), 2000);
+      } catch (e) {
+          console.error(e);
+          setSavingStatus('idle');
+          alert('Error al guardar el perfil fiscal. Asegúrate de haber ejecutado la migración SQL.');
+      }
   };
 
   const exportAllData = () => {
@@ -105,6 +228,7 @@ export default function Settings() {
           <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<User size={18} />} label="Perfil" />
           <TabButton active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon={<Database size={18} />} label="Categorías" />
           <TabButton active={activeTab === 'currency'} onClick={() => setActiveTab('currency')} icon={<Globe size={18} />} label="Divisas" />
+          <TabButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={<ShieldCheck size={18} />} label="Facturación" />
           <TabButton active={activeTab === 'backup'} onClick={() => setActiveTab('backup')} icon={<FileCode size={18} />} label="Backup Pro" />
         </div>
 
@@ -243,6 +367,135 @@ export default function Settings() {
                   </div>
               </motion.div>
           )}
+
+          {activeTab === 'billing' && (
+              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">Módulo SIFEN (DNIT)</h3>
+                        <p className="text-sm text-gray-500">Configura tu identidad fiscal para facturación electrónica en Paraguay.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => setFiscalProfile({...fiscalProfile, ambiente: fiscalProfile.ambiente === 'test' ? 'prod' : 'test'})}
+                            className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${fiscalProfile.ambiente === 'test' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:shadow-lg hover:shadow-emerald-500/10'}`}
+                        >
+                            Ambiente: {fiscalProfile.ambiente.toUpperCase()}
+                        </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
+                      <div className="space-y-6">
+                        <InputGroup 
+                            label="RUC" 
+                            value={fiscalProfile.ruc} 
+                            onChange={(e: any) => setFiscalProfile({...fiscalProfile, ruc: e.target.value})}
+                            placeholder="80109403" 
+                        />
+                        <InputGroup 
+                            label="DV" 
+                            value={fiscalProfile.dv} 
+                            onChange={(e: any) => setFiscalProfile({...fiscalProfile, dv: e.target.value})}
+                            placeholder="8" 
+                        />
+                        <InputGroup 
+                            label="Razón Social" 
+                            value={fiscalProfile.razon_social} 
+                            onChange={(e: any) => setFiscalProfile({...fiscalProfile, razon_social: e.target.value})}
+                            placeholder="AOSTA SA" 
+                        />
+                      </div>
+                      <div className="space-y-6">
+                         <div className={`p-6 bg-white rounded-3xl border border-dashed flex flex-col items-center justify-center gap-3 transition-all ${certStatus === 'uploaded' ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200'}`}>
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white transition-all ${certStatus === 'uploaded' ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-slate-900'}`}>
+                                <ShieldCheck size={24} />
+                            </div>
+                            <div className="text-center">
+                                <p className="text-xs font-bold text-slate-500">{certData.name || 'Certificado Digital (.p12 / .pfx)'}</p>
+                                {certStatus === 'uploaded' && <p className="text-[9px] text-emerald-600 font-black uppercase tracking-widest mt-1">✓ Certificado Vinculado</p>}
+                            </div>
+                            <label className="cursor-pointer">
+                                <input 
+                                    type="file" 
+                                    accept=".p12,.pfx" 
+                                    className="hidden" 
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) setCertData({name: file.name, file});
+                                    }}
+                                />
+                                <span className="text-[10px] bg-slate-900 text-white px-4 py-2 rounded-xl font-black uppercase tracking-widest shadow-lg inline-block hover:scale-105 transition-all">
+                                    {certStatus === 'uploaded' ? 'Cambiar Archivo' : 'Subir Archivo'}
+                                </span>
+                            </label>
+                         </div>
+                      </div>
+                  </div>
+
+                  <div className="bg-slate-900 text-white p-8 rounded-[2.5rem] relative overflow-hidden">
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-3 mb-6 text-emerald-400 font-black text-xs uppercase tracking-widest">
+                            <RefreshCw size={16} /> Configuración Técnica SIFEN
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CSC</label>
+                                <input 
+                                    type="password" 
+                                    value={sifenConfig.csc}
+                                    onChange={(e) => setSifenConfig({...sifenConfig, csc: e.target.value})}
+                                    placeholder="89D...A22"
+                                    className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">ID CSC</label>
+                                <input 
+                                    type="text" 
+                                    value={sifenConfig.id_csc}
+                                    onChange={(e) => setSifenConfig({...sifenConfig, id_csc: e.target.value})}
+                                    placeholder="0001"
+                                    className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Establec.</label>
+                                <input 
+                                    type="text" 
+                                    value={sifenConfig.establecimiento}
+                                    onChange={(e) => setSifenConfig({...sifenConfig, establecimiento: e.target.value})}
+                                    placeholder="001"
+                                    className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Pto. Exp.</label>
+                                <input 
+                                    type="text" 
+                                    value={sifenConfig.punto_expedicion}
+                                    onChange={(e) => setSifenConfig({...sifenConfig, punto_expedicion: e.target.value})}
+                                    placeholder="001"
+                                    className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
+                                />
+                            </div>
+                        </div>
+                      </div>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full" />
+                  </div>
+
+                  <div className="flex justify-end gap-3">
+                      <button className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest text-xs">Descartar</button>
+                      <button 
+                        onClick={handleSaveFiscalProfile}
+                        disabled={savingStatus === 'saving'}
+                        className="px-10 py-4 bg-emerald-500 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 disabled:opacity-50"
+                      >
+                          {savingStatus === 'saving' ? 'Guardando...' : 'Guardar Identidad Fiscal'}
+                      </button>
+                  </div>
+              </motion.div>
+          )}
         </div>
       </div>
     </div>
@@ -265,15 +518,17 @@ function TabButton({ active, onClick, icon, label }: any) {
   );
 }
 
-function InputGroup({ label, value, disabled }: any) {
+function InputGroup({ label, value, disabled, onChange, placeholder }: any) {
   return (
     <div className="space-y-1.5">
       <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{label}</label>
       <input 
         type="text" 
         value={value} 
+        onChange={onChange}
+        placeholder={placeholder}
         disabled={disabled}
-        className="w-full px-5 py-4 bg-gray-50/80 rounded-2xl border border-gray-100 font-bold text-gray-800 disabled:opacity-60"
+        className="w-full px-5 py-4 bg-gray-50/80 rounded-2xl border border-gray-100 font-bold text-gray-800 disabled:opacity-60 focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
       />
     </div>
   );

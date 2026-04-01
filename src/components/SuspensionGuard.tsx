@@ -7,7 +7,18 @@ export default function SuspensionGuard({ children }: { children: React.ReactNod
   const { signOut } = useAuth();
   const { profile, loading } = useSupabaseData();
 
-  if (loading) return <>{children}</>; // O un loader global si prefieres
+  if (loading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-slate-900 flex flex-col items-center justify-center p-6">
+        <motion.div 
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+            className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full mb-4"
+        />
+        <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em] animate-pulse">Validando Credenciales...</p>
+      </div>
+    );
+  }
 
   if (profile?.estado === 'suspendido') {
     return (

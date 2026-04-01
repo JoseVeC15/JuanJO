@@ -6,11 +6,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search, Sparkles, ShieldCheck } from 'lucide-react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
+import SifenInvoiceEmitter from './SifenInvoiceEmitter';
 import {
   formatGs, formatGsShort, calculateSuggestedVAT
 } from '../data/sampleData';
@@ -37,16 +38,17 @@ const estadoConfig: Record<string, { label: string; color: string; icon: React.R
 };
 
 interface FacturasProps {
-  initialTab?: 'gastos' | 'ingresos';
+  initialTab?: 'gastos' | 'ingresos' | 'sifen';
 }
 
 export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { facturasGastos, ingresos, loading: dataLoading } = useSupabaseData();
+  const { facturasGastos, ingresos, loading: dataLoading, fiscalProfile, sifenConfig, electronicDocuments } = useSupabaseData();
   const { user } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen'>(initialTab);
+  const [isEmitterOpen, setIsEmitterOpen] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -316,6 +318,13 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           <ArrowUpRight size={16} className={activeTab === 'ingresos' ? 'text-emerald-500' : ''} />
           Ingresos (Ventas)
         </button>
+        <button 
+          onClick={() => { setActiveTab('sifen'); setFilterEstado('todos'); }}
+          className={`flex-1 sm:flex-none flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${activeTab === 'sifen' ? 'bg-white text-slate-900 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}
+        >
+          <ShieldCheck size={16} className={activeTab === 'sifen' ? 'text-indigo-500' : ''} />
+          Facturas SIFEN
+        </button>
       </div>
 
       {/* Header */}
@@ -337,6 +346,17 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           <button onClick={exportToCSV} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-3 rounded-2xl font-bold shadow-sm hover:border-emerald-200 hover:text-emerald-600 transition-all">
             <Download size={18} /> SET CSV
           </button>
+          
+          {activeTab === 'ingresos' && fiscalProfile && sifenConfig && (
+            <button 
+                onClick={() => setIsEmitterOpen(true)}
+                className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30 shadow-indigo-500/10"
+            >
+                <Sparkles size={18} className="text-indigo-400" />
+                Emitir F. Electrónica
+            </button>
+          )}
+
           <button 
             onClick={() => { setShowOCR(!showOCR); setUploadStatus('idle'); }} 
             className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
@@ -434,7 +454,76 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
 
       {/* Main List Area */}
       <AnimatePresence mode="popLayout">
-          {viewMode === 'cards' ? (
+          {activeTab === 'sifen' ? (
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1000px]">
+                    <thead>
+                        <tr className="bg-gray-50/50 border-b border-gray-100">
+                            <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha</th>
+                            <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Nro Factura / CDC</th>
+                            <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest">Receptor / RUC</th>
+                            <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Monto Total</th>
+                            <th className="p-6 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Estado SIFEN</th>
+                            <th className="p-6 w-10 text-center">KuDE</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {electronicDocuments.length === 0 ? (
+                            <tr><td colSpan={6} className="p-20 text-center text-gray-400 font-medium italic">No hay facturas electrónicas emitidas aún.</td></tr>
+                        ) : electronicDocuments.map((doc: any) => (
+                            <tr key={doc.id} className="hover:bg-slate-50 transition-all cursor-default">
+                                <td className="p-6 text-xs font-bold text-gray-600">{new Date(doc.created_at).toLocaleDateString()}</td>
+                                <td className="p-6">
+                                    <p className="text-xs font-black text-gray-700">{doc.numero_factura}</p>
+                                    <p className="text-[10px] text-gray-300 font-bold mt-0.5 truncate max-w-[150px]" title={doc.cdc}>{doc.cdc}</p>
+                                </td>
+                                <td className="p-6">
+                                    <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{doc.receptor_razon_social}</p>
+                                    <p className="text-[10px] text-gray-400 font-bold mt-0.5">{doc.receptor_ruc}</p>
+                                </td>
+                                <td className="p-6 text-sm font-black text-gray-900 text-right">{formatGs(doc.monto_total)}</td>
+                                <td className="p-6 text-center">
+                                    <span className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest ${doc.estado_sifen === 'aprobado' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                                        {doc.estado_sifen}
+                                    </span>
+                                </td>
+                                <td className="p-6 text-center">
+                                    <button 
+                                        onClick={async () => {
+                                            const { generateKuDE } = await import('../lib/sifen/kude');
+                                            generateKuDE({
+                                                razonSocialEmisor: fiscalProfile.razon_social,
+                                                rucEmisor: fiscalProfile.ruc,
+                                                direccionEmisor: fiscalProfile.direccion || 'Asunción, Paraguay',
+                                                numeroFactura: doc.numero_factura,
+                                                timbrado: sifenConfig.timbrado,
+                                                fechaEmision: new Date(doc.created_at).toLocaleDateString(),
+                                                cdc: doc.cdc,
+                                                razonSocialReceptor: doc.receptor_razon_social,
+                                                rucReceptor: doc.receptor_ruc,
+                                                items: doc.electronic_document_items.map((i: any) => ({
+                                                    descripcion: i.descripcion,
+                                                    cantidad: i.cantidad,
+                                                    precioUnitario: i.precio_unitario,
+                                                    ivaTipo: i.iva_tipo,
+                                                    totalItem: i.monto_total_item
+                                                })),
+                                                montoTotal: doc.monto_total,
+                                                ambiente: fiscalProfile.ambiente.toUpperCase() as 'TEST' | 'PROD'
+                                            });
+                                        }}
+                                        className="w-10 h-10 flex items-center justify-center text-indigo-500 bg-indigo-50 hover:bg-emerald-500 hover:text-white rounded-2xl transition-all shadow-sm"
+                                        title="Descargar KuDE (PDF)"
+                                    >
+                                        <Download size={18} />
+                                    </button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+             </motion.div>
+          ) : viewMode === 'cards' ? (
             <motion.div className="space-y-4">
               {filteredData.map(item => (
                 <ItemCard 
@@ -443,7 +532,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                   type={activeTab}
                   isExpanded={expandedId === item.id}
                   onToggle={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                  onDelete={() => deleteMutation.mutate({ id: item.id, type: activeTab })}
+                  onDelete={() => deleteMutation.mutate({ id: item.id, type: activeTab as 'gastos' | 'ingresos' })}
                   onEdit={() => setEditingItem(item)}
                   onMove={(item: any, fromType: any) => moveMutation.mutate({ item, fromType })}
                   isMoving={moveMutation.isPending}
@@ -612,10 +701,25 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           <EditInvoiceModal 
             item={editingItem} 
             onClose={() => setEditingItem(null)} 
-            onSave={(data: any) => updateMutation.mutate({ id: editingItem.id, type: activeTab, data })}
+            onSave={(data: any) => updateMutation.mutate({ id: editingItem.id, type: activeTab as 'gastos' | 'ingresos', data })}
             onMove={(item: any, fromType: any) => moveMutation.mutate({ item, fromType })}
             isSaving={updateMutation.isPending || moveMutation.isPending}
           />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isEmitterOpen && (
+            <SifenInvoiceEmitter 
+                fiscalProfile={fiscalProfile}
+                sifenConfig={sifenConfig}
+                onClose={() => setIsEmitterOpen(false)}
+                onSuccess={() => {
+                    setIsEmitterOpen(false);
+                    queryClient.invalidateQueries({ queryKey: ['ingresos'] });
+                    queryClient.invalidateQueries({ queryKey: ['electronic_documents'] });
+                }}
+            />
         )}
       </AnimatePresence>
     </div>
@@ -725,7 +829,7 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, 
                     onClick={(e) => { 
                       e.stopPropagation(); 
                       confirm(`¿Cambiar este documento a la sección de ${isGasto ? 'INGRESOS' : 'GASTOS'}?`) && 
-                      onMove(data, type); 
+                      onMove(data, type as 'gastos' | 'ingresos'); 
                     }} 
                     className="w-12 h-12 flex items-center justify-center text-indigo-500 bg-indigo-50 hover:bg-indigo-500 hover:text-white rounded-2xl transition-all shadow-sm"
                     title={`Mover a ${isGasto ? 'Ingresos' : 'Gastos'}`}
@@ -807,6 +911,17 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Validación de Integridad Temporal
+        const dateVal = isGasto ? formData.fecha_factura : (formData.fecha || formData.fecha_emision);
+        const year = new Date(dateVal).getFullYear();
+        const currentYear = new Date().getFullYear();
+
+        if (year < 2000 || year > currentYear + 1) {
+            alert(`⚠️ Error de Integridad: La fecha (${year}) es inválida para el ejercicio fiscal actual. Por favor, corrígela.`);
+            return;
+        }
+
         onSave(formData);
     };
 

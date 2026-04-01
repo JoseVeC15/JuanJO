@@ -89,18 +89,65 @@ export function useSupabaseData() {
     return i;
   }), [ingresosRaw]);
 
+  const { data: fiscalProfile, isLoading: loadingFiscal } = useQuery({
+    queryKey: ['fiscal_profile', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_fiscal_profile')
+        .select('*')
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    }
+  });
+
+  const { data: sifenConfig, isLoading: loadingSifen } = useQuery({
+    queryKey: ['sifen_config', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('tenant_sifen_config')
+        .select('*')
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    }
+  });
+
+  const { data: electronicDocuments = [], isLoading: loadingSifenDocs } = useQuery({
+    queryKey: ['electronic_documents', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('electronic_documents')
+        .select('*, electronic_document_items(*)')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    }
+  });
+
   useEffect(() => {
     if (!sessionUser) return;
 
     const channels = [
+      { name: 'public:profiles', key: 'profile' },
       { name: 'public:proyectos', key: 'proyectos' },
       { name: 'public:facturas_gastos', key: 'facturas_gastos' },
       { name: 'public:ingresos', key: 'ingresos' },
-      { name: 'public:inventario_equipo', key: 'inventario_equipo' }
+      { name: 'public:inventario_equipo', key: 'inventario_equipo' },
+      { name: 'public:tenant_fiscal_profile', key: 'fiscal_profile' },
+      { name: 'public:tenant_sifen_config', key: 'sifen_config' },
+      { name: 'public:electronic_documents', key: 'electronic_documents' }
     ].map(({ name, key }) => 
       supabase.channel(name)
-        .on('postgres_changes', { event: '*', schema: 'public', table: key }, () => {
-          queryClient.invalidateQueries({ queryKey: [key] });
+        .on('postgres_changes', { 
+            event: '*', 
+            schema: 'public', 
+            table: key === 'profile' ? 'profiles' : (key === 'fiscal_profile' ? 'tenant_fiscal_profile' : (key === 'sifen_config' ? 'tenant_sifen_config' : (key === 'electronic_documents' ? 'electronic_documents' : key))) 
+        }, () => {
+          queryClient.invalidateQueries({ queryKey: key === 'profile' ? ['profile', sessionUser?.id] : [key] });
         }).subscribe()
     );
 
@@ -120,7 +167,10 @@ export function useSupabaseData() {
     alertas: [] as Alerta[], 
     ingresos, 
     profile,
-    loading: loading || loadingProfile, 
+    fiscalProfile,
+    sifenConfig,
+    electronicDocuments,
+    loading: loading || loadingProfile || loadingFiscal || loadingSifen || loadingSifenDocs, 
     loadingExtra: loadingEquipo,
     error 
   };
