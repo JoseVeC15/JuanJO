@@ -97,7 +97,7 @@ export default function Dashboard() {
       name: getGastoLabel(key as any), 
       value, 
       color: getGastoColor(key as any) 
-    })).sort((a, b) => b.value - a.value);
+    })).sort((a: any, b: any) => b.value - a.value);
 
     const activeProjectsList = proyectos.filter(p => ['en_progreso', 'cotizacion', 'entregado', 'facturado'].includes(p.estado));
 

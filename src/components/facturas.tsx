@@ -14,7 +14,7 @@ import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
 import SifenInvoiceEmitter from './SifenInvoiceEmitter';
 import {
-  formatGs, formatGsShort, calculateSuggestedVAT
+  formatGs, formatGsShort, calculateSuggestedVAT10, calculateSuggestedVAT5
 } from '../data/sampleData';
 
 const formatDateTime = (dateStr: string) => {
@@ -906,7 +906,7 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
   const initialData = (() => {
     const base = { ...item, created_at: undefined, id: undefined, processed_by_n8n: undefined, is_suggested_vat: undefined };
     if (base.monto > 0 && !base.iva_10 && !base.iva_5 && !base.exentas) {
-      return { ...base, ...calculateSuggestedVAT(base.monto) };
+      return { ...base, ...calculateSuggestedVAT10(base.monto) };
     }
     return base;
   })();
@@ -993,19 +993,30 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
               />
               <button
                 type="button"
-                onClick={() => setFormData({ ...formData, ...calculateSuggestedVAT(formData.monto) })}
+                onClick={() => setFormData({ ...formData, ...calculateSuggestedVAT10(formData.monto) })}
                 className="absolute right-3 top-9 p-1.5 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm border border-indigo-100 group-hover:scale-110 active:scale-95"
                 title="Auto-calcular IVA 10%"
               >
                 <Scan size={14} />
               </button>
             </div>
-            <ModalInput
-              label="IVA 5% (₲)"
-              type="number"
-              value={formData.iva_5 || 0}
-              onChange={(val: any) => setFormData({ ...formData, iva_5: Number(val) })}
-            />
+            <div className="relative group">
+              <ModalInput
+                label="IVA 5% (₲)"
+                type="number"
+                value={formData.iva_5 || 0}
+                onChange={(val: any) => setFormData({ ...formData, iva_5: Number(val) })}
+                className="pr-12"
+              />
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, ...calculateSuggestedVAT5(formData.monto) })}
+                className="absolute right-3 top-9 p-1.5 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm border border-emerald-100 group-hover:scale-110 active:scale-95"
+                title="Auto-calcular IVA 5%"
+              >
+                <Scan size={14} />
+              </button>
+            </div>
             <ModalInput
               label="Exentas (₲)"
               type="number"
