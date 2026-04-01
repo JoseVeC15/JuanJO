@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, X, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -19,6 +19,23 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
         ruc: '',
         direccion: ''
     });
+
+    const [clientesSugeridos, setClientesSugeridos] = useState<any[]>([]);
+
+    useEffect(() => {
+        if (cliente.ruc.length > 2 || cliente.razon_social.length > 2) {
+            buscarClientesLocal();
+        }
+    }, [cliente.ruc, cliente.razon_social]);
+
+    const buscarClientesLocal = async () => {
+        const { data } = await supabase
+            .from('clientes')
+            .select('*')
+            .or(`razon_social.ilike.%${cliente.razon_social}%,ruc.ilike.%${cliente.ruc}%`)
+            .limit(5);
+        setClientesSugeridos(data || []);
+    };
 
     const [productos, setProductos] = useState([
         { id: '1', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }
@@ -130,13 +147,35 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                                         <ShieldCheck size={14} className="text-indigo-500" /> Datos del Receptor
                                     </h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        <input 
-                                            placeholder="Razón Social Cliente" 
-                                            value={cliente.razon_social}
-                                            onChange={e => setCliente({...cliente, razon_social: e.target.value})}
-                                            className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                        />
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative">
+                                        <div className="relative col-span-1 md:col-span-2 lg:col-span-1">
+                                            <input 
+                                                placeholder="Razón Social Cliente" 
+                                                value={cliente.razon_social}
+                                                onChange={e => setCliente({...cliente, razon_social: e.target.value})}
+                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                            />
+                                            {clientesSugeridos.length > 0 && (
+                                                <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 z-[130] overflow-hidden">
+                                                    {clientesSugeridos.map(c => (
+                                                        <button 
+                                                            key={c.id}
+                                                            onClick={() => {
+                                                                setCliente({ razon_social: c.razon_social, ruc: c.ruc, direccion: c.direccion || '' });
+                                                                setClientesSugeridos([]);
+                                                            }}
+                                                            className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 flex items-center gap-3"
+                                                        >
+                                                            <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center font-black text-[10px]">{c.razon_social.charAt(0)}</div>
+                                                            <div>
+                                                                <p className="text-xs font-black text-slate-700 uppercase">{c.razon_social}</p>
+                                                                <p className="text-[10px] font-bold text-slate-400">RUC: {c.ruc}</p>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                         <input 
                                             placeholder="RUC Cliente (ej. 4444444-1)" 
                                             value={cliente.ruc}
