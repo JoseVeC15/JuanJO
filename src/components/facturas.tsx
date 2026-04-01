@@ -50,6 +50,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
 
   const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen' | 'clientes'>(initialTab);
   const [isEmitterOpen, setIsEmitterOpen] = useState(false);
+  const [openClientModal, setOpenClientModal] = useState(false);
 
   useEffect(() => {
     setActiveTab(initialTab);
@@ -381,11 +382,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
 
           {activeTab === 'clientes' && (
             <button
-              onClick={() => {
-                // We'll need a way to trigger the modal in the child or handle it here
-                // For now, we'll let Clientes handle its own "Nuevo Cliente" button if we can't easily bridge
-                // but the user said "QUE SE MANTENGA" (Keep it)
-              }}
+              onClick={() => setOpenClientModal(true)}
               className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30"
             >
               <UserPlus size={18} />
@@ -498,7 +495,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       <AnimatePresence mode="popLayout">
         {activeTab === 'clientes' ? (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Clientes hideHeader />
+            <Clientes hideHeader forceOpenAddModal={openClientModal} onModalOpenHandled={() => setOpenClientModal(false)} />
           </motion.div>
         ) : activeTab === 'sifen' ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-[2.5rem] border border-gray-100 overflow-hidden shadow-sm overflow-x-auto">

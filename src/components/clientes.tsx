@@ -21,9 +21,11 @@ interface Cliente {
 
 interface ClientesProps {
     hideHeader?: boolean;
+    forceOpenAddModal?: boolean;
+    onModalOpenHandled?: () => void;
 }
 
-export default function Clientes({ hideHeader = false }: ClientesProps) {
+export default function Clientes({ hideHeader = false, forceOpenAddModal = false, onModalOpenHandled }: ClientesProps) {
     const { user } = useAuth();
     const [clientes, setClientes] = useState<Cliente[]>([]);
     const [loading, setLoading] = useState(true);
@@ -38,6 +40,13 @@ export default function Clientes({ hideHeader = false }: ClientesProps) {
         email: '',
         telefono: ''
     });
+
+    useEffect(() => {
+        if (forceOpenAddModal) {
+            setShowAddModal(true);
+            if (onModalOpenHandled) onModalOpenHandled();
+        }
+    }, [forceOpenAddModal, onModalOpenHandled]);
 
     useEffect(() => {
         if (user) fetchClientes();
