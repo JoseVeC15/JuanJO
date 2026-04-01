@@ -9,6 +9,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search, Sparkles, UserPlus } from 'lucide-react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,6 +46,7 @@ interface FacturasProps {
 
 export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { facturasGastos, ingresos, loading: dataLoading, perfilFiscal, configSifen, documentosElectronicos } = useSupabaseData();
   const { user } = useAuth();
 
@@ -351,7 +353,10 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
               {['sifen', 'clientes'].map((tab: any) => (
                 <button
                   key={tab}
-                  onClick={() => setActiveTab(tab)}
+                  onClick={() => {
+                    setActiveTab(tab);
+                    navigate(tab === 'clientes' ? '/sifen/clientes' : '/sifen');
+                  }}
                   className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   {tab === 'sifen' ? 'E-DOCS' : tab}

@@ -9,7 +9,7 @@ import Projects from './components/projects';
 import Inventario from './components/inventario';
 import Reportes from './components/reportes';
 import Settings from './components/Settings';
-import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, Users } from 'lucide-react';
+import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import AdminPanel from './components/AdminPanel';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import SuspensionGuard from './components/SuspensionGuard';
@@ -46,7 +46,6 @@ function RouterWrapper() {
     { key: 'gastos', path: '/gastos', label: 'GASTOS', icon: <ArrowDownLeft size={20} /> },
     { key: 'ingresos', path: '/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
     { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
-    { key: 'clientes', path: '/clientes', label: 'CLIENTES', icon: <Users size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
     { key: 'reportes', path: '/analisis', label: 'ANÁLISIS', icon: <PieChart size={20} /> },
@@ -151,7 +150,7 @@ function RouterWrapper() {
                     <>
                       <Route path="/ingresos" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/sifen" element={<Navigate to="/dashboard" replace />} />
-                      <Route path="/clientes" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/sifen/clientes" element={<Navigate to="/dashboard" replace />} />
                     </>
                   )}
                   <Route path="/dashboard" element={
@@ -174,14 +173,14 @@ function RouterWrapper() {
                       <Facturas initialTab="sifen" />
                     </motion.div>
                   } />
+                  <Route path="/sifen/clientes" element={
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                      <Facturas initialTab="clientes" />
+                    </motion.div>
+                  } />
                   <Route path="/proyectos" element={
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                       <Projects />
-                    </motion.div>
-                  } />
-                  <Route path="/clientes" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Facturas initialTab="clientes" />
                     </motion.div>
                   } />
                   <Route path="/activos" element={
