@@ -58,7 +58,7 @@ export default function Reportes() {
             <ReportCard label="Retención IVA" value={formatGsShort(facturasGastos.reduce((s,f) => s + Number(f.iva_10 || 0), 0))} trend={0} />
           </div>
 
-          <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+          <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm min-w-0">
             <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
               <BarChart3 className="text-emerald-500" size={20} />
               Ingresos vs Gastos
@@ -77,7 +77,7 @@ export default function Reportes() {
         </div>
 
         {/* Categories Pie */}
-        <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+        <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm min-w-0">
            <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
             <PieIcon className="text-emerald-500" size={20} />
             Estructura de Costos

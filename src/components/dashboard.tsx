@@ -166,7 +166,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-3xl lg:rounded-[2.5rem] border border-gray-100 p-6 lg:p-10 shadow-sm relative overflow-hidden">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-3xl lg:rounded-[2.5rem] border border-gray-100 p-6 lg:p-10 shadow-sm relative overflow-hidden min-w-0">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-10" />
           <h3 className="font-black text-gray-900 text-xl mb-10">Proyección Mensual Consolidada</h3>
           <div className="h-[300px] w-full">
