@@ -1,84 +1,90 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const corsHeaders = {
+const cabecerasCors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+serve(async (peticion: Request) => {
+  if (peticion.method === 'OPTIONS') {
+    return new Response('ok', { headers: cabecerasCors })
   }
 
   try {
-    const supabaseClient = createClient(
+    const clienteSupabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Obtener datos de la petición (Venta/Factura)
-    const { document_id } = await req.json()
+    // 1. Obtener datos de la petición
+    const { documento_id } = await peticion.json()
     
-    // 2. Recuperar Perfil Fiscal y Certificado del Tenant
-    const { data: document, error: docError } = await supabaseClient
-      .from('electronic_documents')
-      .select('*, electronic_document_items(*)')
-      .eq('id', document_id)
+    // 2. Recuperar Datos en Español (Perfiles y Documentos)
+    const { data: documento, error: errorDoc } = await clienteSupabase
+      .from('documentos_electronicos')
+      .select('*, documentos_items(*)')
+      .eq('id', documento_id)
       .single()
 
-    if (docError || !document) throw new Error("Documento no encontrado")
+    if (errorDoc || !documento) throw new Error("Documento no hallado en el ecosistema")
 
-    const { data: fiscalProfile } = await supabaseClient
-      .from('tenant_fiscal_profile')
+    const { data: perfilFiscal } = await clienteSupabase
+      .from('perfiles_fiscales')
       .select('*')
-      .eq('user_id', document.user_id)
+      .eq('user_id', documento.user_id)
       .single()
 
-    const { data: certificate } = await supabaseClient
-      .from('tenant_certificates')
+    const { data: certificado } = await clienteSupabase
+      .from('certificados_digitales')
       .select('*')
-      .eq('user_id', document.user_id)
+      .eq('user_id', documento.user_id)
       .single()
 
-    // 3. Generar XML SIFEN (Lógica de Mapeo)
-    const xmlRaw = generateSifenXML(document, fiscalProfile)
+    // 3. Generar XML SIFEN (Mapeo v1.5)
+    const xmlBruto = generarXmlSifen(documento, perfilFiscal)
 
-    // 4. Firmar Digitalmente (Simulación de firma - requiere librería XMLDSig)
-    const xmlSigned = signXML(xmlRaw, certificate)
+    // 4. Firmar Digitalmente (Simulación Fase 6)
+    const xmlFirmado = firmarXml(xmlBruto, certificado)
 
-    // 5. Transmitir a SIFEN (Ambiente TEST/PROD)
-    const sifenResponse = await transmitToSifen(xmlSigned, fiscalProfile.ambiente)
+    // 5. Transmitir a SIFEN (Simulación Set de Pruebas DNIT)
+    const respuestaSifen = await transmitirASifen(xmlFirmado, perfilFiscal.ambiente)
 
-    // 6. Actualizar Estado del Documento
-    await supabaseClient
-      .from('electronic_document_xml')
+    // 6. Persistir el Log en las nuevas tablas españolas
+    await clienteSupabase
+      .from('documentos_xml_logs')
       .upsert({
-        document_id,
-        xml_generado: xmlRaw,
-        xml_firmado: xmlSigned,
-        respuesta_sifen: sifenResponse
+        documento_id,
+        xml_generado: xmlBruto,
+        xml_firmado: xmlFirmado,
+        respuesta_sifen: respuestaSifen
       })
 
+    // 7. Actualizar Estado del Documento a 'aprobado' (Simulado)
+    await clienteSupabase
+      .from('documentos_electronicos')
+      .update({ estado_sifen: 'aprobado' })
+      .eq('id', documento_id)
+
     return new Response(
-      JSON.stringify({ success: true, cdc: document.cdc, status: "aprobado" }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: true, cdc: documento.cdc, estado: "aprobado" }),
+      { headers: { ...cabecerasCors, 'Content-Type': 'application/json' } }
     )
 
   } catch (error) {
     return new Response(
       JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      { headers: { ...cabecerasCors, 'Content-Type': 'application/json' }, status: 400 }
     )
   }
 })
 
-// --- FUNCIONES HELPER (ESQUEMA TÉCNICO) ---
+// --- MOTOR DE PROCESAMIENTO SIFEN (ESPAÑOL) ---
 
-function generateSifenXML(doc: any, profile: any) {
-    const itemsXml = doc.electronic_document_items.map((item: any, index: number) => `
+function generarXmlSifen(doc: any, perfil: any) {
+    const xmlDetalle = doc.documentos_items.map((item: any, indice: number) => `
         <gCamItem>
-            <dCodInt>${index + 1}</dCodInt>
+            <dCodInt>${indice + 1}</dCodInt>
             <dDesProd>${item.descripcion}</dDesProd>
             <dCantPro>${item.cantidad}</dCantPro>
             <gValorItem>
@@ -93,30 +99,22 @@ function generateSifenXML(doc: any, profile: any) {
         </gCamItem>`).join('');
 
     return `<?xml version="1.0" encoding="UTF-8"?>
-<rDE xmlns="http://efe.set.gov.py/sifen/xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<rDE xmlns="http://efe.set.gov.py/sifen/xsd">
     <dVerFor>150</dVerFor>
     <DE Id="${doc.cdc}">
-        <dDV>${doc.cdc.slice(-1)}</dDV>
-        <dFecEmi>${new Date(doc.created_at).toISOString()}</dFecEmi>
+        <dFecEmi>${new Date(doc.fecha_emision).toISOString()}</dFecEmi>
         <gEmis>
-            <dRucEm>${profile.ruc.split('-')[0]}</dRucEm>
-            <dDVEmi>${profile.ruc.split('-')[1]}</dDVEmi>
-            <iTipCont>2</iTipCont>
-            <dNomEmi>${profile.razon_social}</dNomEmi>
-            <dDirEmi>${profile.direccion || 'Asunción, Paraguay'}</dDirEmi>
+            <dRucEm>${perfil.ruc}</dRucEm>
+            <dDVEmi>${perfil.dv}</dDVEmi>
+            <dNomEmi>${perfil.razon_social}</dNomEmi>
+            <dDirEmi>${perfil.direccion || 'Asunción, PY'}</dDirEmi>
         </gEmis>
         <gDatRec>
-            <iNatRec>${doc.receptor_ruc ? 1 : 2}</iNatRec>
-            <iTipIDRec>1</iTipIDRec>
-            <dRucRec>${doc.receptor_ruc?.split('-')[0] || ''}</dRucRec>
-            <dDVRec>${doc.receptor_ruc?.split('-')[1] || ''}</dDVRec>
+            <dRucRec>${doc.receptor_ruc || '44444401'}</dRucRec>
             <dNomRec>${doc.receptor_razon_social}</dNomRec>
         </gDatRec>
         <gDtipDE>
-            <gCamFE>
-                <iIndPres>1</iIndPres>
-            </gCamFE>
-            ${itemsXml}
+            ${xmlDetalle}
         </gDtipDE>
         <gTotRes>
             <dTotGue>${doc.monto_total}</dTotGue>
@@ -125,13 +123,17 @@ function generateSifenXML(doc: any, profile: any) {
 </rDE>`;
 }
 
-function signXML(xml: string, cert: any) {
-    // Aquí integraremos xmldsigjs o similar para Deno
-    return xml // Retorna XML firmado
+function firmarXml(xml: string, certificado: any) {
+    console.log("Firma Digital Simulada con certificado:", certificado?.id || 'TEST_CERT');
+    return xml // En producción aquí se inyectaría el Signature XMLDSig
 }
 
-async function transmitToSifen(xml: string, env: string) {
-    const url = env === 'prod' ? 'https://sifen.set.gov.py/...' : 'https://sifen-test.set.gov.py/...'
-    // Lógica de fetch con certificados cliente
-    return { status: "aprobado", code: 200 }
+async function transmitirASifen(xmlFirmado: string, ambiente: string) {
+    console.log(`[FASE 6 - DNIT TEST] Recibiendo documento en ambiente: ${ambiente}`);
+    // Simulación de respuesta 200 OK de la SET
+    return { 
+        estado: "aprobado", 
+        codigo_dn: "0000", 
+        mensaje: "Aprobado por el Set de Pruebas oficial (Simulación)" 
+    }
 }

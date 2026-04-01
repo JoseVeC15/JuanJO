@@ -26,15 +26,15 @@ export default function Settings() {
   const [loadingRates, setLoadingRates] = useState(false);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  // Estados Fiscales (SIFEN)
-  const [fiscalProfile, setFiscalProfile] = useState({
+  // Estados Fiscales (SIFEN) - Refactorizado a Español
+  const [perfilFiscal, setPerfilFiscal] = useState({
       ruc: '',
       dv: '',
       razon_social: '',
       ambiente: 'test' as 'test' | 'prod'
   });
 
-  const [sifenConfig, setSifenConfig] = useState({
+  const [configSifen, setConfigSifen] = useState({
       csc: '',
       id_csc: '',
       timbrado: '',
@@ -55,12 +55,12 @@ export default function Settings() {
       const loadFiscalProfile = async () => {
           if (!user) return;
           const { data, error } = await supabase
-            .from('tenant_fiscal_profile')
+            .from('perfiles_fiscales')
             .select('*')
             .single();
           
           if (data && !error) {
-              setFiscalProfile({
+              setPerfilFiscal({
                   ruc: data.ruc,
                   dv: data.dv.toString(),
                   razon_social: data.razon_social,
@@ -68,12 +68,12 @@ export default function Settings() {
               });
               
               const { data: config } = await supabase
-                .from('tenant_sifen_config')
+                .from('configuracion_sifen')
                 .select('*')
                 .single();
               
               if (config) {
-                  setSifenConfig({
+                  setConfigSifen({
                       csc: config.csc,
                       id_csc: config.id_csc.toString(),
                       timbrado: config.timbrado,
@@ -83,7 +83,7 @@ export default function Settings() {
               }
 
               const { data: cert } = await supabase
-                .from('tenant_certificates')
+                .from('certificados_digitales')
                 .select('alias, vencimiento, estado')
                 .single();
               
@@ -133,28 +133,28 @@ export default function Settings() {
     }, 800);
   };
 
-  const handleSaveFiscalProfile = async () => {
+  const guardarPerfilFiscal = async () => {
       setSavingStatus('saving');
       try {
           const { error } = await supabase
-            .from('tenant_fiscal_profile')
+            .from('perfiles_fiscales')
             .upsert({
                 user_id: user?.id,
-                ...fiscalProfile,
+                ...perfilFiscal,
                 updated_at: new Date().toISOString()
             });
           
           if (error) throw error;
 
           const { error: configError } = await supabase
-            .from('tenant_sifen_config')
+            .from('configuracion_sifen')
             .upsert({
                 user_id: user?.id,
-                csc: sifenConfig.csc,
-                id_csc: parseInt(sifenConfig.id_csc),
-                timbrado: sifenConfig.timbrado,
-                establecimiento: sifenConfig.establecimiento,
-                punto_expedicion: sifenConfig.punto_expedicion,
+                csc: configSifen.csc,
+                id_csc: parseInt(configSifen.id_csc),
+                timbrado: configSifen.timbrado,
+                establecimiento: configSifen.establecimiento,
+                punto_expedicion: configSifen.punto_expedicion,
                 updated_at: new Date().toISOString()
             });
 
@@ -166,11 +166,11 @@ export default function Settings() {
               reader.onload = async () => {
                   const base64 = (reader.result as string).split(',')[1];
                   const { error: certError } = await supabase
-                    .from('tenant_certificates')
+                    .from('certificados_digitales')
                     .upsert({
                         user_id: user?.id,
                         certificate_base64: base64,
-                        password_encrypted: 'PENDING_SERVER_ENCRYPTION', // Lógica de cifrado en server recomendada
+                        password_cifrada: 'PENDING_SERVER_ENCRYPTION', // Lógica de cifrado en server recomendada
                         vencimiento: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0], // +1 año default
                         alias: certData.name,
                         estado: 'activo'
@@ -372,15 +372,15 @@ export default function Settings() {
               <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
                   <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">Módulo SIFEN (DNIT)</h3>
-                        <p className="text-sm text-gray-500">Configura tu identidad fiscal para facturación electrónica en Paraguay.</p>
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">Módulo SIFEN (DNIT / SET)</h3>
+                        <p className="text-sm text-gray-500">Configura tu identidad fiscal para facturación electrónica legal.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <button 
-                            onClick={() => setFiscalProfile({...fiscalProfile, ambiente: fiscalProfile.ambiente === 'test' ? 'prod' : 'test'})}
-                            className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${fiscalProfile.ambiente === 'test' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:shadow-lg hover:shadow-emerald-500/10'}`}
+                            onClick={() => setPerfilFiscal({...perfilFiscal, ambiente: perfilFiscal.ambiente === 'test' ? 'prod' : 'test'})}
+                            className={`px-4 py-2 text-[10px] font-black uppercase rounded-xl border transition-all ${perfilFiscal.ambiente === 'test' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:shadow-lg hover:shadow-emerald-500/10'}`}
                         >
-                            Ambiente: {fiscalProfile.ambiente.toUpperCase()}
+                            Ambiente: {perfilFiscal.ambiente.toUpperCase()}
                         </button>
                     </div>
                   </div>
@@ -388,21 +388,21 @@ export default function Settings() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
                       <div className="space-y-6">
                         <InputGroup 
-                            label="RUC" 
-                            value={fiscalProfile.ruc} 
-                            onChange={(e: any) => setFiscalProfile({...fiscalProfile, ruc: e.target.value})}
+                            label="RUC Emisor" 
+                            value={perfilFiscal.ruc} 
+                            onChange={(e: any) => setPerfilFiscal({...perfilFiscal, ruc: e.target.value})}
                             placeholder="80109403" 
                         />
                         <InputGroup 
-                            label="DV" 
-                            value={fiscalProfile.dv} 
-                            onChange={(e: any) => setFiscalProfile({...fiscalProfile, dv: e.target.value})}
+                            label="Dígito Verificador (DV)" 
+                            value={perfilFiscal.dv} 
+                            onChange={(e: any) => setPerfilFiscal({...perfilFiscal, dv: e.target.value})}
                             placeholder="8" 
                         />
                         <InputGroup 
-                            label="Razón Social" 
-                            value={fiscalProfile.razon_social} 
-                            onChange={(e: any) => setFiscalProfile({...fiscalProfile, razon_social: e.target.value})}
+                            label="Razón Social / Nombre" 
+                            value={perfilFiscal.razon_social} 
+                            onChange={(e: any) => setPerfilFiscal({...perfilFiscal, razon_social: e.target.value})}
                             placeholder="AOSTA SA" 
                         />
                       </div>
@@ -440,11 +440,11 @@ export default function Settings() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">CSC</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Token CSC</label>
                                 <input 
                                     type="password" 
-                                    value={sifenConfig.csc}
-                                    onChange={(e) => setSifenConfig({...sifenConfig, csc: e.target.value})}
+                                    value={configSifen.csc}
+                                    onChange={(e) => setConfigSifen({...configSifen, csc: e.target.value})}
                                     placeholder="89D...A22"
                                     className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
                                 />
@@ -453,28 +453,28 @@ export default function Settings() {
                                 <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">ID CSC</label>
                                 <input 
                                     type="text" 
-                                    value={sifenConfig.id_csc}
-                                    onChange={(e) => setSifenConfig({...sifenConfig, id_csc: e.target.value})}
-                                    placeholder="0001"
+                                    value={configSifen.id_csc}
+                                    onChange={(e) => setConfigSifen({...configSifen, id_csc: e.target.value})}
+                                    placeholder="1"
                                     className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Establec.</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Establecimiento</label>
                                 <input 
                                     type="text" 
-                                    value={sifenConfig.establecimiento}
-                                    onChange={(e) => setSifenConfig({...sifenConfig, establecimiento: e.target.value})}
+                                    value={configSifen.establecimiento}
+                                    onChange={(e) => setConfigSifen({...configSifen, establecimiento: e.target.value})}
                                     placeholder="001"
                                     className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Pto. Exp.</label>
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Punto Expedición</label>
                                 <input 
                                     type="text" 
-                                    value={sifenConfig.punto_expedicion}
-                                    onChange={(e) => setSifenConfig({...sifenConfig, punto_expedicion: e.target.value})}
+                                    value={configSifen.punto_expedicion}
+                                    onChange={(e) => setConfigSifen({...configSifen, punto_expedicion: e.target.value})}
                                     placeholder="001"
                                     className="w-full px-5 py-3 bg-slate-800 rounded-2xl border border-slate-700 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-xs"
                                 />
@@ -487,7 +487,7 @@ export default function Settings() {
                   <div className="flex justify-end gap-3">
                       <button className="px-8 py-4 bg-gray-100 text-gray-500 rounded-2xl font-black uppercase tracking-widest text-xs">Descartar</button>
                       <button 
-                        onClick={handleSaveFiscalProfile}
+                        onClick={guardarPerfilFiscal}
                         disabled={savingStatus === 'saving'}
                         className="px-10 py-4 bg-emerald-500 text-slate-900 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-emerald-500/20 disabled:opacity-50"
                       >

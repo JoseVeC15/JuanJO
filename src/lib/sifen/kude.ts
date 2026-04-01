@@ -6,7 +6,12 @@ import QRCode from 'qrcode';
  * Genera la representación gráfica legal de la factura electrónica.
  */
 
-export interface KuDEParams {
+/**
+ * Generador de KuDE (Kueatia Digital de la Escritura) - Finance Pro 🇵🇾
+ * Genera la representación gráfica legal de la factura electrónica.
+ */
+
+export interface ParametrosKuDE {
     razonSocialEmisor: string;
     rucEmisor: string;
     direccionEmisor: string;
@@ -17,7 +22,7 @@ export interface KuDEParams {
     cdc: string;
     razonSocialReceptor: string;
     rucReceptor: string;
-    items: {
+    productos: {
         descripcion: string;
         cantidad: number;
         precioUnitario: number;
@@ -28,89 +33,89 @@ export interface KuDEParams {
     ambiente: 'TEST' | 'PROD';
 }
 
-export async function generateKuDE(params: KuDEParams) {
+export async function generarKuDE(parametros: ParametrosKuDE) {
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const anchoPagina = doc.internal.pageSize.getWidth();
 
-    // 1. Cabecera - Estilo Finance Pro
+    // 1. Cabecera - Estilo Finance Pro Premium
     doc.setFillColor(15, 23, 42); // Slate 900
-    doc.rect(0, 0, pageWidth, 40, 'F');
+    doc.rect(0, 0, anchoPagina, 40, 'F');
     
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
-    doc.text(params.razonSocialEmisor, 15, 20);
+    doc.text(parametros.razonSocialEmisor, 15, 20);
     
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`RUC: ${params.rucEmisor}`, 15, 28);
-    doc.text(params.direccionEmisor, 15, 33);
+    doc.text(`RUC: ${parametros.rucEmisor}`, 15, 28);
+    doc.text(parametros.direccionEmisor, 15, 33);
 
     doc.setFontSize(16);
-    doc.text('FACTURA ELECTRÓNICA', pageWidth - 15, 20, { align: 'right' });
+    doc.text('FACTURA ELECTRÓNICA', anchoPagina - 15, 20, { align: 'right' });
     doc.setFontSize(12);
-    doc.text(params.numeroFactura, pageWidth - 15, 28, { align: 'right' });
+    doc.text(parametros.numeroFactura, anchoPagina - 15, 28, { align: 'right' });
 
-    // 2. Datos del Documento
+    // 2. Datos del Documento y Receptor
     doc.setTextColor(15, 23, 42);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text('DATOS DEL RECEPTOR', 15, 55);
-    doc.line(15, 57, pageWidth - 15, 57);
+    doc.text('DATOS DEL RECEPTOR (CLIENTE)', 15, 55);
+    doc.line(15, 57, anchoPagina - 15, 57);
 
     doc.setFont('helvetica', 'normal');
-    doc.text(`Razón Social: ${params.razonSocialReceptor}`, 15, 65);
-    doc.text(`RUC: ${params.rucReceptor}`, 15, 72);
-    doc.text(`Fecha: ${params.fechaEmision}`, pageWidth - 15, 65, { align: 'right' });
+    doc.text(`Razón Social: ${parametros.razonSocialReceptor}`, 15, 65);
+    doc.text(`RUC: ${parametros.rucReceptor}`, 15, 72);
+    doc.text(`Fecha Emisión: ${parametros.fechaEmision}`, anchoPagina - 15, 65, { align: 'right' });
 
-    // 3. Tabla de ítems
-    let yPos = 85;
+    // 3. Tabla de Productos y Servicios
+    let yPosicion = 85;
     doc.setFillColor(248, 250, 252); // Slate 50
-    doc.rect(15, yPos, pageWidth - 30, 8, 'F');
+    doc.rect(15, yPosicion, anchoPagina - 30, 8, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.text('Descripción', 18, yPos + 6);
-    doc.text('Cant.', 110, yPos + 6, { align: 'center' });
-    doc.text('Precio Unit.', 145, yPos + 6, { align: 'right' });
-    doc.text('Subtotal', pageWidth - 18, yPos + 6, { align: 'right' });
+    doc.text('Descripción / Concepto', 18, yPosicion + 6);
+    doc.text('Cant.', 110, yPosicion + 6, { align: 'center' });
+    doc.text('Precio Unit.', 145, yPosicion + 6, { align: 'right' });
+    doc.text('Subtotal', anchoPagina - 18, yPosicion + 6, { align: 'right' });
 
-    yPos += 15;
+    yPosicion += 15;
     doc.setFont('helvetica', 'normal');
-    params.items.forEach((item) => {
-        doc.text(item.descripcion, 18, yPos);
-        doc.text(item.cantidad.toString(), 110, yPos, { align: 'center' });
-        doc.text(item.precioUnitario.toLocaleString(), 145, yPos, { align: 'right' });
-        doc.text(item.totalItem.toLocaleString(), pageWidth - 18, yPos, { align: 'right' });
-        yPos += 10;
+    parametros.productos.forEach((producto) => {
+        doc.text(producto.descripcion, 18, yPosicion);
+        doc.text(producto.cantidad.toString(), 110, yPosicion, { align: 'center' });
+        doc.text(producto.precioUnitario.toLocaleString(), 145, yPosicion, { align: 'right' });
+        doc.text(producto.totalItem.toLocaleString(), anchoPagina - 18, yPosicion, { align: 'right' });
+        yPosicion += 10;
     });
 
-    // 4. Totales
-    yPos += 10;
-    doc.line(pageWidth - 80, yPos, pageWidth - 15, yPos);
-    yPos += 8;
+    // 4. Resumen de Totales
+    yPosicion += 10;
+    doc.line(anchoPagina - 80, yPosicion, anchoPagina - 15, yPosicion);
+    yPosicion += 8;
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('TOTAL GENERAL:', pageWidth - 80, yPos);
-    doc.text(`G. ${params.montoTotal.toLocaleString()}`, pageWidth - 18, yPos, { align: 'right' });
+    doc.text('TOTAL GENERAL:', anchoPagina - 80, yPosicion);
+    doc.text(`₲ ${parametros.montoTotal.toLocaleString()}`, anchoPagina - 18, yPosicion, { align: 'right' });
 
-    // 5. Pie de página - CDC y QR Legal
-    const footerY = doc.internal.pageSize.getHeight() - 60;
+    // 5. Pie de página - CDC y QR Oficial DNIT
+    const yPie = doc.internal.pageSize.getHeight() - 60;
     doc.setFontSize(8);
     doc.setTextColor(100, 116, 139); // Slate 400
-    doc.text('ESTE DOCUMENTO ES UNA REPRESENTACIÓN GRÁFICA DE UN COMPROBANTE ELECTRÓNICO', 15, footerY);
+    doc.text('ESTE DOCUMENTO ES UNA REPRESENTACIÓN GRÁFICA DE UN COMPROBANTE ELECTRÓNICO (KuDE)', 15, yPie);
     doc.setFont('helvetica', 'bold');
-    doc.text(`CDC: ${params.cdc}`, 15, footerY + 5);
+    doc.text(`CDC: ${parametros.cdc}`, 15, yPie + 5);
 
-    if (params.ambiente === 'TEST') {
+    if (parametros.ambiente === 'TEST') {
         doc.setTextColor(220, 38, 38);
         doc.setFontSize(12);
-        doc.text('*** SIN VALIDEZ TRIBUTARIA - AMBIENTE DE PRUEBAS ***', pageWidth / 2, footerY + 15, { align: 'center' });
+        doc.text('*** SIN VALIDEZ TRIBUTARIA - AMBIENTE DE PRUEBAS SIFEN ***', anchoPagina / 2, yPie + 15, { align: 'center' });
     }
 
-    // Generar Código QR (DNIT exige URL de consulta con el CDC)
-    const qrUrl = `https://sifen${params.ambiente === 'TEST' ? '-test' : ''}.set.gov.py/consulta/qr?cdc=${params.cdc}`;
-    const qrImage = await QRCode.toDataURL(qrUrl);
-    doc.addImage(qrImage, 'PNG', pageWidth - 45, footerY - 5, 30, 30);
+    // Generar Código QR (La DNIT exige URL de consulta oficial con el CDC)
+    const urlQR = `https://sifen${parametros.ambiente === 'TEST' ? '-test' : ''}.set.gov.py/consulta/qr?cdc=${parametros.cdc}`;
+    const imagenQR = await QRCode.toDataURL(urlQR);
+    doc.addImage(imagenQR, 'PNG', anchoPagina - 45, yPie - 5, 30, 30);
 
-    // Descargar
-    doc.save(`KuDE_${params.numeroFactura}.pdf`);
+    // Guardar/Descargar
+    doc.save(`KuDE_${parametros.numeroFactura}.pdf`);
 }

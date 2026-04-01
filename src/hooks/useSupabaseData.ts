@@ -89,12 +89,12 @@ export function useSupabaseData() {
     return i;
   }), [ingresosRaw]);
 
-  const { data: fiscalProfile, isLoading: loadingFiscal } = useQuery({
-    queryKey: ['fiscal_profile', sessionUser?.id],
+  const { data: perfilFiscal, isLoading: cargandoPerfilFiscal } = useQuery({
+    queryKey: ['perfil_fiscal', sessionUser?.id],
     enabled: !!sessionUser,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tenant_fiscal_profile')
+        .from('perfiles_fiscales')
         .select('*')
         .single();
       if (error && error.code !== 'PGRST116') throw error;
@@ -102,12 +102,12 @@ export function useSupabaseData() {
     }
   });
 
-  const { data: sifenConfig, isLoading: loadingSifen } = useQuery({
-    queryKey: ['sifen_config', sessionUser?.id],
+  const { data: configSifen, isLoading: cargandoSifen } = useQuery({
+    queryKey: ['configuracion_sifen', sessionUser?.id],
     enabled: !!sessionUser,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('tenant_sifen_config')
+        .from('configuracion_sifen')
         .select('*')
         .single();
       if (error && error.code !== 'PGRST116') throw error;
@@ -115,13 +115,13 @@ export function useSupabaseData() {
     }
   });
 
-  const { data: electronicDocuments = [], isLoading: loadingSifenDocs } = useQuery({
-    queryKey: ['electronic_documents', sessionUser?.id],
+  const { data: documentosElectronicos = [], isLoading: cargandoDocsSifen } = useQuery({
+    queryKey: ['documentos_electronicos', sessionUser?.id],
     enabled: !!sessionUser,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('electronic_documents')
-        .select('*, electronic_document_items(*)')
+        .from('documentos_electronicos')
+        .select('*, documentos_items(*)')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
@@ -131,34 +131,34 @@ export function useSupabaseData() {
   useEffect(() => {
     if (!sessionUser) return;
 
-    const channels = [
-      { name: 'public:profiles', key: 'profile' },
-      { name: 'public:proyectos', key: 'proyectos' },
-      { name: 'public:facturas_gastos', key: 'facturas_gastos' },
-      { name: 'public:ingresos', key: 'ingresos' },
-      { name: 'public:inventario_equipo', key: 'inventario_equipo' },
-      { name: 'public:tenant_fiscal_profile', key: 'fiscal_profile' },
-      { name: 'public:tenant_sifen_config', key: 'sifen_config' },
-      { name: 'public:electronic_documents', key: 'electronic_documents' }
-    ].map(({ name, key }) => 
-      supabase.channel(name)
+    const canales = [
+      { nombre: 'public:profiles', clave: 'profile' },
+      { nombre: 'public:proyectos', clave: 'proyectos' },
+      { nombre: 'public:facturas_gastos', clave: 'facturas_gastos' },
+      { nombre: 'public:ingresos', clave: 'ingresos' },
+      { nombre: 'public:inventario_equipo', clave: 'inventario_equipo' },
+      { nombre: 'public:perfiles_fiscales', clave: 'perfil_fiscal' },
+      { nombre: 'public:configuracion_sifen', clave: 'configuracion_sifen' },
+      { nombre: 'public:documentos_electronicos', clave: 'documentos_electronicos' }
+    ].map(({ nombre, clave }) => 
+      supabase.channel(nombre)
         .on('postgres_changes', { 
             event: '*', 
             schema: 'public', 
-            table: key === 'profile' ? 'profiles' : (key === 'fiscal_profile' ? 'tenant_fiscal_profile' : (key === 'sifen_config' ? 'tenant_sifen_config' : (key === 'electronic_documents' ? 'electronic_documents' : key))) 
+            table: clave === 'profile' ? 'profiles' : (clave === 'perfil_fiscal' ? 'perfiles_fiscales' : (clave === 'configuracion_sifen' ? 'configuracion_sifen' : (clave === 'documentos_electronicos' ? 'documentos_electronicos' : clave))) 
         }, () => {
-          queryClient.invalidateQueries({ queryKey: key === 'profile' ? ['profile', sessionUser?.id] : [key] });
+          queryClient.invalidateQueries({ queryKey: clave === 'profile' ? ['profile', sessionUser?.id] : [clave] });
         }).subscribe()
     );
 
     return () => {
-      channels.forEach(channel => supabase.removeChannel(channel));
+      canales.forEach(canal => supabase.removeChannel(canal));
     };
   }, [sessionUser, queryClient]);
 
-  // Optimización de Loading: Priorizamos datos financieros para el Dashboard
-  const loading = loadingProyectos || loadingFacturas || loadingIngresos;
-  const error = errorProyectos || errorFacturas || errorEquipo || errorIngresos ? 'Error fetching data' : null;
+  // Optimización de Carga: Priorizamos datos financieros para el Dashboard
+  const cargandoBase = loadingProyectos || loadingFacturas || loadingIngresos;
+  const error = errorProyectos || errorFacturas || errorEquipo || errorIngresos ? 'Error al obtener datos' : null;
 
   return { 
     proyectos, 
@@ -167,10 +167,10 @@ export function useSupabaseData() {
     alertas: [] as Alerta[], 
     ingresos, 
     profile,
-    fiscalProfile,
-    sifenConfig,
-    electronicDocuments,
-    loading: loading || loadingProfile || loadingFiscal || loadingSifen || loadingSifenDocs, 
+    perfilFiscal,
+    configSifen,
+    documentosElectronicos,
+    loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen, 
     loadingExtra: loadingEquipo,
     error 
   };

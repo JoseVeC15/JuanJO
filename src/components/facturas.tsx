@@ -44,7 +44,7 @@ interface FacturasProps {
 export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { facturasGastos, ingresos, loading: dataLoading, fiscalProfile, sifenConfig, electronicDocuments } = useSupabaseData();
+  const { facturasGastos, ingresos, loading: dataLoading, perfilFiscal, configSifen, documentosElectronicos } = useSupabaseData();
   const { user } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen'>(initialTab);
@@ -347,7 +347,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             <Download size={18} /> SET CSV
           </button>
           
-          {activeTab === 'ingresos' && fiscalProfile && sifenConfig && (
+          {activeTab === 'ingresos' && perfilFiscal && configSifen && (
             <button 
                 onClick={() => setIsEmitterOpen(true)}
                 className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30 shadow-indigo-500/10"
@@ -468,9 +468,9 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {electronicDocuments.length === 0 ? (
+                        {documentosElectronicos.length === 0 ? (
                             <tr><td colSpan={6} className="p-20 text-center text-gray-400 font-medium italic">No hay facturas electrónicas emitidas aún.</td></tr>
-                        ) : electronicDocuments.map((doc: any) => (
+                        ) : documentosElectronicos.map((doc: any) => (
                             <tr key={doc.id} className="hover:bg-slate-50 transition-all cursor-default">
                                 <td className="p-6 text-xs font-bold text-gray-600">{new Date(doc.created_at).toLocaleDateString()}</td>
                                 <td className="p-6">
@@ -490,18 +490,18 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                                 <td className="p-6 text-center">
                                     <button 
                                         onClick={async () => {
-                                            const { generateKuDE } = await import('../lib/sifen/kude');
-                                            generateKuDE({
-                                                razonSocialEmisor: fiscalProfile.razon_social,
-                                                rucEmisor: fiscalProfile.ruc,
-                                                direccionEmisor: fiscalProfile.direccion || 'Asunción, Paraguay',
+                                            const { generarKuDE } = await import('../lib/sifen/kude');
+                                            generarKuDE({
+                                                razonSocialEmisor: perfilFiscal.razon_social,
+                                                rucEmisor: perfilFiscal.ruc,
+                                                direccionEmisor: perfilFiscal.direccion || 'Asunción, Paraguay',
                                                 numeroFactura: doc.numero_factura,
-                                                timbrado: sifenConfig.timbrado,
+                                                timbrado: configSifen.timbrado,
                                                 fechaEmision: new Date(doc.created_at).toLocaleDateString(),
                                                 cdc: doc.cdc,
                                                 razonSocialReceptor: doc.receptor_razon_social,
                                                 rucReceptor: doc.receptor_ruc,
-                                                items: doc.electronic_document_items.map((i: any) => ({
+                                                productos: doc.electronic_document_items.map((i: any) => ({
                                                     descripcion: i.descripcion,
                                                     cantidad: i.cantidad,
                                                     precioUnitario: i.precio_unitario,
@@ -509,7 +509,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                                                     totalItem: i.monto_total_item
                                                 })),
                                                 montoTotal: doc.monto_total,
-                                                ambiente: fiscalProfile.ambiente.toUpperCase() as 'TEST' | 'PROD'
+                                                ambiente: perfilFiscal.ambiente.toUpperCase() as 'TEST' | 'PROD'
                                             });
                                         }}
                                         className="w-10 h-10 flex items-center justify-center text-indigo-500 bg-indigo-50 hover:bg-emerald-500 hover:text-white rounded-2xl transition-all shadow-sm"
@@ -711,8 +711,8 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       <AnimatePresence>
         {isEmitterOpen && (
             <SifenInvoiceEmitter 
-                fiscalProfile={fiscalProfile}
-                sifenConfig={sifenConfig}
+                fiscalProfile={perfilFiscal}
+                sifenConfig={configSifen}
                 onClose={() => setIsEmitterOpen(false)}
                 onSuccess={() => {
                     setIsEmitterOpen(false);
