@@ -345,18 +345,19 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           <p className="text-gray-500 font-medium italic">Control avanzado de documentos con respaldo IA.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Internal Tab Selector */}
-          <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
-             {['gastos', 'ingresos', 'sifen', 'clientes'].map((tab: any) => (
-               <button
-                 key={tab}
-                 onClick={() => setActiveTab(tab)}
-                 className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-               >
-                 {tab === 'sifen' ? 'E-DOCS' : tab}
-               </button>
-             ))}
-          </div>
+          {(activeTab === 'sifen' || activeTab === 'clientes') && (
+            <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
+              {['sifen', 'clientes'].map((tab: any) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                >
+                  {tab === 'sifen' ? 'E-DOCS' : tab}
+                </button>
+              ))}
+            </div>
+          )}
           
           <div className="w-px h-8 bg-gray-200 mx-2 hidden lg:block" />
           
