@@ -4,9 +4,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 // Configuración del worker de PDF.js para procesamiento en segundo plano
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
-import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search, Sparkles, ShieldCheck } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CheckCircle, Clock, AlertCircle, FileText, ChevronDown, ChevronUp, Scan, Loader2, Image as ImageIcon, Trash2, Edit2, X, Table as TableIcon, LayoutGrid, Download, Plus, Shield, Search, Sparkles } from 'lucide-react';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
@@ -43,7 +42,6 @@ interface FacturasProps {
 
 export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const { facturasGastos, ingresos, loading: dataLoading, perfilFiscal, configSifen, documentosElectronicos } = useSupabaseData();
   const { user } = useAuth();
   
@@ -302,39 +300,15 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     <div className="space-y-6 pb-20">
       <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,application/pdf" className="hidden" />
 
-      {/* Tabs Selector */}
-      <div className="flex p-1 bg-gray-100 rounded-2xl w-full sm:w-fit border border-gray-200/50 shadow-inner">
-        <button 
-          onClick={() => { setActiveTab('gastos'); navigate('/gastos'); setFilterEstado('todos'); }}
-          className={`flex-1 sm:flex-none flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${activeTab === 'gastos' ? 'bg-white text-slate-900 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <ArrowDownLeft size={16} className={activeTab === 'gastos' ? 'text-rose-500' : ''} />
-          Gastos (Compras)
-        </button>
-        <button 
-          onClick={() => { setActiveTab('ingresos'); navigate('/ingresos'); setFilterEstado('todos'); }}
-          className={`flex-1 sm:flex-none flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${activeTab === 'ingresos' ? 'bg-white text-slate-900 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <ArrowUpRight size={16} className={activeTab === 'ingresos' ? 'text-emerald-500' : ''} />
-          Ingresos (Ventas)
-        </button>
-        <button 
-          onClick={() => { setActiveTab('sifen'); setFilterEstado('todos'); }}
-          className={`flex-1 sm:flex-none flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all ${activeTab === 'sifen' ? 'bg-white text-slate-900 shadow-md scale-[1.02]' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <ShieldCheck size={16} className={activeTab === 'sifen' ? 'text-indigo-500' : ''} />
-          Facturas SIFEN
-        </button>
-      </div>
-
-      {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         <div>
           <div className="flex items-center gap-2 text-indigo-500 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
              <Shield size={14} /> Alineación Fiscal DNIT/SET
           </div>
           <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
-            {activeTab === 'gastos' ? 'Gestión de Compras' : 'Facturación Emitida'}
+            {activeTab === 'gastos' ? 'Gestión de Compras' : 
+             activeTab === 'ingresos' ? 'Facturación Emitida' : 
+             'Documentos Electrónicos SIFEN'}
           </h1>
           <p className="text-gray-500 font-medium italic">Control avanzado de documentos con respaldo IA.</p>
         </div>
@@ -711,8 +685,6 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       <AnimatePresence>
         {isEmitterOpen && (
             <SifenInvoiceEmitter 
-                fiscalProfile={perfilFiscal}
-                sifenConfig={configSifen}
                 onClose={() => setIsEmitterOpen(false)}
                 onSuccess={() => {
                     setIsEmitterOpen(false);

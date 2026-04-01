@@ -42,13 +42,14 @@ function RouterWrapper() {
 
 
   const navItems = [
-    { key: 'dashboard', path: '/dashboard', label: 'Dashboard', icon: <Layout size={20} /> },
-    { key: 'gastos', path: '/gastos', label: 'Gastos', icon: <ArrowDownLeft size={20} /> },
-    { key: 'ingresos', path: '/ingresos', label: 'Ingresos', icon: <ArrowUpRight size={20} /> },
-    { key: 'proyectos', path: '/proyectos', label: 'Proyectos', icon: <Layout size={20} /> },
-    { key: 'inventario', path: '/activos', label: 'Activos', icon: <PieChart size={20} /> },
-    { key: 'reportes', path: '/analisis', label: 'Análisis', icon: <PieChart size={20} /> },
-    { key: 'settings', path: '/config', label: 'Config', icon: <SettingsIcon size={20} /> },
+    { key: 'dashboard', path: '/dashboard', label: 'DASHBOARD', icon: <Layout size={20} /> },
+    { key: 'gastos', path: '/gastos', label: 'GASTOS', icon: <ArrowDownLeft size={20} /> },
+    { key: 'ingresos', path: '/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
+    { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
+    { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
+    { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
+    { key: 'reportes', path: '/analisis', label: 'ANÁLISIS', icon: <PieChart size={20} /> },
+    { key: 'settings', path: '/config', label: 'CONFIG', icon: <SettingsIcon size={20} /> },
   ];
 
   if (profile?.nivel_acceso === 1) {
@@ -138,7 +139,7 @@ function RouterWrapper() {
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/dashboard" element={
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Dashboard onNavigate={() => {}} />
+                      <Dashboard />
                     </motion.div>
                   } />
                   <Route path="/gastos" element={
@@ -149,6 +150,11 @@ function RouterWrapper() {
                   <Route path="/ingresos" element={
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                       <Facturas initialTab="ingresos" />
+                    </motion.div>
+                  } />
+                  <Route path="/sifen" element={
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                      <Facturas initialTab="sifen" />
                     </motion.div>
                   } />
                   <Route path="/proyectos" element={

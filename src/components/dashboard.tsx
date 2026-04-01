@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Wallet,
   ArrowUpRight, Loader2,
-  Activity, DollarSign, Plus,
+  Activity, 
   ShieldCheck, AlertTriangle, Target, Shield, Calendar
 } from 'lucide-react';
 import {
@@ -18,7 +18,7 @@ import {
 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => void }) {
+export default function Dashboard() {
   const { proyectos, facturasGastos, ingresos, configSifen, loading } = useSupabaseData();
   const { user } = useAuth();
   const [showSifenEmitter, setShowSifenEmitter] = useState(false);
@@ -126,21 +126,6 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
           </h1>
           <p className="text-gray-500 mt-1 font-medium italic">Visión consolidada alineada con DNIT/SET (PY).</p>
         </motion.div>
-        
-        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-          <motion.button onClick={() => onNavigate('facturas')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-3 lg:px-6 lg:py-3.5 rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-sm transition-all">
-            <Plus size={16} className="text-emerald-500 lg:w-[18px]" /> Nuevo Doc
-          </motion.button>
-          <motion.button 
-            onClick={() => setShowSifenEmitter(true)} 
-            whileHover={{ scale: 1.02 }} 
-            whileTap={{ scale: 0.98 }} 
-            className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-3 lg:px-7 lg:py-3.5 rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 relative overflow-hidden group transition-all"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-            <DollarSign size={16} className="text-emerald-400 lg:w-[18px]" /> Emitir
-          </motion.button>
-        </div>
       </div>
 
       <AnimatePresence>
