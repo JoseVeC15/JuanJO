@@ -70,7 +70,7 @@ function RouterWrapper() {
                 </motion.div>
                 <div>
                   <h1 className="text-white font-black tracking-tighter text-xl leading-none">FINANCE <span className="text-emerald-400">PRO</span></h1>
-                  <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-1">Freelance v2</p>
+                  <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mt-1">v2.0.0</p>
                 </div>
               </div>
             </div>

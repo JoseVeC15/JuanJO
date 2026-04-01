@@ -13,7 +13,8 @@ import {
   Zap, 
   Layout, 
   PieChart,
-  ChevronRight
+  ChevronRight,
+  Wallet
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -69,8 +70,8 @@ export default function ManualsScreen() {
             VOLVER AL LOGIN
           </button>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-              <BookOpen size={20} />
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 shadow-md shadow-emerald-500/10">
+              <Wallet size={22} />
             </div>
             <div>
               <h1 className="font-black text-slate-900 leading-none tracking-tighter text-xl">CENTRO DE <span className="text-emerald-500">AYUDA</span></h1>
