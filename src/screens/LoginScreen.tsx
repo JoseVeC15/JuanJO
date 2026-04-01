@@ -10,13 +10,29 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const getFriendlyErrorMessage = (message: string) => {
+    if (message.includes('Invalid login credentials')) return 'El correo o la contraseña son incorrectos.';
+    if (message.includes('Email not confirmed')) return 'Por favor, confirma tu correo electrónico antes de entrar.';
+    if (message.includes('Email not found')) return 'No existe ninguna cuenta con este correo.';
+    if (message.includes('Network request failed')) return 'Error de conexión. Revisa tu internet e inténtalo de nuevo.';
+    return 'Ha ocurrido un error inesperado. Por favor, inténtalo más tarde.';
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) setError(error.message);
-    setLoading(false);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(getFriendlyErrorMessage(error.message));
+      }
+    } catch (err) {
+      setError('Error de sistema. Por favor contacta al soporte.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

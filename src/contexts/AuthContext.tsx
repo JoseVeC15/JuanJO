@@ -19,7 +19,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Escuchar cambios de estado (incluyendo el retorno de OAuth)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth Event:', event);
       if (session) {
         setUser(session.user);
         setMustChangePassword(!!session.user.user_metadata?.must_change_password);
@@ -36,8 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Verificación inicial de sesión
-    supabase.auth.getUser().then(({ data: { user }, error }) => {
-      if (error) console.error('Error al recuperar usuario:', error.message);
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUser(user);
         setMustChangePassword(!!user.user_metadata?.must_change_password);

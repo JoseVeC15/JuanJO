@@ -103,7 +103,6 @@ export default function AdminPanel() {
   };
 
   const handleAdminOp = async (action: 'delete_user' | 'update_user' | 'reset_password' | 'toggle_suspension', userId: string, dataObj?: any) => {
-    console.log(`[ADMIN OP] Inicia: ${action} para ${userId}`, dataObj);
     setIsSubmitting(true);
     setStatus(null);
     try {
@@ -111,7 +110,7 @@ export default function AdminPanel() {
         body: { action, userId, data: dataObj }
       });
 
-      console.log(`[ADMIN OP] Resultado:`, { data, error });
+
 
       if (error) {
         let errorMsg = 'Fallo en la operación administrativa';
@@ -134,7 +133,6 @@ export default function AdminPanel() {
       setSuspendData(null);
 
     } catch (err: any) {
-      console.error("[ADMIN OP ERROR]:", err);
       setStatus({ type: 'error', msg: err?.message || 'Error en la conexión con la función administrativa.' });
     } finally {
       setIsSubmitting(false);
