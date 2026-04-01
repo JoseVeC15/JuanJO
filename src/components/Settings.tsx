@@ -149,7 +149,7 @@ export default function Settings() {
                 direccion: perfilFiscal.direccion || 'Asunción, PY',
                 ambiente: perfilFiscal.ambiente,
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: 'user_id' });
           
           if (error) throw error;
 
@@ -164,7 +164,7 @@ export default function Settings() {
                 establecimiento: configSifen.establecimiento,
                 punto_expedicion: configSifen.punto_expedicion,
                 updated_at: new Date().toISOString()
-            });
+            }, { onConflict: 'user_id' });
 
           if (configError) throw configError;
           
@@ -185,7 +185,7 @@ export default function Settings() {
                                 vencimiento: new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
                                 alias: certData.name,
                                 estado: 'activo'
-                            });
+                            }, { onConflict: 'user_id' });
                           if (certError) throw certError;
                           resolve(true);
                       } catch (err) {
