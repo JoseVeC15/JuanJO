@@ -31,7 +31,7 @@ export default function LoginScreen() {
               <Wallet size={32} />
             </div>
             <h1 className="text-3xl font-bold text-white tracking-tight uppercase">FINANCE <span className="text-emerald-400">PRO</span></h1>
-            <p className="text-slate-400 mt-2 font-medium">Acceso Seguro al Portal Empresarial</p>
+            <p className="text-slate-400 mt-2 font-medium uppercase tracking-tight">Bienvenido a FINANCE PRO</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4 relative z-10">
@@ -136,7 +136,7 @@ export default function LoginScreen() {
               <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <p className="text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">
-              FINANCE PRO v2.0.0 Stable
+              FINANCE PRO v2.0.0
             </p>
           </div>
         </div>
