@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Search, Loader2, UserPlus, RefreshCw, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const API_URL = "https://api.ruc.com.py";
+const API_URL = "https://turuc.com.py/api/v1";
 
 interface RucData {
     ruc: string;
@@ -10,6 +10,7 @@ interface RucData {
     estado?: string;
     ruc_anterior?: string;
     dv?: string;
+    tipo_contribuyente?: string;
 }
 
 interface RucBuscadorProps {
@@ -30,22 +31,39 @@ export default function RucBuscador({ onSelect }: RucBuscadorProps) {
         }
 
         setLoading(true);
-        setMsg("Buscando...");
+        setMsg("Buscando en servicios tributarios...");
         setResults([]);
 
         try {
-            const res = await fetch(`${API_URL}/ruc-data/buscar?termino=${encodeURIComponent(query)}`);
-            const data = await res.json();
+            // Usamos un proxy CORS (AllOrigins) para evitar bloqueos del navegador
+            const targetUrl = `${API_URL}/search/${encodeURIComponent(query)}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+            
+            const res = await fetch(proxyUrl);
+            const proxyData = await res.json();
+            const data = JSON.parse(proxyData.contents);
 
-            if (!data.success) {
-                setMsg(data.message || "No se pudo buscar.");
-                return;
+            // El formato de TuRuc puede variar, ajustamos extracción
+            if (!data || !Array.isArray(data)) {
+                // Si no es un array, tal vez sea un solo resultado o tenga éxito/data
+                const searchResults = data?.data || (data?.ruc ? [data] : []);
+                if (searchResults.length === 0) {
+                    setMsg("No se encontraron resultados.");
+                    return;
+                }
+                setResults(searchResults);
+                setMsg(`Resultados: ${searchResults.length}`);
+            } else {
+                if (data.length === 0) {
+                    setMsg("Contribuyente no encontrado.");
+                    return;
+                }
+                setResults(data);
+                setMsg(`Resultados: ${data.length}`);
             }
-
-            setMsg(`Resultados: ${data.data.length}`);
-            setResults(data.data);
         } catch (e) {
-            setMsg("Error de conexión con el servicio.");
+            console.error("RUC Search Error:", e);
+            setMsg("Servicio de consulta temporalmente saturado. Reintente en unos segundos.");
         } finally {
             setLoading(false);
         }
@@ -54,31 +72,28 @@ export default function RucBuscador({ onSelect }: RucBuscadorProps) {
     const actualizarRuc = async (ruc: string) => {
         if (!ruc) return;
         setUpdating(ruc);
-        setMsg(`Actualizando ${ruc}...`);
+        setMsg(`Obteniendo detalles de ${ruc}...`);
 
         try {
-            const res = await fetch(`${API_URL}/ruc-data/actualizar/${encodeURIComponent(ruc)}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" }
-            });
-            const data = await res.json();
+            const targetUrl = `${API_URL}/ruc/${encodeURIComponent(ruc)}`;
+            const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`;
+            
+            const res = await fetch(proxyUrl);
+            const proxyData = await res.json();
+            const d = JSON.parse(proxyData.contents);
 
-            if (!data.success || !data.data) {
-                setMsg(data.message || "No se pudo actualizar.");
+            if (!d || !d.ruc) {
+                setMsg("No se pudieron obtener más detalles.");
                 return;
             }
 
-            const d = data.data;
-            const oblig = d.obligatoriedad
-                ? ` | Obligatoriedad: ${d.obligatoriedad.fecha_obligatoriedad || "-"} | Grupo: ${d.obligatoriedad.grupo ?? "-"}`
-                : "";
-
-            setMsg(`RUC ${d.ruc} | Estado: ${d.estado || "Sin dato"}${oblig}`);
+            const oblig = d.tipo_contribuyente ? ` | Tipo: ${d.tipo_contribuyente}` : "";
+            setMsg(`RUC ${d.ruc} | Estado: ${d.estado || "Buscando..."}${oblig}`);
             
             // Actualizar el resultado en la lista si existe
             setResults(prev => prev.map(item => item.ruc === ruc ? { ...item, ...d } : item));
         } catch {
-            setMsg("Error al actualizar el RUC.");
+            setMsg("Error al conectar con la base de datos de la SET.");
         } finally {
             setUpdating(null);
         }
