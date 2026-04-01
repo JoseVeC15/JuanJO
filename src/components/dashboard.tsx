@@ -11,6 +11,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import SifenInvoiceEmitter from './SifenInvoiceEmitter';
 import {
   formatGs, formatGsShort,
   getGastoLabel, getGastoColor
@@ -18,8 +19,9 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => void }) {
-  const { proyectos, facturasGastos, ingresos, loading } = useSupabaseData();
+  const { proyectos, facturasGastos, ingresos, perfilFiscal, configSifen, loading } = useSupabaseData();
   const { user } = useAuth();
+  const [showSifenEmitter, setShowSifenEmitter] = useState(false);
   const [showUpgradeAlert, setShowUpgradeAlert] = useState(false);
   
   // Default to current month YYYY-MM
@@ -129,7 +131,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
           <motion.button onClick={() => onNavigate('facturas')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-3 lg:px-6 lg:py-3.5 rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-sm transition-all">
             <Plus size={16} className="text-emerald-500 lg:w-[18px]" /> Nuevo Doc
           </motion.button>
-          <motion.button onClick={() => setShowUpgradeAlert(true)} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-3 lg:px-7 lg:py-3.5 rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 relative overflow-hidden group transition-all">
+          <motion.button 
+            onClick={() => setShowSifenEmitter(true)} 
+            whileHover={{ scale: 1.02 }} 
+            whileTap={{ scale: 0.98 }} 
+            className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-slate-900 text-white px-4 py-3 lg:px-7 lg:py-3.5 rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl shadow-slate-200 relative overflow-hidden group transition-all"
+          >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
             <DollarSign size={16} className="text-emerald-400 lg:w-[18px]" /> Emitir
           </motion.button>
@@ -249,6 +256,14 @@ export default function Dashboard({ onNavigate }: { onNavigate: (page: any) => v
             </motion.div>
         </div>
       </div>
+      {showSifenEmitter && (
+        <SifenInvoiceEmitter 
+          onClose={() => setShowSifenEmitter(false)} 
+          onSuccess={() => setShowSifenEmitter(false)}
+          fiscalProfile={perfilFiscal}
+          sifenConfig={configSifen}
+        />
+      )}
     </div>
   );
 }

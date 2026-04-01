@@ -140,7 +140,10 @@ export default function Settings() {
             .from('perfiles_fiscales')
             .upsert({
                 user_id: user?.id,
-                ...perfilFiscal,
+                ruc: perfilFiscal.ruc,
+                dv: parseInt(perfilFiscal.dv) || 0,
+                razon_social: perfilFiscal.razon_social,
+                ambiente: perfilFiscal.ambiente,
                 updated_at: new Date().toISOString()
             });
           
