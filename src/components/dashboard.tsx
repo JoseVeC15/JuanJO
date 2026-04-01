@@ -171,12 +171,12 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" />
+        <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" tooltip="Dinero real disponible tras restar todos los gastos de tus ingresos cobrados." />
         {(profile?.facturacion_habilitada || profile?.nivel_acceso === 1) && (
           <>
-            <StatCard index={1} title="Ventas del Período" value={formatGs(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" />
-            <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" />
-            <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" />
+            <StatCard index={1} title="Ventas del Período" value={formatGs(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" tooltip="Suma total facturada sin deducir costos ni impuestos." />
+            <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" tooltip="Mide la rentabilidad neta (Ganancia / Ingresos). Refleja la salud financiera de tu operación." />
+            <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." />
           </>
         )}
       </div>
@@ -300,7 +300,8 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, desc, icon, color, index }: any) {
+function StatCard({ title, value, desc, icon, color, index, tooltip }: any) {
+  const [isHovered, setIsHovered] = useState(false);
   const themes = {
     emerald: 'bg-emerald-50/50 text-emerald-600 border-emerald-100',
     rose: 'bg-rose-50/50 text-rose-600 border-rose-100',
@@ -313,7 +314,9 @@ function StatCard({ title, value, desc, icon, color, index }: any) {
       animate={{ opacity: 1, y: 0 }} 
       transition={{ delay: 0.1 * index }} 
       whileHover={{ y: -5 }} 
-      className="bg-white p-4 lg:p-8 rounded-3xl lg:rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-0"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="bg-white p-4 lg:p-8 rounded-3xl lg:rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group overflow-hidden relative flex flex-row lg:flex-col items-center lg:items-start gap-4 lg:gap-0 cursor-help"
     >
       <div className={`w-12 h-12 lg:w-14 lg:h-14 shrink-0 rounded-xl lg:rounded-2xl flex items-center justify-center mb-0 lg:mb-6 transition-transform group-hover:scale-110 shadow-sm ${themes[color as keyof typeof themes]}`}>
         {icon}
@@ -323,6 +326,21 @@ function StatCard({ title, value, desc, icon, color, index }: any) {
         <h4 className="text-lg lg:text-2xl font-black text-gray-900 mb-0.5 lg:mb-1 leading-none">{value}</h4>
         <p className="text-[10px] lg:text-xs text-gray-400 font-medium leading-tight">{desc}</p>
       </div>
+
+      <AnimatePresence>
+        {isHovered && tooltip && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            exit={{ opacity: 0, y: 5 }}
+            className="absolute inset-0 bg-slate-900/95 backdrop-blur-sm p-6 flex flex-col justify-center items-center text-center z-20"
+          >
+             <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-2">{title}</p>
+             <p className="text-xs font-medium text-slate-100 leading-relaxed">{tooltip}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="absolute top-0 right-0 w-24 h-24 bg-gray-50/50 rounded-full -mr-12 -mt-12 group-hover:scale-150 transition-transform -z-0 pointer-events-none" />
     </motion.div>
   );
