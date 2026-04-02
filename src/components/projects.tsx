@@ -1,11 +1,17 @@
-import { useState } from 'react';
-import { Plus, Calendar, Wallet, Loader2, ArrowUpRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Wallet, Loader2, ArrowUpRight } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGsShort, getServiceIcon, getStatusLabel, getStatusColor } from '../data/sampleData';
+import ProjectDetailsModal from './ProjectDetailsModal';
+import ProjectFormModal from './ProjectFormModal';
+import type { Proyecto } from '../data/sampleData';
 
 export default function Projects() {
   const { proyectos, loading } = useSupabaseData();
   const [filter] = useState('todos');
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Proyecto | null>(null);
 
   if (loading) {
     return (
@@ -15,7 +21,7 @@ export default function Projects() {
     );
   }
 
-  const filtered = proyectos.filter(p => filter === 'todos' || p.estado === filter);
+  const filtered = proyectos.filter((p: any) => filter === 'todos' || p.estado === filter);
 
   return (
     <div className="space-y-6">
@@ -24,7 +30,10 @@ export default function Projects() {
           <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Gestión de Proyectos</h1>
           <p className="text-gray-500 mt-1">{proyectos.length} proyectos registrados</p>
         </div>
-        <button className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold hover:bg-slate-800 transition-all">
+        <button 
+          onClick={() => setIsCreateOpen(true)}
+          className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20"
+        >
           <Plus size={20} />
           Nuevo Proyecto
         </button>
@@ -32,20 +41,29 @@ export default function Projects() {
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <ProjectStat label="En Progreso" count={proyectos.filter(p => p.estado === 'en_progreso').length} bg="bg-amber-50" text="text-amber-600" />
-        <ProjectStat label="Pendientes Cobro" count={proyectos.filter(p => p.estado === 'facturado').length} bg="bg-emerald-50" text="text-emerald-600" />
-        <ProjectStat label="Cotizaciones" count={proyectos.filter(p => p.estado === 'cotizacion').length} bg="bg-blue-50" text="text-blue-600" />
+        <ProjectStat label="En Progreso" count={proyectos.filter((p: any) => p.estado === 'en_progreso').length} bg="bg-amber-50" text="text-amber-600" />
+        <ProjectStat label="Pendientes Cobro" count={proyectos.filter((p: any) => p.estado === 'facturado').length} bg="bg-emerald-50" text="text-emerald-600" />
+        <ProjectStat label="Cotizaciones" count={proyectos.filter((p: any) => p.estado === 'cotizacion').length} bg="bg-blue-50" text="text-blue-600" />
       </div>
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filtered.map(project => {
+        {filtered.map((project: any) => {
           const progress = project.monto_presupuestado > 0 
             ? (Number(project.monto_facturado || 0) / Number(project.monto_presupuestado)) * 100 
             : 0;
 
           return (
-            <div key={project.id} className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all group">
+            <div 
+              key={project.id} 
+              onClick={() => setSelectedProject(project)}
+              className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden cursor-pointer"
+            >
+              {/* Indicador de Rentabilidad Crítica */}
+              {project.salud_margen === 'alerta' && (
+                <div className="absolute top-0 right-0 w-2 h-full bg-rose-500" title="Margen por debajo del objetivo" />
+              )}
+
               <div className="flex items-start justify-between mb-4">
                 <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style={{ backgroundColor: getStatusColor(project.estado) + '15' }}>
                   {getServiceIcon(project.tipo_servicio)}
@@ -54,22 +72,42 @@ export default function Projects() {
                    <span className="text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider mb-2" style={{ backgroundColor: getStatusColor(project.estado) + '20', color: getStatusColor(project.estado) }}>
                     {getStatusLabel(project.estado)}
                   </span>
-                  <ArrowUpRight size={20} className="text-gray-300 group-hover:text-emerald-500 transition-colors" />
+                  <div className="flex items-center gap-2">
+                    {project.salud_margen === 'alerta' && (
+                      <span className="bg-rose-50 text-rose-600 text-[10px] font-black px-2 py-0.5 rounded-md animate-pulse">BAJO MARGEN</span>
+                    )}
+                    <ArrowUpRight size={20} className="text-gray-300 group-hover:text-emerald-500 transition-colors" />
+                  </div>
                 </div>
               </div>
 
               <h3 className="text-xl font-bold text-gray-900 mb-1">{project.nombre_cliente}</h3>
-              <p className="text-sm text-gray-500 line-clamp-2 mb-6 h-10">{project.descripcion}</p>
+              <p className="text-sm text-gray-500 line-clamp-2 mb-4 h-10">{project.descripcion}</p>
 
-              <div className="space-y-4 pt-4 border-t border-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-gray-500">
-                    <Calendar size={16} />
-                    <span className="text-xs">{project.fecha_entrega}</span>
+              {/* Métricas de Rentabilidad */}
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="bg-gray-50 rounded-2xl p-3">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Margen Real</p>
+                  <p className={`text-lg font-black ${project.salud_margen === 'alerta' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {project.margen_real_porc.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="bg-gray-50 rounded-2xl p-3">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Horas Reales</p>
+                  <p className="text-lg font-black text-slate-700">
+                    {project.horas_reales}h
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-gray-500 italic">
+                    <span>Obj: {project.margen_objetivo || 0}%</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-900 font-bold">
                     <Wallet size={16} className="text-emerald-500" />
-                    <span>{formatGsShort(Number(project.monto_presupuestado))}</span>
+                    <span>Costos: {formatGsShort(project.costo_total)}</span>
                   </div>
                 </div>
 
@@ -90,6 +128,23 @@ export default function Projects() {
           );
         })}
       </div>
+
+      {selectedProject && (
+        <ProjectDetailsModal 
+          project={selectedProject} 
+          onClose={() => setSelectedProject(null)} 
+        />
+      )}
+
+      {(isCreateOpen || editingProject) && (
+        <ProjectFormModal 
+          project={editingProject || undefined}
+          onClose={() => {
+            setIsCreateOpen(false);
+            setEditingProject(null);
+          }}
+        />
+      )}
     </div>
   );
 }

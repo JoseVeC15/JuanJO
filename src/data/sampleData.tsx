@@ -33,7 +33,20 @@ export interface Proyecto {
   fecha_entrega: string;
   monto_presupuestado: number;
   monto_facturado: number;
+  margen_objetivo?: number;
+  precio_hora?: number;
+  horas_estimadas?: number;
   estado: EstadoProyecto;
+  created_at: string;
+}
+
+export interface RegistroHora {
+  id: string;
+  proyecto_id: string;
+  user_id: string;
+  descripcion: string;
+  cantidad_horas: number;
+  fecha: string;
   created_at: string;
 }
 

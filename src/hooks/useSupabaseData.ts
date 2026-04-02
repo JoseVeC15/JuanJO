@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { calculateSuggestedVAT10 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
-import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea, EstadoIngreso } from '../data/sampleData';
+import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea, EstadoIngreso, RegistroHora } from '../data/sampleData';
 
 export function useSupabaseData() {
   const queryClient = useQueryClient();
@@ -29,7 +29,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('proyectos')
-        .select('id, nombre_cliente, tipo_servicio, descripcion, fecha_inicio, fecha_entrega, monto_presupuestado, monto_facturado, estado, created_at')
+        .select('id, nombre_cliente, tipo_servicio, descripcion, fecha_inicio, fecha_entrega, monto_presupuestado, monto_facturado, margen_objetivo, precio_hora, horas_estimadas, estado, created_at')
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
@@ -145,6 +145,60 @@ export function useSupabaseData() {
     }
   });
 
+  const { data: horasTrabajadas = [], isLoading: loadingHoras } = useQuery({
+    queryKey: ['horas_trabajadas', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('horas_trabajadas')
+        .select('*')
+        .order('fecha', { ascending: false });
+      if (error && error.code !== 'PGRST116') throw error;
+      return (data || []) as RegistroHora[];
+    }
+  });
+
+  // ========== MOTOR DE RENTABILIDAD ==========
+  const proyectosConRentabilidad = useMemo(() => {
+    return proyectos.map(p => {
+      // 1. Ingreso Real (Suma de lo cobrado o facturado)
+      const ingresosProyecto = ingresosRaw
+        .filter(i => i.proyecto_id === p.id)
+        .reduce((sum, i) => sum + (Number(i.monto) || 0), 0);
+
+      // 2. Gastos Directos (Facturas)
+      const gastosFacturas = facturasGastosRaw
+        .filter(g => g.proyecto_id === p.id)
+        .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+
+      // 3. Costo de Mano de Obra (Horas * PrecioHora)
+      const horasProyecto = horasTrabajadas
+        .filter(h => h.proyecto_id === p.id)
+        .reduce((sum, h) => sum + (Number(h.cantidad_horas) || 0), 0);
+      
+      const costoManoObra = horasProyecto * (Number(p.precio_hora) || 0);
+
+      // 4. Totales y Márgenes
+      const costoTotal = gastosFacturas + costoManoObra;
+      const margenRealGs = ingresosProyecto - costoTotal;
+      const margenRealPorc = ingresosProyecto > 0 
+        ? (margenRealGs / ingresosProyecto) * 100 
+        : 0;
+
+      return {
+        ...p,
+        ingreso_real: ingresosProyecto,
+        gasto_real: gastosFacturas,
+        horas_reales: horasProyecto,
+        costo_mano_obra: costoManoObra,
+        costo_total: costoTotal,
+        margen_real_gs: margenRealGs,
+        margen_real_porc: margenRealPorc,
+        salud_margen: p.margen_objetivo ? (margenRealPorc >= p.margen_objetivo ? 'buena' : 'alerta') : 'n/a'
+      };
+    });
+  }, [proyectos, ingresosRaw, facturasGastosRaw, horasTrabajadas]);
+
   useEffect(() => {
     if (!sessionUser) return;
 
@@ -179,7 +233,7 @@ export function useSupabaseData() {
   const error = errorProyectos || errorFacturas || errorEquipo || errorIngresos ? 'Error al obtener datos' : null;
 
   return { 
-    proyectos, 
+    proyectos: proyectosConRentabilidad, 
     facturasGastos, 
     inventarioEquipo, 
     alertas: [] as Alerta[], 
@@ -195,6 +249,7 @@ export function useSupabaseData() {
     loadingFacturas,
     loadingIngresos,
     loadingAgenda,
+    loadingHoras,
     loadingSifen: cargandoSifen || cargandoDocsSifen,
     error,
     // Mutations for Phase 1
@@ -217,6 +272,16 @@ export function useSupabaseData() {
       const { error } = await supabase.from('ingresos').update({ estado }).eq('id', id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['ingresos', sessionUser?.id] });
+    },
+    async addHorasTrabajadas(registro: Partial<RegistroHora>) {
+      const { error } = await supabase.from('horas_trabajadas').insert({ ...registro, user_id: sessionUser?.id });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['horas_trabajadas', sessionUser?.id] });
+    },
+    async deleteHorasTrabajadas(id: string) {
+      const { error } = await supabase.from('horas_trabajadas').delete().eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['horas_trabajadas', sessionUser?.id] });
     }
   };
 }
