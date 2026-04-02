@@ -21,6 +21,7 @@ const MODULE_OPTIONS = [
   { key: 'sifen', label: 'Facturas SIFEN' },
   { key: 'clientes', label: 'Clientes (SIFEN)' },
   { key: 'proyectos', label: 'Proyectos' },
+  { key: 'fichas', label: 'Fichas de Servicio' },
   { key: 'inventario', label: 'Activos' },
   { key: 'catalog', label: 'Catálogo de Servicios' },
   { key: 'reportes', label: 'Análisis' },

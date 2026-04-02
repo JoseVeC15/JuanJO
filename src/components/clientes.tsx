@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Users, Trash2, Search, Loader2, 
     UserPlus, Mail, Phone, MapPin, X, 
-    CheckCircle, Info, TrendingUp, CreditCard, Briefcase
+    CheckCircle, Info, TrendingUp, CreditCard, ClipboardList
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useSupabaseData } from '../hooks/useSupabaseData';
@@ -12,6 +13,7 @@ import RucBuscador from './RucBuscador';
 
 export default function Clientes({ hideHeader = false, forceOpenAddModal = false, onModalOpenHandled }: any) {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const { clientes, loading: loadingData } = useSupabaseData(); // useSupabaseData already provides clientes with stats
     const [search, setSearch] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
@@ -204,9 +206,10 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                                           {new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', maximumFractionDigits: 0 }).format(c.total_facturado || 0)}
                                         </p>
                                       </div>
-                                      <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 text-center">
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Proyectos</p>
-                                        <p className="font-black text-slate-900 flex items-center justify-center gap-1.5"><Briefcase size={12} className="text-slate-400" /> {c.total_proyectos || 0}</p>
+                                      <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 text-center cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-all group/btn"
+                                           onClick={() => navigate('/fichas', { state: { search: c.razon_social } })}>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover/btn:text-emerald-500">Fichas / SVC</p>
+                                        <p className="font-black text-slate-900 flex items-center justify-center gap-1.5"><ClipboardList size={12} className="text-slate-400 group-hover/btn:text-emerald-500" /> Gestionar</p>
                                       </div>
                                     </div>
 

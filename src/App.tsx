@@ -2,7 +2,7 @@ import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar, ArrowRightLeft, CheckCircle2, Package } from 'lucide-react';
+import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar, ArrowRightLeft, CheckCircle2, Package, ClipboardList } from 'lucide-react';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import SuspensionGuard from './components/SuspensionGuard';
 
@@ -22,6 +22,7 @@ const AsistenteSET = lazy(() => import('./components/AsistenteSET'));
 const Disponibilidad = lazy(() => import('./components/Disponibilidad'));
 const ConciliacionBancaria = lazy(() => import('./components/ConciliacionBancaria'));
 const CierreMensualWizard = lazy(() => import('./components/CierreMensualWizard'));
+const Fichas = lazy(() => import('./components/Fichas'));
 
 // Componente para sub-menú en móvil
 function MobileSubMenu({ item }: { item: any }) {
@@ -241,6 +242,7 @@ function RouterWrapper() {
     },
     { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
+    { key: 'fichas', path: '/fichas', label: 'FICHAS', icon: <ClipboardList size={20} className="text-teal-400" /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
     { key: 'reportes', path: '/analisis', label: 'ANÁLISIS', icon: <PieChart size={20} /> },
     { key: 'settings', path: '/config', label: 'CONFIG', icon: <SettingsIcon size={20} /> },
@@ -253,8 +255,8 @@ function RouterWrapper() {
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
   const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'inventario', 'catalog', 'reportes', 'settings']
-    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'inventario', 'catalog', 'reportes', 'settings'];
+    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'fichas', 'inventario', 'catalog', 'reportes', 'settings']
+    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'fichas', 'inventario', 'catalog', 'reportes', 'settings'];
 
   const enabledModules = (() => {
     const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
@@ -472,6 +474,13 @@ function RouterWrapper() {
                         <Projects />
                       </motion.div>
                     ) : <Navigate to="/config" replace />
+                  } />
+                  <Route path="/fichas" element={
+                    canAccess('fichas') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Fichas />
+                      </motion.div>
+                    ) : <Navigate to="/dashboard" replace />
                   } />
                   <Route path="/activos" element={
                     canAccess('inventario') ? (

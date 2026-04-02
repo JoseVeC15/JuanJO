@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, X, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
+import { Send, X, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface PropiedadesEmisorSifen {
@@ -16,11 +16,14 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
     const [errorDetalle, setErrorDetalle] = useState('');
 
     const [cliente, setCliente] = useState({
+        id: '',
         razon_social: '',
         ruc: '',
         direccion: '',
         email: ''
     });
+
+    const [buscandoCliente, setBuscandoCliente] = useState(false);
 
     const [condicionOperacion, setCondicionOperacion] = useState<'contado' | 'credito'>('contado');
 
@@ -32,13 +35,19 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
         }
     }, [cliente.ruc, cliente.razon_social]);
 
-    const buscarClientesLocal = async () => {
-        const { data } = await supabase
-            .from('clientes')
-            .select('*')
-            .or(`razon_social.ilike.%${cliente.razon_social}%,ruc.ilike.%${cliente.ruc}%`)
-            .limit(5);
+    const buscarClientesLocal = async (term = '') => {
+        setBuscandoCliente(true);
+        let query = supabase.from('clientes').select('*').limit(5);
+        
+        if (term.length > 0) {
+            query = query.or(`razon_social.ilike.%${term}%,ruc.ilike.%${term}%`);
+        } else {
+            query = query.order('created_at', { ascending: false });
+        }
+
+        const { data } = await query;
         setClientesSugeridos(data || []);
+        setBuscandoCliente(false);
     };
 
     const [productos, setProductos] = useState([
@@ -219,19 +228,42 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                     </h4>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative">
                                         <div className="relative col-span-1 md:col-span-2 lg:col-span-1">
-                                            <input 
-                                                placeholder="Razón Social Cliente" 
-                                                value={cliente.razon_social}
-                                                onChange={e => setCliente({...cliente, razon_social: e.target.value})}
-                                                className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                                            />
-                                            {clientesSugeridos.length > 0 && (
+                                            <div className="relative flex items-center">
+                                                <input 
+                                                    placeholder="Buscar por Razón Social o RUC..." 
+                                                    value={cliente.razon_social}
+                                                    readOnly={!!cliente.id}
+                                                    onFocus={() => !cliente.id && buscarClientesLocal(cliente.razon_social)}
+                                                    onChange={e => {
+                                                        setCliente({ ...cliente, id: '', razon_social: e.target.value });
+                                                        buscarClientesLocal(e.target.value);
+                                                    }}
+                                                    className={`w-full px-5 py-4 bg-slate-50 border ${cliente.id ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-100'} rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
+                                                />
+                                                {buscandoCliente && !cliente.id && (
+                                                    <Loader2 className="absolute right-4 animate-spin text-slate-300" size={16} />
+                                                )}
+                                                {cliente.id && (
+                                                    <button 
+                                                        onClick={() => setCliente({ id: '', razon_social: '', ruc: '', direccion: '', email: '' })}
+                                                        className="absolute right-3 text-[10px] font-black text-rose-500 uppercase hover:bg-rose-50 px-2 py-1 rounded-md"
+                                                    >
+                                                        Limpiar
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {clientesSugeridos.length > 0 && !cliente.id && (
                                                 <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-slate-100 z-[130] overflow-hidden">
+                                                    <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Resultados en Base de Datos</span>
+                                                        <button onClick={() => setClientesSugeridos([])}><X size={12} className="text-slate-400" /></button>
+                                                    </div>
                                                     {clientesSugeridos.map(c => (
                                                         <button 
                                                             key={c.id}
                                                             onClick={() => {
                                                                 setCliente({ 
+                                                                    id: c.id,
                                                                     razon_social: c.razon_social, 
                                                                     ruc: c.ruc, 
                                                                     direccion: c.direccion || '',
@@ -239,12 +271,12 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                                                 });
                                                                 setClientesSugeridos([]);
                                                             }}
-                                                            className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 flex items-center gap-3"
+                                                            className="w-full px-4 py-3 text-left hover:bg-emerald-50 border-b border-slate-50 last:border-0 flex items-center gap-3 transition-colors"
                                                         >
-                                                            <div className="w-8 h-8 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center font-black text-[10px]">{c.razon_social.charAt(0)}</div>
-                                                            <div>
+                                                            <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center font-black text-[10px]">{c.razon_social.charAt(0)}</div>
+                                                            <div className="flex-1">
                                                                 <p className="text-xs font-black text-slate-700 uppercase">{c.razon_social}</p>
-                                                                <p className="text-[10px] font-bold text-slate-400">RUC: {c.ruc}</p>
+                                                                <p className="text-[10px] font-bold text-slate-400">RUC: {c.ruc} • {c.email || 'Sin email'}</p>
                                                             </div>
                                                         </button>
                                                     ))}
@@ -252,24 +284,27 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                             )}
                                         </div>
                                         <input 
-                                            placeholder="RUC Cliente (ej. 4444444-1)" 
+                                            placeholder="RUC Cliente" 
                                             value={cliente.ruc}
-                                            onChange={e => setCliente({...cliente, ruc: e.target.value})}
-                                            className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                            readOnly={!!cliente.id}
+                                            onChange={e => setCliente({...cliente, id: '', ruc: e.target.value})}
+                                            className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
                                         />
                                         <input 
                                             placeholder="Email del Receptor" 
                                             type="email"
                                             value={cliente.email}
-                                            onChange={e => setCliente({...cliente, email: e.target.value})}
-                                            className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                            readOnly={!!cliente.id}
+                                            onChange={e => setCliente({...cliente, id: '', email: e.target.value})}
+                                            className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
                                         />
                                         <div className="col-span-1 md:col-span-2 flex gap-4">
                                             <input 
                                                 placeholder="Dirección Fiscal" 
                                                 value={cliente.direccion}
-                                                onChange={e => setCliente({...cliente, direccion: e.target.value})}
-                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                                readOnly={!!cliente.id}
+                                                onChange={e => setCliente({...cliente, id: '', direccion: e.target.value})}
+                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
                                             />
                                             <select 
                                                 value={condicionOperacion}
