@@ -22,6 +22,7 @@ const MODULE_OPTIONS = [
   { key: 'clientes', label: 'Clientes (SIFEN)' },
   { key: 'proyectos', label: 'Proyectos' },
   { key: 'inventario', label: 'Activos' },
+  { key: 'catalog', label: 'Catálogo de Servicios' },
   { key: 'reportes', label: 'Análisis' },
   { key: 'settings', label: 'Configuración' },
 ] as const;

@@ -15,10 +15,10 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 
-export default function Settings() {
+export default function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 'branding' | 'categories' | 'currency' | 'backup' | 'billing' | 'catalog' }) {
   const { user } = useAuth();
   const { profile, facturasGastos, proyectos, ingresos } = useSupabaseData();
-  const [activeTab, setActiveTab] = useState<'profile' | 'branding' | 'categories' | 'currency' | 'backup' | 'billing' | 'catalog'>('profile');
+  const [activeTab, setActiveTab] = useState(initialTab);
   
   const [customCategories, setCustomCategories] = useState<{id: string, label: string, color: string}[]>([]);
   const [newCatLabel, setNewCatLabel] = useState('');

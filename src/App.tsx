@@ -2,7 +2,7 @@ import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar, ArrowRightLeft, CheckCircle2 } from 'lucide-react';
+import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar, ArrowRightLeft, CheckCircle2, Package } from 'lucide-react';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import SuspensionGuard from './components/SuspensionGuard';
 
@@ -223,6 +223,7 @@ function RouterWrapper() {
       label: 'GESTIÓN',
       icon: <Briefcase size={20} className="text-blue-400" />,
       children: [
+        { key: 'catalog', path: '/catalog', label: 'CATÁLOGO', icon: <Package size={20} /> },
         { key: 'cobros', path: '/centro-cobros', label: 'COBROS', icon: <Wallet size={20} /> },
         { key: 'agenda', path: '/agenda', label: 'AGENDA', icon: <Calendar size={20} /> },
         { key: 'planificacion', path: '/planificacion', label: 'DISPONIBILIDAD', icon: <Calendar size={20} /> },
@@ -252,8 +253,8 @@ function RouterWrapper() {
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
   const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
-    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'inventario', 'reportes', 'settings'];
+    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'inventario', 'catalog', 'reportes', 'settings']
+    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'inventario', 'catalog', 'reportes', 'settings'];
 
   const enabledModules = (() => {
     const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
@@ -478,6 +479,13 @@ function RouterWrapper() {
                         <Inventario />
                       </motion.div>
                     ) : <Navigate to="/config" replace />
+                  } />
+                  <Route path="/catalog" element={
+                    canAccess('catalog') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Settings initialTab="catalog" />
+                      </motion.div>
+                    ) : <Navigate to="/dashboard" replace />
                   } />
                   <Route path="/analisis" element={
                     canAccess('reportes') ? (
