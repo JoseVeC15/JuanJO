@@ -43,7 +43,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('facturas_gastos')
-        .select('id, proyecto_id, monto, fecha_factura, proveedor, tipo_gasto, iva_10, iva_5, exentas, estado, metodo_pago, created_at')
+        .select('id, proyecto_id, monto, fecha_factura, proveedor, ruc_proveedor, numero_factura, timbrado, tipo_gasto, iva_10, iva_5, exentas, estado, metodo_pago, created_at')
         .order('fecha_factura', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -77,7 +77,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ingresos')
-        .select('id, proyecto_id, cliente, monto, iva_10, iva_5, exentas, fecha_emision, fecha_vencimiento, estado, metodo_pago, created_at')
+        .select('id, proyecto_id, cliente, ruc_cliente, numero_factura, timbrado, monto, iva_10, iva_5, exentas, fecha_emision, fecha_vencimiento, estado, metodo_pago, created_at')
         .order('fecha_emision', { ascending: false })
         .limit(50);
       if (error) throw error;
