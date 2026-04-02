@@ -200,6 +200,14 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
         }
     };
 
+    const esInvalido = 
+        !cliente.razon_social?.trim() || 
+        !cliente.ruc?.trim() || 
+        !cliente.email?.trim() || 
+        !cliente.direccion?.trim() ||
+        productos.length === 0 ||
+        productos.some(p => !p.descripcion?.trim() || p.cantidad <= 0 || p.precio_unitario <= 0);
+
     return (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
             <motion.div 
@@ -238,7 +246,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                                         setCliente({ ...cliente, id: '', razon_social: e.target.value });
                                                         buscarClientesLocal(e.target.value);
                                                     }}
-                                                    className={`w-full px-5 py-4 bg-slate-50 border ${cliente.id ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-100'} rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
+                                                    className={`w-full px-5 py-4 bg-slate-50 border ${!cliente.razon_social.trim() ? 'border-amber-200' : cliente.id ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-slate-100'} rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
                                                 />
                                                 {buscandoCliente && !cliente.id && (
                                                     <Loader2 className="absolute right-4 animate-spin text-slate-300" size={16} />
@@ -288,7 +296,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                             value={cliente.ruc}
                                             readOnly={!!cliente.id}
                                             onChange={e => setCliente({...cliente, id: '', ruc: e.target.value})}
-                                            className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                                            className={`px-5 py-4 bg-slate-50 border ${!cliente.ruc.trim() ? 'border-amber-200' : 'border-slate-100'} rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50`}
                                         />
                                         <input 
                                             placeholder="Email del Receptor" 
@@ -296,7 +304,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                             value={cliente.email}
                                             readOnly={!!cliente.id}
                                             onChange={e => setCliente({...cliente, id: '', email: e.target.value})}
-                                            className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                                            className={`px-5 py-4 bg-slate-50 border ${!cliente.email.trim() ? 'border-amber-200' : 'border-slate-100'} rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50`}
                                         />
                                         <div className="col-span-1 md:col-span-2 flex gap-4">
                                             <input 
@@ -304,7 +312,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                                 value={cliente.direccion}
                                                 readOnly={!!cliente.id}
                                                 onChange={e => setCliente({...cliente, id: '', direccion: e.target.value})}
-                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50"
+                                                className={`flex-1 px-5 py-4 bg-slate-50 border ${!cliente.direccion.trim() ? 'border-amber-200' : 'border-slate-100'} rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all disabled:opacity-50`}
                                             />
                                             <select 
                                                 value={condicionOperacion}
@@ -329,7 +337,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                     </div>
                                     <div className="space-y-3">
                                         {productos.map((producto, indice) => (
-                                            <div key={producto.id} className="grid grid-cols-12 gap-3 items-center p-3 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm relative">
+                                            <div key={producto.id} className={`grid grid-cols-12 gap-3 items-center p-3 bg-slate-50 rounded-2xl border ${!producto.descripcion.trim() || producto.precio_unitario <= 0 ? 'border-amber-200' : 'border-slate-100'} shadow-sm relative`}>
                                                 <div className="col-span-6 relative">
                                                    <input 
                                                         placeholder="Descripción del producto o servicio" 
@@ -468,7 +476,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                         </div>
                         <button 
                             onClick={procesarEmision} 
-                            disabled={productos.length === 0 || !cliente.ruc || cargando}
+                            disabled={esInvalido || cargando}
                             className="bg-emerald-500 text-slate-900 px-10 py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] shadow-xl shadow-emerald-500/10 hover:scale-105 transition-all flex items-center gap-4 disabled:opacity-50"
                         >
                             {cargando ? 'Procesando...' : 'Emitir Factura Legal'} <Send size={20} />
