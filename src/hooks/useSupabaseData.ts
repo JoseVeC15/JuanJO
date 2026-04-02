@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { calculateSuggestedVAT10 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
-import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile } from '../data/sampleData';
+import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea } from '../data/sampleData';
 
 export function useSupabaseData() {
   const queryClient = useQueryClient();
@@ -75,10 +75,23 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ingresos')
-        .select('id, proyecto_id, cliente, monto, iva_10, iva_5, exentas, fecha_emision, estado, metodo_pago, created_at')
+        .select('id, proyecto_id, cliente, monto, iva_10, iva_5, exentas, fecha_emision, fecha_vencimiento, estado, metodo_pago, created_at')
         .order('fecha_emision', { ascending: false });
       if (error) throw error;
       return data as Ingreso[];
+    }
+  });
+
+  const { data: agendaTareas = [], isLoading: loadingAgenda } = useQuery({
+    queryKey: ['agenda_tareas', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agenda_tareas')
+        .select('*')
+        .order('fecha_limite', { ascending: true });
+      if (error && error.code !== 'PGRST116') throw error;
+      return (data || []) as AgendaTarea[];
     }
   });
 
@@ -139,7 +152,8 @@ export function useSupabaseData() {
       { nombre: 'public:inventario_equipo', clave: 'inventario_equipo', tabla: 'inventario_equipo' },
       { nombre: 'public:perfiles_fiscales', clave: 'perfil_fiscal', tabla: 'perfiles_fiscales' },
       { nombre: 'public:configuracion_sifen', clave: 'configuracion_sifen', tabla: 'configuracion_sifen' },
-      { nombre: 'public:documentos_electronicos', clave: 'documentos_electronicos', tabla: 'documentos_electronicos' }
+      { nombre: 'public:documentos_electronicos', clave: 'documentos_electronicos', tabla: 'documentos_electronicos' },
+      { nombre: 'public:agenda_tareas', clave: 'agenda_tareas', tabla: 'agenda_tareas' }
     ].map(({ nombre, clave, tabla }) => 
       supabase.channel(nombre)
         .on('postgres_changes', { 
@@ -170,7 +184,8 @@ export function useSupabaseData() {
     perfilFiscal,
     configSifen,
     documentosElectronicos,
-    loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen, 
+    agendaTareas,
+    loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen || loadingAgenda, 
     loadingExtra: loadingEquipo,
     error 
   };

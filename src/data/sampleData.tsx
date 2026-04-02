@@ -94,6 +94,8 @@ export interface Alerta {
 
 export type CondicionVenta = 'contado' | 'credito';
 
+export type EstadoIngreso = 'emitida' | 'enviada' | 'vista' | 'vencida' | 'cobrada';
+
 export interface Ingreso {
   id: string;
   proyecto_id: string | null;
@@ -103,18 +105,34 @@ export interface Ingreso {
   timbrado?: string;
   vencimiento_timbrado?: string;
   condicion_venta?: CondicionVenta;
-  cdc?: string; // Código de Control (e-Kuatia)
+  cdc?: string;
   monto: number;
   iva_10?: number;
   iva_5?: number;
   exentas?: number;
+  fecha_vencimiento?: string;
+  enviada_at?: string;
+  vista_at?: string;
   fecha?: string;
-  fecha_emision?: string; // alias used by n8n
-  estado: 'pendiente' | 'pagado' | 'parcial' | 'vencido';
+  fecha_emision?: string;
+  estado: EstadoIngreso;
   metodo_pago: MetodoPago | null;
   imagen_url?: string | null;
   notas?: string;
   processed_by_n8n?: boolean;
+}
+
+export type TipoTareaAgenda = 'entrega' | 'facturacion' | 'cobro' | 'otro';
+
+export interface AgendaTarea {
+  id: string;
+  user_id: string;
+  titulo: string;
+  descripcion: string;
+  fecha_limite: string;
+  tipo: TipoTareaAgenda;
+  completada: boolean;
+  created_at: string;
 }
 
 // ============ PROYECTOS ============
@@ -707,11 +725,11 @@ export const alertas: Alerta[] = [
 
 // ============ INGRESOS ============
 export const ingresos: Ingreso[] = [
-  { id: 'i1', proyecto_id: 'p1', cliente: 'Tigo Paraguay', ruc_cliente: '80012345-6', numero_factura: '001-001-000001', timbrado: '12345678', condicion_venta: 'contado', monto: 15000000, iva_10: 1363636, fecha: '2026-02-01', estado: 'pagado', metodo_pago: 'transferencia', processed_by_n8n: true },
-  { id: 'i2', proyecto_id: 'p1', cliente: 'Tigo Paraguay', ruc_cliente: '80012345-6', numero_factura: '001-001-000002', timbrado: '12345678', condicion_venta: 'contado', monto: 15000000, iva_10: 1363636, fecha: '2026-03-01', estado: 'pagado', metodo_pago: 'transferencia', processed_by_n8n: true },
-  { id: 'i3', proyecto_id: 'p2', cliente: 'Personal Paraguay', ruc_cliente: '80098765-4', numero_factura: '001-001-000003', timbrado: '15234567', condicion_venta: 'credito', monto: 14000000, iva_10: 1272727, fecha: '2026-02-20', estado: 'pagado', metodo_pago: 'transferencia', processed_by_n8n: true },
-  { id: 'i4', proyecto_id: 'p2', cliente: 'Personal Paraguay', ruc_cliente: '80098765-4', numero_factura: '001-001-000004', timbrado: '15234567', condicion_venta: 'credito', monto: 14000000, iva_10: 1272727, fecha: '2026-03-15', estado: 'pendiente', metodo_pago: null, processed_by_n8n: false },
-  { id: 'i5', proyecto_id: 'p4', cliente: 'Shopping del Sol', ruc_cliente: '80054321-9', numero_factura: '001-001-000005', timbrado: '16543210', condicion_venta: 'contado', monto: 12000000, iva_10: 1090909, fecha: '2026-02-15', estado: 'pagado', metodo_pago: 'deposito', processed_by_n8n: true },
+  { id: 'i1', proyecto_id: 'p1', cliente: 'Tigo Paraguay', ruc_cliente: '80012345-6', numero_factura: '001-001-000001', timbrado: '12345678', condicion_venta: 'contado', monto: 15000000, iva_10: 1363636, fecha: '2026-02-01', fecha_vencimiento: '2026-02-15', estado: 'cobrada', metodo_pago: 'transferencia', processed_by_n8n: true },
+  { id: 'i2', proyecto_id: 'p1', cliente: 'Tigo Paraguay', ruc_cliente: '80012345-6', numero_factura: '001-001-000002', timbrado: '12345678', condicion_venta: 'contado', monto: 15000000, iva_10: 1363636, fecha: '2026-03-01', fecha_vencimiento: '2026-03-15', estado: 'cobrada', metodo_pago: 'transferencia', processed_by_n8n: true },
+  { id: 'i3', proyecto_id: 'p2', cliente: 'Personal Paraguay', ruc_cliente: '80098765-4', numero_factura: '001-001-000003', timbrado: '15234567', condicion_venta: 'credito', monto: 14000000, iva_10: 1272727, fecha: '2026-02-20', fecha_vencimiento: '2026-03-20', estado: 'cobrada', metodo_pago: 'transferencia', processed_by_n8n: true },
+  { id: 'i4', proyecto_id: 'p2', cliente: 'Personal Paraguay', ruc_cliente: '80098765-4', numero_factura: '001-001-000004', timbrado: '15234567', condicion_venta: 'credito', monto: 14000000, iva_10: 1272727, fecha: '2026-03-15', fecha_vencimiento: '2026-04-15', estado: 'enviada', metodo_pago: null, processed_by_n8n: false },
+  { id: 'i5', proyecto_id: 'p4', cliente: 'Shopping del Sol', ruc_cliente: '80054321-9', numero_factura: '001-001-000005', timbrado: '16543210', condicion_venta: 'contado', monto: 12000000, iva_10: 1090909, fecha: '2026-02-15', fecha_vencimiento: '2026-02-28', estado: 'cobrada', metodo_pago: 'deposito', processed_by_n8n: true },
 ];
 
 // ============ FINANCIAL MONTHLY DATA ============

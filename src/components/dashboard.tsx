@@ -4,7 +4,7 @@ import {
   TrendingUp, Wallet,
   ArrowUpRight, Loader2,
   Activity, 
-  ShieldCheck, AlertTriangle, Target, Shield, Calendar
+  ShieldCheck, AlertTriangle, Shield, Calendar, Clock
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -63,8 +63,10 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     if (loading) return null;
 
-    const totalIngresos = ingresos.filter(i => i.estado === 'pagado').reduce((s, i) => s + Number(i.monto), 0);
+    const totalIngresos = ingresos.filter(i => i.estado === 'cobrada').reduce((s, i) => s + Number(i.monto), 0);
     const totalGastos = facturasGastos.reduce((s, f) => s + Number(f.monto), 0);
+    const ingresosPendientes = ingresos.filter(i => i.estado !== 'cobrada').reduce((s, i) => s + Number(i.monto), 0);
+    const cajaProyectada = (totalIngresos - totalGastos) + ingresosPendientes;
     const margen = totalIngresos > 0 ? ((totalIngresos - totalGastos) / totalIngresos * 100) : 0;
     const proyectosActivos = proyectos.filter(p => p.estado === 'en_progreso' || p.estado === 'cotizacion').length;
 
@@ -97,7 +99,7 @@ export default function Dashboard() {
     const monthlyData = months.map((m, i) => {
       const monthStr = (i + 1).toString().padStart(2, '0');
       const monthIngresos = ingresos
-        .filter(ing => ing.estado === 'pagado' && (ing.fecha || '').startsWith(`${currentYear}-${monthStr}`))
+        .filter(ing => ing.estado === 'cobrada' && (ing.fecha || '').startsWith(`${currentYear}-${monthStr}`))
         .reduce((s, ing) => s + Number(ing.monto), 0);
       const monthGastos = facturasGastos
         .filter(gas => (gas.fecha_factura || '').startsWith(`${currentYear}-${monthStr}`))
@@ -127,7 +129,8 @@ export default function Dashboard() {
         monthlyData: finalMonthlyData, pieData, activeProjectsList,
         ivaAPagar, netIvaBalance, ivaDebitoTotal, ivaCreditoTotal,
         iva10: ivaDebito10 - ivaCredito10,
-        iva5: ivaDebito5 - ivaCredito5
+        iva5: ivaDebito5 - ivaCredito5,
+        ingresosPendientes, cajaProyectada
     };
   }, [loading, ingresos, facturasGastos, proyectos, selectedMonth]);
 
@@ -172,13 +175,9 @@ export default function Dashboard() {
       </AnimatePresence>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" tooltip="Dinero real disponible tras restar todos los gastos de tus ingresos cobrados." />
-        {(profile?.facturacion_habilitada || profile?.nivel_acceso === 1) && (
-          <>
-            <StatCard index={1} title="Ventas del Período" value={formatGs(stats.totalIngresos)} desc="Ingresos brutos declarados" icon={<TrendingUp size={20} />} color="indigo" tooltip="Suma total facturada sin deducir costos ni impuestos." />
-            <StatCard index={2} title="Eficiencia Operativa" value={`${stats.margen.toFixed(1)}%`} desc="Margen de rentabilidad" icon={<Target size={20} />} color="emerald" tooltip="Mide la rentabilidad neta (Ganancia / Ingresos). Refleja la salud financiera de tu operación." />
-            <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." />
-          </>
-        )}
+        <StatCard index={1} title="Cobros Pendientes" value={formatGs(stats.ingresosPendientes)} desc="Facturas por cobrar" icon={<Clock size={20} />} color="indigo" tooltip="Suma de todas las facturas emitidas, enviadas o vencidas que aún no han sido cobradas." />
+        <StatCard index={2} title="Caja Proyectada (30d)" value={formatGs(stats.cajaProyectada)} desc="Estimado con cobros" icon={<TrendingUp size={20} />} color="emerald" tooltip="Saldo actual + Cobros pendientes. Refleja tu liquidez potencial al cierre del ciclo." />
+        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">

@@ -2,7 +2,7 @@ import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown } from 'lucide-react';
+import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar } from 'lucide-react';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import SuspensionGuard from './components/SuspensionGuard';
 
@@ -16,6 +16,8 @@ const Reportes = lazy(() => import('./components/reportes'));
 const Settings = lazy(() => import('./components/Settings'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const ManualsScreen = lazy(() => import('./screens/ManualsScreen'));
+const CentroCobros = lazy(() => import('./components/CentroCobros'));
+const AgendaFreelancer = lazy(() => import('./components/AgendaFreelancer'));
 
 // Componente para sub-menú en móvil
 function MobileSubMenu({ item }: { item: any }) {
@@ -209,6 +211,15 @@ function RouterWrapper() {
         { key: 'ingresos', path: '/analizador-ia/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
       ]
     },
+    {
+      key: 'gestion-freelancer',
+      label: 'GESTIÓN',
+      icon: <Briefcase size={20} className="text-blue-400" />,
+      children: [
+        { key: 'cobros', path: '/centro-cobros', label: 'COBROS', icon: <Wallet size={20} /> },
+        { key: 'agenda', path: '/agenda', label: 'AGENDA', icon: <Calendar size={20} /> },
+      ]
+    },
     { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
@@ -223,8 +234,8 @@ function RouterWrapper() {
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
   const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
-    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'proyectos', 'inventario', 'reportes', 'settings'];
+    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
+    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'proyectos', 'inventario', 'reportes', 'settings'];
 
   const enabledModules = (() => {
     const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
@@ -372,6 +383,20 @@ function RouterWrapper() {
                         <Facturas initialTab="gastos" />
                       </motion.div>
                     ) : <Navigate to="/config" replace />
+                  } />
+                  <Route path="/centro-cobros" element={
+                    canAccess('cobros') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <CentroCobros />
+                      </motion.div>
+                    ) : <Navigate to="/dashboard" replace />
+                  } />
+                  <Route path="/agenda" element={
+                    canAccess('agenda') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <AgendaFreelancer />
+                      </motion.div>
+                    ) : <Navigate to="/dashboard" replace />
                   } />
                   <Route path="/analizador-ia/ingresos" element={
                     canAccess('ingresos') ? (
