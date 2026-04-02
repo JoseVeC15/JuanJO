@@ -124,6 +124,8 @@ export interface Ingreso {
 
 export type TipoTareaAgenda = 'entrega' | 'facturacion' | 'cobro' | 'otro';
 
+export type PrioridadTarea = 'baja' | 'media' | 'alta';
+
 export interface AgendaTarea {
   id: string;
   user_id: string;
@@ -131,6 +133,7 @@ export interface AgendaTarea {
   descripcion: string;
   fecha_limite: string;
   tipo: TipoTareaAgenda;
+  prioridad: PrioridadTarea;
   completada: boolean;
   created_at: string;
 }

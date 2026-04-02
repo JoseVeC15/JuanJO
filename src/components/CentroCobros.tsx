@@ -14,11 +14,17 @@ const statusConfig: Record<EstadoIngreso, { label: string; color: string; bg: st
 const fallbackStatus = { label: 'Pendiente', color: 'text-slate-600', bg: 'bg-slate-50', icon: FileText };
 
 export default function CentroCobros() {
-  const { ingresos, loading, error } = useSupabaseData();
+  const { ingresos, loading, error, updateIngresoEstado } = useSupabaseData();
 
   const totalDeuda = (ingresos || [])
     .filter(i => i.estado !== 'cobrada')
     .reduce((acc, curr) => acc + (Number(curr.monto) || 0), 0);
+
+  const handleMarkAsPaid = async (id: string) => {
+    if (confirm('¿Marcar esta factura como cobrada?')) {
+      await updateIngresoEstado(id, 'cobrada');
+    }
+  };
 
   if (loading) return (
     <div className="p-12 text-center flex flex-col items-center gap-4">
@@ -95,8 +101,15 @@ export default function CentroCobros() {
                     <span className="text-[9px] font-black text-slate-400 uppercase">Vencimiento</span>
                     <span className="text-xs font-bold text-slate-700">{factura.fecha_vencimiento || 'N/A'}</span>
                   </div>
-                  <button className="text-xs font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-tighter bg-emerald-50 px-4 py-2 rounded-xl transition-colors">
-                    Ver detalle
+                  <button 
+                    onClick={() => factura.estado !== 'cobrada' ? handleMarkAsPaid(factura.id) : alert('Factura ya cobrada')}
+                    className={`text-xs font-black uppercase tracking-tighter px-4 py-2 rounded-xl transition-colors ${
+                      factura.estado === 'cobrada' 
+                        ? 'text-slate-400 bg-slate-50 cursor-default' 
+                        : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {factura.estado === 'cobrada' ? 'Ver Detalle' : 'Marcar Pagada'}
                   </button>
                 </div>
               </motion.div>
