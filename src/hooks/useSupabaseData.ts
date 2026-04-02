@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { calculateSuggestedVAT10 } from '../data/sampleData';
@@ -8,7 +8,6 @@ import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTa
 export function useSupabaseData() {
   const queryClient = useQueryClient();
   const { user: sessionUser } = useAuth();
-  const [loadingPropuestas, setLoadingPropuestas] = useState(false);
 
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ['profile', sessionUser?.id],
@@ -413,7 +412,6 @@ export function useSupabaseData() {
       queryClient.invalidateQueries({ queryKey: ['horas_trabajadas', sessionUser?.id] });
     },
     async savePropuesta(propuesta: Partial<Propuesta>, items: Partial<PropuestaItem>[]) {
-      setLoadingPropuestas(true);
       try {
         const { data: propData, error: propError } = await supabase
           .from('propuestas')
@@ -433,7 +431,7 @@ export function useSupabaseData() {
         queryClient.invalidateQueries({ queryKey: ['propuestas', sessionUser?.id] });
         return propData;
       } finally {
-        setLoadingPropuestas(false);
+        // Limpiado
       }
     },
     async deletePropuesta(id: string) {
@@ -454,6 +452,13 @@ export function useSupabaseData() {
     },
     async addBloqueo(bloqueo: { date: string; type: string; note?: string }) {
       const { error } = await supabase.from('calendario_bloqueos').insert({ ...bloqueo, user_id: sessionUser?.id });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['calendario_bloqueos', sessionUser?.id] });
+    },
+    async bulkAddBloqueos(bloqueos: Array<{ date: string; type: string; note?: string }>) {
+      if (bloqueos.length === 0) return;
+      const dataToInsert = bloqueos.map(b => ({ ...b, user_id: sessionUser?.id }));
+      const { error } = await supabase.from('calendario_bloqueos').insert(dataToInsert);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['calendario_bloqueos', sessionUser?.id] });
     },

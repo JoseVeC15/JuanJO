@@ -15,7 +15,7 @@ const typeConfig: Record<string, { label: string; color: string; icon: any; bg: 
 };
 
 export default function Disponibilidad() {
-    const { bloqueos, addBloqueo, deleteBloqueo, loading } = useSupabaseData();
+    const { bloqueos, addBloqueo, bulkAddBloqueos, deleteBloqueo, loading } = useSupabaseData();
     const [isAdding, setIsAdding] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState({ date: '', type: 'vacacion', note: '' });
@@ -51,6 +51,71 @@ export default function Disponibilidad() {
             await deleteBloqueo(id);
         } catch (error) {
             console.error("Error removing blockage:", error);
+        }
+    };
+
+    const handleApplyTemplate = async (type: 'LV' | 'LS' | 'DV') => {
+        if (!confirm("¿Aplicar esta plantilla para el resto del año? Se ignorarán fechas ya bloqueadas.")) return;
+        
+        setIsSubmitting(true);
+        try {
+            const today = new Date();
+            const yearEnd = new Date(today.getFullYear(), 11, 31);
+            const toBlock: any[] = [];
+            const existingDates = new Set(bloqueos.map((b: any) => b.date));
+
+            for (let d = new Date(today); d <= yearEnd; d.setDate(d.getDate() + 1)) {
+                const dayOfWeek = d.getDay();
+                const isoDate = d.toISOString().split('T')[0];
+                
+                if (existingDates.has(isoDate)) continue;
+
+                let shouldBlock = false;
+                if (type === 'LV' && (dayOfWeek === 0 || dayOfWeek === 6)) shouldBlock = true;
+                if (type === 'LS' && dayOfWeek === 0) shouldBlock = true;
+                if (type === 'DV' && dayOfWeek === 6) shouldBlock = true;
+
+                if (shouldBlock) {
+                    toBlock.push({ 
+                        date: isoDate, 
+                        type: 'personal', 
+                        note: 'Bloqueo automático: Fin de semana (Plantilla)' 
+                    });
+                }
+            }
+
+            if (toBlock.length > 0) {
+                await bulkAddBloqueos(toBlock);
+            }
+        } catch (error) {
+            console.error("Error applying template:", error);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleInjectHolidays = async () => {
+        setIsSubmitting(true);
+        try {
+            const year = new Date().getFullYear();
+            const holidays = [
+                { date: `${year}-01-01`, note: 'Año Nuevo' },
+                { date: `${year}-05-01`, note: 'Día del Trabajador' },
+                { date: `${year}-12-25`, note: 'Navidad' },
+            ];
+
+            const existingDates = new Set(bloqueos.map((b: any) => b.date));
+            const toBlock = holidays
+                .filter(h => !existingDates.has(h.date))
+                .map(h => ({ date: h.date, type: 'feriado', note: h.note }));
+
+            if (toBlock.length > 0) {
+                await bulkAddBloqueos(toBlock);
+            }
+        } catch (error) {
+            console.error("Error injecting holidays:", error);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -153,6 +218,40 @@ export default function Disponibilidad() {
                  </div>
 
                  <div className="space-y-6">
+                    <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-6">
+                        <h3 className="text-lg font-black tracking-tight flex items-center gap-2">
+                             <Plus size={20} className="text-emerald-500" /> Plantillas Rápidas
+                        </h3>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest leading-relaxed">
+                            Aplica configuraciones masivas para el resto del año actual de forma automática.
+                        </p>
+                        
+                        <div className="grid grid-cols-1 gap-3">
+                            <TemplateButton 
+                                icon={<Calendar size={14} />} 
+                                label="Solo Lunes a Viernes" 
+                                onClick={() => handleApplyTemplate('LV')} 
+                            />
+                            <TemplateButton 
+                                icon={<Calendar size={14} />} 
+                                label="Lunes a Sábado" 
+                                onClick={() => handleApplyTemplate('LS')} 
+                            />
+                            <TemplateButton 
+                                icon={<Calendar size={14} />} 
+                                label="Domingo a Viernes" 
+                                onClick={() => handleApplyTemplate('DV')} 
+                            />
+                            <div className="h-px bg-slate-100 my-2" />
+                            <TemplateButton 
+                                icon={<CheckCircle size={14} />} 
+                                label="Inyectar Feriados Globales" 
+                                color="bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-100"
+                                onClick={() => handleInjectHolidays()} 
+                            />
+                        </div>
+                    </div>
+
                     <div className="bg-indigo-900 text-white p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-bl-full -z-0" />
                         <h3 className="text-lg font-black tracking-tight mb-4 flex items-center gap-2 relative z-10">
@@ -227,5 +326,16 @@ function CapacityCard({ label, value, icon, color }: any) {
             </div>
             <p className="text-3xl font-black tracking-tight">{value}</p>
         </div>
+    );
+}
+
+function TemplateButton({ icon, label, onClick, color }: any) {
+    return (
+        <button 
+            onClick={onClick}
+            className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 border ${color || 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-100'}`}
+        >
+            {icon} {label}
+        </button>
     );
 }
