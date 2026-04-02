@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Search, AlertCircle, Loader2, Plus, X, 
-  Package, TrendingUp, Tool, ShieldCheck, Trash2, Edit3
+  Package, TrendingUp, Wrench, ShieldCheck, Trash2
 } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { supabase } from '../lib/supabase';
@@ -150,7 +150,7 @@ export default function Inventario() {
           <SummaryCard 
               label="Equipos en Reparación" 
               value={enReparacion} 
-              icon={<Tool size={20} />} 
+              icon={<Wrench size={20} />} 
               color={enReparacion > 0 ? "bg-rose-50 border-rose-100 text-rose-700" : "bg-emerald-50 border-emerald-100 text-emerald-700"}
           />
           <SummaryCard 
