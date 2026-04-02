@@ -75,6 +75,11 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
       queryClient.invalidateQueries({ queryKey: ['ingresos'] });
+      alert("✅ Documento anulado correctamente.");
+    },
+    onError: (error: any) => {
+      console.error("Error al anular documento:", error);
+      alert(`❌ Error al intentar anular: ${error.message}`);
     }
   });
 
@@ -173,7 +178,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       .filter(f => filterEstado === 'todos' || f.estado === filterEstado)
       .filter(f => {
         const text = activeTab === 'gastos'
-          ? `${(f as any).proveedor} ${f.numero_factura} ${(f as any).concepto_ocr}`
+          ? `${(f as any).proveedor} ${f.numero_factura} ${(f as any).ruc_proveedor} ${f.timbrado}`
           : `${(f as any).cliente} ${f.numero_factura} ${(f as any).ruc_cliente} ${(f as any).fecha_emision}`;
         return (text || '').toLowerCase().includes(search.toLowerCase());
       });
