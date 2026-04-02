@@ -158,8 +158,8 @@ function CollapsibleNavItem({ item }: { item: any }) {
 }
 
 function RouterWrapper() {
-  const { user, loading, mustChangePassword, signOut } = useAuth();
-  const { profile } = useSupabaseData();
+  const { user, loading: authLoading, mustChangePassword, signOut } = useAuth();
+  const { profile, loadingProfile } = useSupabaseData();
   const location = useLocation();
   const routeFallback = (
     <div className="min-h-[40vh] flex items-center justify-center">
@@ -175,10 +175,13 @@ function RouterWrapper() {
     );
   }
 
-  if (loading) {
+  if (authLoading || (user && loadingProfile)) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <Loader2 className="text-emerald-500 animate-spin" size={40} />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="text-emerald-500 animate-spin" size={40} />
+          <p className="text-slate-500 text-xs font-black uppercase tracking-[0.3em] animate-pulse">Iniciando Sesión...</p>
+        </div>
       </div>
     );
   }

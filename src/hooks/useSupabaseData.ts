@@ -30,7 +30,8 @@ export function useSupabaseData() {
       const { data, error } = await supabase
         .from('proyectos')
         .select('id, nombre_cliente, tipo_servicio, descripcion, fecha_inicio, fecha_entrega, monto_presupuestado, monto_facturado, estado, created_at')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(30);
       if (error) throw error;
       return data as Proyecto[];
     }
@@ -43,7 +44,8 @@ export function useSupabaseData() {
       const { data, error } = await supabase
         .from('facturas_gastos')
         .select('id, proyecto_id, monto, fecha_factura, proveedor, tipo_gasto, iva_10, iva_5, exentas, estado, metodo_pago, created_at')
-        .order('fecha_factura', { ascending: false });
+        .order('fecha_factura', { ascending: false })
+        .limit(50);
       if (error) throw error;
       return data as FacturaGasto[];
     }
@@ -56,7 +58,7 @@ export function useSupabaseData() {
     return g;
   }), [facturasGastosRaw]);
 
-  const { data: inventarioEquipo = [], isLoading: loadingEquipo, error: errorEquipo } = useQuery({
+  const { data: inventarioEquipo = [], error: errorEquipo } = useQuery({
     queryKey: ['inventario_equipo', sessionUser?.id],
     enabled: !!sessionUser,
     queryFn: async () => {
@@ -76,7 +78,8 @@ export function useSupabaseData() {
       const { data, error } = await supabase
         .from('ingresos')
         .select('id, proyecto_id, cliente, monto, iva_10, iva_5, exentas, fecha_emision, fecha_vencimiento, estado, metodo_pago, created_at')
-        .order('fecha_emision', { ascending: false });
+        .order('fecha_emision', { ascending: false })
+        .limit(50);
       if (error) throw error;
       return data as Ingreso[];
     }
@@ -135,7 +138,8 @@ export function useSupabaseData() {
       const { data, error } = await supabase
         .from('documentos_electronicos')
         .select('*, documentos_items(*)')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(20);
       if (error) throw error;
       return data;
     }
@@ -186,7 +190,12 @@ export function useSupabaseData() {
     documentosElectronicos,
     agendaTareas,
     loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen || loadingAgenda, 
-    loadingExtra: loadingEquipo,
+    loadingProfile,
+    loadingProyectos,
+    loadingFacturas,
+    loadingIngresos,
+    loadingAgenda,
+    loadingSifen: cargandoSifen || cargandoDocsSifen,
     error 
   };
 }

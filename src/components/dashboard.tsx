@@ -20,7 +20,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useEffect } from 'react';
 
 export default function Dashboard() {
-  const { proyectos, facturasGastos, ingresos, configSifen, loading, profile } = useSupabaseData();
+  const { 
+    proyectos, facturasGastos, ingresos, configSifen, 
+    loadingProfile, loadingFacturas, loadingIngresos, loadingSifen,
+    profile 
+  } = useSupabaseData();
   const { user } = useAuth();
   const [showSifenEmitter, setShowSifenEmitter] = useState(false);
   const [showUpgradeAlert, setShowUpgradeAlert] = useState(false);
@@ -61,7 +65,7 @@ export default function Dashboard() {
   }, [ingresos, facturasGastos, currentMonthStr]);
 
   const stats = useMemo(() => {
-    if (loading) return null;
+    if (loadingProfile) return null;
 
     const totalIngresos = ingresos.filter(i => i.estado === 'cobrada').reduce((s, i) => s + Number(i.monto), 0);
     const totalGastos = facturasGastos.reduce((s, f) => s + Number(f.monto), 0);
@@ -132,10 +136,18 @@ export default function Dashboard() {
         iva5: ivaDebito5 - ivaCredito5,
         ingresosPendientes, cajaProyectada
     };
-  }, [loading, ingresos, facturasGastos, proyectos, selectedMonth]);
+  }, [loadingProfile, loadingIngresos, loadingFacturas, ingresos, facturasGastos, proyectos, selectedMonth]);
 
-  if (loading || !stats) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="text-emerald-500 animate-spin" size={32} /></div>;
+  if (loadingProfile || !stats) {
+    return (
+      <div className="space-y-8 animate-pulse">
+        <div className="h-10 w-48 bg-slate-200 rounded-xl" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[1,2,3,4].map(i => <div key={i} className="h-32 bg-white rounded-3xl border border-slate-100 shadow-sm" />)}
+        </div>
+        <div className="h-64 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm" />
+      </div>
+    );
   }
 
   return (
@@ -174,10 +186,10 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" tooltip="Dinero real disponible tras restar todos los gastos de tus ingresos cobrados." />
-        <StatCard index={1} title="Cobros Pendientes" value={formatGs(stats.ingresosPendientes)} desc="Facturas por cobrar" icon={<Clock size={20} />} color="indigo" tooltip="Suma de todas las facturas emitidas, enviadas o vencidas que aún no han sido cobradas." />
-        <StatCard index={2} title="Caja Proyectada (30d)" value={formatGs(stats.cajaProyectada)} desc="Estimado con cobros" icon={<TrendingUp size={20} />} color="emerald" tooltip="Saldo actual + Cobros pendientes. Refleja tu liquidez potencial al cierre del ciclo." />
-        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." />
+        <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" tooltip="Dinero real disponible tras restar todos los gastos de tus ingresos cobrados." loading={loadingIngresos || loadingFacturas} />
+        <StatCard index={1} title="Cobros Pendientes" value={formatGs(stats.ingresosPendientes)} desc="Facturas por cobrar" icon={<Clock size={20} />} color="indigo" tooltip="Suma de todas las facturas emitidas, enviadas o vencidas que aún no han sido cobradas." loading={loadingIngresos} />
+        <StatCard index={2} title="Caja Proyectada (30d)" value={formatGs(stats.cajaProyectada)} desc="Estimado con cobros" icon={<TrendingUp size={20} />} color="emerald" tooltip="Saldo actual + Cobros pendientes. Refleja tu liquidez potencial al cierre del ciclo." loading={loadingIngresos || loadingFacturas} />
+        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." loading={loadingIngresos || loadingFacturas} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
@@ -185,20 +197,26 @@ export default function Dashboard() {
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-10" />
           <h3 className="font-black text-gray-900 text-xl mb-10">Proyección Mensual Consolidada</h3>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={stats.monthlyData}>
-                <defs>
-                   <linearGradient id="ingresGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/><stop offset="95%" stopColor="#10B981" stopOpacity={0}/></linearGradient>
-                   <linearGradient id="gastosGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F43F5E" stopOpacity={0.1}/><stop offset="95%" stopColor="#F43F5E" stopOpacity={0}/></linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }} dy={10} />
-                <YAxis hide />
-                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} formatter={(val) => formatGs(Number(val))} />
-                <Area type="monotone" dataKey="ingresos" stroke="#10B981" strokeWidth={5} fillOpacity={1} fill="url(#ingresGrad)" />
-                <Area type="monotone" dataKey="gastos" stroke="#F43F5E" strokeWidth={5} fillOpacity={1} fill="url(#gastosGrad)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {(loadingIngresos || loadingFacturas) ? (
+              <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-2xl animate-pulse">
+                <p className="text-slate-400 font-black text-[10px] uppercase tracking-widest">Calculando Proyección...</p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats.monthlyData}>
+                  <defs>
+                    <linearGradient id="ingresGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/><stop offset="95%" stopColor="#10B981" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="gastosGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F43F5E" stopOpacity={0.1}/><stop offset="95%" stopColor="#F43F5E" stopOpacity={0}/></linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                  <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }} dy={10} />
+                  <YAxis hide />
+                  <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} formatter={(val) => formatGs(Number(val))} />
+                  <Area type="monotone" dataKey="ingresos" stroke="#10B981" strokeWidth={5} fillOpacity={1} fill="url(#ingresGrad)" />
+                  <Area type="monotone" dataKey="gastos" stroke="#F43F5E" strokeWidth={5} fillOpacity={1} fill="url(#gastosGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </motion.div>
 
@@ -226,8 +244,17 @@ export default function Dashboard() {
                       </div>
                   </div>
                   <div className="space-y-5">
-                      <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGs(stats.ivaDebitoTotal)}</span></div>
-                      <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Crédito (Compras)</span><span className="text-sm font-bold text-rose-400">-{formatGs(stats.ivaCreditoTotal)}</span></div>
+                      {loadingSifen ? (
+                        <div className="space-y-4 animate-pulse">
+                          <div className="h-4 bg-white/5 rounded w-full" />
+                          <div className="h-4 bg-white/5 rounded w-full" />
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Débito (Ventas)</span><span className="text-sm font-bold text-emerald-400">+{formatGs(stats.ivaDebitoTotal)}</span></div>
+                          <div className="flex justify-between items-center"><span className="text-xs text-slate-400">IVA Crédito (Compras)</span><span className="text-sm font-bold text-rose-400">-{formatGs(stats.ivaCreditoTotal)}</span></div>
+                        </>
+                      )}
                       <div className="h-px bg-slate-800 my-4" />
                       <div className="p-5 bg-white/5 rounded-3xl flex justify-between items-center border border-white/5">
                           <div>
@@ -299,7 +326,7 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, desc, icon, color, index, tooltip }: any) {
+function StatCard({ title, value, desc, icon, color, index, tooltip, loading }: any) {
   const [isHovered, setIsHovered] = useState(false);
   const themes = {
     emerald: 'bg-emerald-50/50 text-emerald-600 border-emerald-100',
@@ -322,8 +349,14 @@ function StatCard({ title, value, desc, icon, color, index, tooltip }: any) {
       </div>
       <div className="flex-1">
         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 lg:mb-2">{title}</p>
-        <h4 className="text-lg lg:text-2xl font-black text-gray-900 mb-0.5 lg:mb-1 leading-none">{value}</h4>
-        <p className="text-[10px] lg:text-xs text-gray-400 font-medium leading-tight">{desc}</p>
+        {loading ? (
+          <div className="h-8 w-24 bg-slate-100 rounded-lg animate-pulse" />
+        ) : (
+          <>
+            <h4 className="text-lg lg:text-2xl font-black text-gray-900 mb-0.5 lg:mb-1 leading-none">{value}</h4>
+            <p className="text-[10px] lg:text-xs text-gray-400 font-medium leading-tight">{desc}</p>
+          </>
+        )}
       </div>
 
       <AnimatePresence>
