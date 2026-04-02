@@ -19,7 +19,7 @@ const ALLOWED_MODULES = new Set([
   'settings',
 ]);
 
-const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
+const BILLING_MODULES = new Set(['sifen', 'clientes']);
 
 function normalizeModules(value: unknown): string[] {
   if (!Array.isArray(value)) {

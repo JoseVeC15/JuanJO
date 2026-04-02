@@ -20,7 +20,7 @@ const MODULE_OPTIONS = [
   { key: 'settings', label: 'Configuracion' },
 ] as const;
 
-const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
+const BILLING_MODULES = new Set(['sifen', 'clientes']);
 
 export default function AdminPanel() {
   const queryClient = useQueryClient();
@@ -142,7 +142,7 @@ export default function AdminPanel() {
     setIsSubmitting(true);
     setStatus(null);
     try {
-      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+      const { error } = await supabase.functions.invoke('admin-manage-user', {
         body: { action, userId, data: dataObj }
       });
 
@@ -301,7 +301,7 @@ export default function AdminPanel() {
                         onClick={() => {
                           const fallback = (p.facturacion_habilitada
                             ? ['dashboard', 'gastos', 'ingresos', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
-                            : ['dashboard', 'gastos', 'proyectos', 'inventario', 'reportes', 'settings']);
+                            : ['dashboard', 'gastos', 'ingresos', 'proyectos', 'inventario', 'reportes', 'settings']);
 
                           setModuleData({
                             id: p.id,

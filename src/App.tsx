@@ -62,8 +62,8 @@ function RouterWrapper() {
 
   const navItems = [
     { key: 'dashboard', path: '/dashboard', label: 'DASHBOARD', icon: <Layout size={20} /> },
-    { key: 'gastos', path: '/gastos', label: 'GASTOS', icon: <ArrowDownLeft size={20} /> },
-    { key: 'ingresos', path: '/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
+    { key: 'gastos', path: '/analizador-ia/gastos', label: 'GASTOS', icon: <ArrowDownLeft size={20} /> },
+    { key: 'ingresos', path: '/analizador-ia/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
     { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
@@ -75,21 +75,29 @@ function RouterWrapper() {
     (navItems as any).push({ key: 'admin', path: '/admin', label: 'Admin Panel', icon: <ShieldCheck size={20} className="text-indigo-400" /> });
   }
 
-  // El Super Admin tiene acceso total, los demás dependen del flag facturacion_habilitada
+  // El Super Admin tiene acceso total. El flag facturacion_habilitada solo desbloquea SIFEN y Clientes.
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
   const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'gastos', 'ingresos', 'sifen', 'proyectos', 'inventario', 'reportes', 'settings']
-    : ['dashboard', 'gastos', 'proyectos', 'inventario', 'reportes', 'settings'];
+    ? ['dashboard', 'gastos', 'ingresos', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
+    : ['dashboard', 'gastos', 'ingresos', 'proyectos', 'inventario', 'reportes', 'settings'];
 
-  const enabledModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
-    ? profile.modulos_habilitados
-    : fallbackModules;
+  const enabledModules = (() => {
+    const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
+      ? profile.modulos_habilitados
+      : fallbackModules;
+
+    if (!hasBillingAccess) {
+      return baseModules;
+    }
+
+    return Array.from(new Set([...baseModules, 'sifen', 'clientes']));
+  })();
 
   const canAccess = (moduleKey: string) => {
     if (profile?.nivel_acceso === 1) return true;
     if (!enabledModules.includes(moduleKey)) return false;
-    if (['ingresos', 'sifen', 'clientes'].includes(moduleKey) && !hasBillingAccess) return false;
+    if (['sifen', 'clientes'].includes(moduleKey) && !hasBillingAccess) return false;
     return true;
   };
 
@@ -183,7 +191,6 @@ function RouterWrapper() {
                   {/* Rutas Protegidas de Facturación */}
                   {!(hasBillingAccess) && (
                     <>
-                      <Route path="/ingresos" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
                       <Route path="/sifen" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
                       <Route path="/sifen/clientes" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
                     </>
@@ -195,14 +202,20 @@ function RouterWrapper() {
                       </motion.div>
                     ) : <Navigate to="/config" replace />
                   } />
-                  <Route path="/gastos" element={
+                  <Route path="/gastos" element={<Navigate to="/analizador-ia/gastos" replace />} />
+                  <Route path="/ingresos" element={<Navigate to="/analizador-ia/ingresos" replace />} />
+                  <Route path="/impresos" element={<Navigate to="/analizador-ia/gastos" replace />} />
+                  <Route path="/impresos/gastos" element={<Navigate to="/analizador-ia/gastos" replace />} />
+                  <Route path="/impresos/ingresos" element={<Navigate to="/analizador-ia/ingresos" replace />} />
+                  <Route path="/analizador-ia" element={<Navigate to="/analizador-ia/gastos" replace />} />
+                  <Route path="/analizador-ia/gastos" element={
                     canAccess('gastos') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                         <Facturas initialTab="gastos" />
                       </motion.div>
                     ) : <Navigate to="/config" replace />
                   } />
-                  <Route path="/ingresos" element={
+                  <Route path="/analizador-ia/ingresos" element={
                     canAccess('ingresos') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                         <Facturas initialTab="ingresos" />
