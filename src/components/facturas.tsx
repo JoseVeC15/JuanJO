@@ -142,6 +142,10 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       setEditingItem(null);
       setExpandedId(null);
       alert("¡Factura trasladada con éxito!");
+    },
+    onError: (error: any) => {
+      console.error("Error al mover factura:", error);
+      alert(`⚠️ No se pudo mover la factura: ${error.message || "Error de red"}`);
     }
   });
 
@@ -155,6 +159,11 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
       queryClient.invalidateQueries({ queryKey: ['ingresos'] });
       setEditingItem(null);
+      alert("✅ Cambios guardados correctamente.");
+    },
+    onError: (error: any) => {
+      console.error("Error al actualizar factura:", error);
+      alert(`❌ Error al guardar datos: ${error.message || "Verifique los campos"}`);
     }
   });
 
@@ -621,7 +630,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                         className={`hover:bg-slate-50 transition-all cursor-pointer group ${expandedId === f.id ? 'bg-indigo-50/30' : ''}`}
                       >
                         <td className="p-6 text-xs font-bold text-gray-600">
-                          {activeTab === 'gastos' ? f.fecha_factura : (f.fecha || f.fecha_emision)}
+                          {activeTab === 'gastos' ? f.fecha_factura : f.fecha_emision}
                         </td>
                         <td className="p-6">
                           <div className="flex items-center gap-2">
@@ -767,6 +776,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
         {isEmitterOpen && (
           <SifenInvoiceEmitter
             onClose={() => setIsEmitterOpen(false)}
+            sifenConfig={configSifen}
             onSuccess={() => {
               setIsEmitterOpen(false);
               queryClient.invalidateQueries({ queryKey: ['ingresos'] });
@@ -820,7 +830,7 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, 
           <div className="flex flex-wrap gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest items-center">
             <span className="flex items-center gap-1.5">
               <Clock size={12} />
-              {isGasto ? data.fecha_factura : (data.fecha || data.fecha_emision)}
+              {isGasto ? data.fecha_factura : data.fecha_emision}
             </span>
             <span>•</span>
             <span className="text-gray-500">{data.numero_factura || 'Sin N° Doc'}</span>
@@ -953,11 +963,16 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
 
   // Auto-suggest IVA 10% if total exists but all tax fields are zero
   const initialData = (() => {
-    const base = { ...item, created_at: undefined, id: undefined, processed_by_n8n: undefined, is_suggested_vat: undefined };
-    if (base.monto > 0 && !base.iva_10 && !base.iva_5 && !base.exentas) {
-      return { ...base, ...calculateSuggestedVAT10(base.monto) };
+    // Lista blanca de campos permitidos en la base de datos
+    const { 
+      id, user_id, created_at, processed_by_n8n, is_suggested_vat,
+      ...cleanBase 
+    } = item;
+
+    if (cleanBase.monto > 0 && !cleanBase.iva_10 && !cleanBase.iva_5 && !cleanBase.exentas) {
+      return { ...cleanBase, ...calculateSuggestedVAT10(cleanBase.monto) };
     }
-    return base;
+    return cleanBase;
   })();
 
   const [formData, setFormData] = useState(initialData);
@@ -1023,8 +1038,8 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
             <ModalInput
               label="Fecha"
               type="date"
-              value={isGasto ? formData.fecha_factura : (formData.fecha || formData.fecha_emision)}
-              onChange={(val: string) => setFormData({ ...formData, [isGasto ? 'fecha_factura' : (formData.fecha ? 'fecha' : 'fecha_emision')]: val })}
+              value={isGasto ? formData.fecha_factura : formData.fecha_emision}
+              onChange={(val: string) => setFormData({ ...formData, [isGasto ? 'fecha_factura' : 'fecha_emision']: val })}
             />
             <ModalInput
               label="Monto Bruto (₲)"
