@@ -20,6 +20,7 @@ export interface Profile {
   nivel_acceso: 1 | 2;
   estado?: 'activo' | 'suspendido';
   facturacion_habilitada?: boolean;
+  modulos_habilitados?: string[];
   created_at: string;
 }
 

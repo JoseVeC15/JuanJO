@@ -1,12 +1,26 @@
 import { useState } from 'react';
 import {
   Users, UserPlus, Mail, Shield, Search,
-  Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2, Pause, Play
+  Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2, Pause, Play, SlidersHorizontal
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { Profile } from '../data/sampleData';
+
+const MODULE_OPTIONS = [
+  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'gastos', label: 'Gastos' },
+  { key: 'ingresos', label: 'Ingresos' },
+  { key: 'sifen', label: 'Facturas SIFEN' },
+  { key: 'clientes', label: 'Clientes (SIFEN)' },
+  { key: 'proyectos', label: 'Proyectos' },
+  { key: 'inventario', label: 'Activos' },
+  { key: 'reportes', label: 'Analisis' },
+  { key: 'settings', label: 'Configuracion' },
+] as const;
+
+const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
 
 export default function AdminPanel() {
   const queryClient = useQueryClient();
@@ -55,6 +69,7 @@ export default function AdminPanel() {
   const [resetData, setResetData] = useState<{ id: string, email: string, newPass?: string } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [suspendData, setSuspendData] = useState<{ id: string, name: string, currentState: 'activo' | 'suspendido' } | null>(null);
+  const [moduleData, setModuleData] = useState<{ id: string; name: string; modules: string[] } | null>(null);
 
   const { data: allProfiles = [], isLoading } = useQuery({
     queryKey: ['admin_all_profiles'],
@@ -152,6 +167,7 @@ export default function AdminPanel() {
       setResetData(null);
       setDeleteId(null);
       setSuspendData(null);
+      setModuleData(null);
 
     } catch (err: any) {
       setStatus({ type: 'error', msg: err?.message || 'Error en la conexión con la función administrativa.' });
@@ -228,7 +244,7 @@ export default function AdminPanel() {
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
+                  <td colSpan={5} className="px-6 py-12 text-center">
                     <Loader2 size={32} className="animate-spin text-indigo-500 mx-auto" />
                   </td>
                 </tr>
@@ -280,6 +296,24 @@ export default function AdminPanel() {
                         title={p.estado === 'suspendido' ? "Activar Cuenta" : "Suspender Cuenta"}
                       >
                         {p.estado === 'suspendido' ? <Play size={16} /> : <Pause size={16} />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          const fallback = (p.facturacion_habilitada
+                            ? ['dashboard', 'gastos', 'ingresos', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
+                            : ['dashboard', 'gastos', 'proyectos', 'inventario', 'reportes', 'settings']);
+
+                          setModuleData({
+                            id: p.id,
+                            name: p.nombre_completo,
+                            modules: (p.modulos_habilitados && p.modulos_habilitados.length > 0) ? p.modulos_habilitados : fallback,
+                          });
+                          setStatus(null);
+                        }}
+                        className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
+                        title="Configurar Modulos"
+                      >
+                        <SlidersHorizontal size={16} />
                       </button>
                       <button
                         onClick={() => { setDeleteId(p.id); setStatus(null); }}
@@ -469,6 +503,73 @@ export default function AdminPanel() {
             <p className="text-[10px] text-gray-400 text-center uppercase tracking-widest mt-2">
               Se obligará al cliente a cambiar esta clave al entrar
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Modules Modal */}
+      {moduleData && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden p-6 space-y-4 text-left">
+            <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 text-violet-600">
+              <SlidersHorizontal size={22} />
+              Modulos Habilitados
+            </h3>
+            <p className="text-sm text-gray-500">Cliente: <span className="font-semibold text-gray-700">{moduleData.name}</span></p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+              {MODULE_OPTIONS.map((mod) => (
+                <label key={mod.key} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 cursor-pointer hover:border-violet-200 transition-all">
+                  <input
+                    type="checkbox"
+                    checked={moduleData.modules.includes(mod.key)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setModuleData(prev => {
+                        if (!prev) return prev;
+                        const next = checked
+                          ? Array.from(new Set([...prev.modules, mod.key]))
+                          : prev.modules.filter(m => m !== mod.key);
+                        return { ...prev, modules: next };
+                      });
+                    }}
+                    className="w-4 h-4 accent-violet-600"
+                  />
+                  <span className="text-sm font-semibold text-gray-700">{mod.label}</span>
+                </label>
+              ))}
+            </div>
+
+            {status && (
+              <div className={`p-4 rounded-xl flex items-start gap-3 my-2 ${status.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
+                <p className="text-sm font-medium">{status.msg}</p>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setModuleData(null); setStatus(null); }}
+                className="flex-1 px-4 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  const modules = moduleData.modules;
+                  const hasBillingModules = modules.some(m => BILLING_MODULES.has(m));
+                  handleAdminOp('update_user', moduleData.id, {
+                    modulos_habilitados: modules,
+                    facturacion_habilitada: hasBillingModules,
+                  });
+                }}
+                disabled={isSubmitting || moduleData.modules.length === 0}
+                className="flex-1 bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 rounded-xl shadow-lg transition-all disabled:opacity-50"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : 'Guardar Modulos'}
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-400 uppercase tracking-widest text-center">Si habilitas Ingresos, SIFEN o Clientes, tambien se habilita facturacion.</p>
           </div>
         </div>
       )}

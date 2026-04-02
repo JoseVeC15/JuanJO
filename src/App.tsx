@@ -78,9 +78,24 @@ function RouterWrapper() {
   // El Super Admin tiene acceso total, los demás dependen del flag facturacion_habilitada
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
+  const fallbackModules = hasBillingAccess
+    ? ['dashboard', 'gastos', 'ingresos', 'sifen', 'proyectos', 'inventario', 'reportes', 'settings']
+    : ['dashboard', 'gastos', 'proyectos', 'inventario', 'reportes', 'settings'];
+
+  const enabledModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
+    ? profile.modulos_habilitados
+    : fallbackModules;
+
+  const canAccess = (moduleKey: string) => {
+    if (profile?.nivel_acceso === 1) return true;
+    if (!enabledModules.includes(moduleKey)) return false;
+    if (['ingresos', 'sifen', 'clientes'].includes(moduleKey) && !hasBillingAccess) return false;
+    return true;
+  };
+
   const filteredNavItems = hasBillingAccess 
-    ? navItems 
-    : navItems.filter(item => !['ingresos', 'sifen', 'clientes'].includes(item.key));
+    ? navItems.filter(item => canAccess(item.key))
+    : navItems.filter(item => canAccess(item.key));
 
   return (
       <SuspensionGuard>
@@ -168,55 +183,73 @@ function RouterWrapper() {
                   {/* Rutas Protegidas de Facturación */}
                   {!(hasBillingAccess) && (
                     <>
-                      <Route path="/ingresos" element={<Navigate to="/dashboard" replace />} />
-                      <Route path="/sifen" element={<Navigate to="/dashboard" replace />} />
-                      <Route path="/sifen/clientes" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/ingresos" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
+                      <Route path="/sifen" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
+                      <Route path="/sifen/clientes" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
                     </>
                   )}
                   <Route path="/dashboard" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Dashboard />
-                    </motion.div>
+                    canAccess('dashboard') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Dashboard />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/gastos" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Facturas initialTab="gastos" />
-                    </motion.div>
+                    canAccess('gastos') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Facturas initialTab="gastos" />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/ingresos" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Facturas initialTab="ingresos" />
-                    </motion.div>
+                    canAccess('ingresos') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Facturas initialTab="ingresos" />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/sifen" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Facturas initialTab="sifen" />
-                    </motion.div>
+                    canAccess('sifen') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Facturas initialTab="sifen" />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/sifen/clientes" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Facturas initialTab="clientes" />
-                    </motion.div>
+                    canAccess('clientes') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Facturas initialTab="clientes" />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/proyectos" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Projects />
-                    </motion.div>
+                    canAccess('proyectos') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Projects />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/activos" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Inventario />
-                    </motion.div>
+                    canAccess('inventario') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Inventario />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/analisis" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Reportes />
-                    </motion.div>
+                    canAccess('reportes') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Reportes />
+                      </motion.div>
+                    ) : <Navigate to="/config" replace />
                   } />
                   <Route path="/config" element={
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                      <Settings />
-                    </motion.div>
+                    canAccess('settings') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Settings />
+                      </motion.div>
+                    ) : <Navigate to="/dashboard" replace />
                   } />
                   {profile?.nivel_acceso === 1 && (
                     <Route path="/admin" element={
