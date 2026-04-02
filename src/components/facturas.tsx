@@ -987,7 +987,8 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
 
     // Validación de Integridad Temporal
     const dateVal = isGasto ? formData.fecha_factura : (formData.fecha || formData.fecha_emision);
-    const year = new Date(dateVal).getFullYear();
+    const dateObj = new Date(dateVal);
+    const year = dateObj.getFullYear();
     const currentYear = new Date().getFullYear();
 
     if (year < 2000 || year > currentYear + 1) {
@@ -996,6 +997,31 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
     }
 
     onSave(formData);
+  };
+
+  const { checkDuplicateInvoice, suggestCategory } = useSupabaseData();
+  const [duplicateWarning, setDuplicateWarning] = useState(false);
+
+  useEffect(() => {
+    const check = async () => {
+      const ruc = isGasto ? formData.ruc_proveedor : formData.ruc_cliente;
+      if (ruc && formData.numero_factura && formData.timbrado) {
+        const isDuplicate = await checkDuplicateInvoice(ruc, formData.numero_factura, formData.timbrado);
+        setDuplicateWarning(isDuplicate);
+      }
+    };
+    check();
+  }, [formData.ruc_proveedor, formData.ruc_cliente, formData.numero_factura, formData.timbrado]);
+
+  const handleProviderChange = (val: string) => {
+    const update: any = { [isGasto ? 'proveedor' : 'cliente']: val };
+    if (isGasto) {
+      const suggestion = suggestCategory(val);
+      if (suggestion !== 'Otros') {
+        update.tipo_gasto = suggestion;
+      }
+    }
+    setFormData({ ...formData, ...update });
   };
 
   return (
@@ -1022,7 +1048,7 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
               <ModalInput
                 label={isGasto ? "Razón Social Proveedor" : "Nombre del Cliente"}
                 value={isGasto ? formData.proveedor : formData.cliente}
-                onChange={(val: string) => setFormData({ ...formData, [isGasto ? 'proveedor' : 'cliente']: val })}
+                onChange={handleProviderChange}
               />
             </div>
             <ModalInput
@@ -1035,11 +1061,19 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
               value={formData.numero_factura}
               onChange={(val: string) => setFormData({ ...formData, numero_factura: val })}
             />
-            <ModalInput
-              label="Timbrado"
-              value={formData.timbrado}
-              onChange={(val: string) => setFormData({ ...formData, timbrado: val })}
-            />
+            <div className="relative group">
+              <ModalInput
+                label="Timbrado"
+                value={formData.timbrado}
+                onChange={(val: string) => setFormData({ ...formData, timbrado: val })}
+                className={duplicateWarning ? "ring-2 ring-rose-500/50" : ""}
+              />
+              {duplicateWarning && (
+                <div className="absolute -top-1 right-0 bg-rose-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full animate-bounce">
+                  ¡POSIBLE DUPLICADO!
+                </div>
+              )}
+            </div>
             <ModalInput
               label="Fecha"
               type="date"
@@ -1107,6 +1141,26 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
                 ))}
               </div>
             </div>
+
+            {isGasto && (
+              <div className="col-span-1 md:col-span-2 lg:col-span-3 pt-4 border-t border-gray-50">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3 block flex items-center gap-2">
+                  <Sparkles size={14} className="text-indigo-500" /> Categoría de Gasto Sugerida (IA)
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {['Marketing & Publicidad', 'Combustible & Transporte', 'Viáticos & Alimentación', 'Software & Nube', 'Recursos Creativos', 'Gasto Operativo', 'Otros'].map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, tipo_gasto: cat })}
+                      className={`px-3 py-2 rounded-xl font-bold text-[9px] uppercase transition-all ${formData.tipo_gasto === cat ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex gap-4 pt-6">

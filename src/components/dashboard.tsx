@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Wallet,
   ArrowUpRight, Loader2,
-  Activity, 
+  Activity, Zap,
   ShieldCheck, AlertTriangle, Shield, Calendar, Clock
 } from 'lucide-react';
 import {
@@ -12,16 +12,17 @@ import {
 } from 'recharts';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import SifenInvoiceEmitter from './SifenInvoiceEmitter';
+import SafeToSpendCard from './SafeToSpendCard';
 import {
   formatGs, formatGsShort,
   getGastoLabel, getGastoColor
 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect } from 'react';
 
 export default function Dashboard() {
   const { 
     proyectos, facturasGastos, ingresos, configSifen, 
+    rentabilidadHoraria, financialIntelligence,
     loadingProfile, loadingFacturas, loadingIngresos, loadingSifen,
     profile 
   } = useSupabaseData();
@@ -58,8 +59,8 @@ export default function Dashboard() {
     const months = new Set<string>();
     months.add(currentMonthStr);
     
-    ingresos.forEach(i => { if (i.fecha_emision) months.add(i.fecha_emision.substring(0, 7)); });
-    facturasGastos.forEach(f => { if (f.fecha_factura) months.add(f.fecha_factura.substring(0, 7)); });
+    ingresos.forEach((i: any) => { if (i.fecha_emision) months.add(i.fecha_emision.substring(0, 7)); });
+    facturasGastos.forEach((f: any) => { if (f.fecha_factura) months.add(f.fecha_factura.substring(0, 7)); });
     
     return Array.from(months).sort().reverse();
   }, [ingresos, facturasGastos, currentMonthStr]);
@@ -67,56 +68,50 @@ export default function Dashboard() {
   const stats = useMemo(() => {
     if (loadingProfile) return null;
 
-    const totalIngresos = ingresos.filter(i => i.estado === 'cobrada').reduce((s, i) => s + Number(i.monto), 0);
-    const totalGastos = facturasGastos.reduce((s, f) => s + Number(f.monto), 0);
-    const ingresosPendientes = ingresos.filter(i => i.estado !== 'cobrada').reduce((s, i) => s + Number(i.monto), 0);
+    const totalIngresos = ingresos.filter((i: any) => i.estado === 'cobrada').reduce((s: number, i: any) => s + Number(i.monto), 0);
+    const totalGastos = facturasGastos.reduce((s: number, f: any) => s + Number(f.monto), 0);
+    const ingresosPendientes = ingresos.filter((i: any) => i.estado !== 'cobrada').reduce((s: number, i: any) => s + Number(i.monto), 0);
     const cajaProyectada = (totalIngresos - totalGastos) + ingresosPendientes;
     const margen = totalIngresos > 0 ? ((totalIngresos - totalGastos) / totalIngresos * 100) : 0;
-    const proyectosActivos = proyectos.filter(p => p.estado === 'en_progreso' || p.estado === 'cotizacion').length;
+    const proyectosActivos = proyectos.filter((p: any) => p.estado === 'en_progreso' || p.estado === 'cotizacion').length;
 
     const currentYear = new Date().getFullYear();
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     
-    // Filter data by selected month for VAT calculation
     const filteredIngresos = selectedMonth === 'total' 
       ? ingresos 
-      : ingresos.filter(i => (i.fecha_emision || '').startsWith(selectedMonth));
+      : ingresos.filter((i: any) => (i.fecha_emision || '').startsWith(selectedMonth));
     
     const filteredGastos = selectedMonth === 'total' 
       ? facturasGastos 
-      : facturasGastos.filter(f => (f.fecha_factura || '').startsWith(selectedMonth));
+      : facturasGastos.filter((f: any) => (f.fecha_factura || '').startsWith(selectedMonth));
 
-    // REAL IVA CALCULATION (SET COMPLIANT)
-    // IVA Débito: Total from Issued Invoices (ingresos)
-    const ivaDebito10 = filteredIngresos.reduce((s, i) => s + (Number(i.iva_10 || 0)), 0);
-    const ivaDebito5 = filteredIngresos.reduce((s, i) => s + (Number(i.iva_5 || 0)), 0);
+    const ivaDebito10 = filteredIngresos.reduce((s: number, i: any) => s + (Number(i.iva_10 || 0)), 0);
+    const ivaDebito5 = filteredIngresos.reduce((s: number, i: any) => s + (Number(i.iva_5 || 0)), 0);
     const ivaDebitoTotal = ivaDebito10 + ivaDebito5;
 
-    // IVA Crédito: Total from Expenses (facturas_gastos)
-    const ivaCredito10 = filteredGastos.reduce((s, f) => s + (Number(f.iva_10 || 0)), 0);
-    const ivaCredito5 = filteredGastos.reduce((s, f) => s + (Number(f.iva_5 || 0)), 0);
+    const ivaCredito10 = filteredGastos.reduce((s: number, f: any) => s + (Number(f.iva_10 || 0)), 0);
+    const ivaCredito5 = filteredGastos.reduce((s: number, f: any) => s + (Number(f.iva_5 || 0)), 0);
     const ivaCreditoTotal = ivaCredito10 + ivaCredito5;
 
     const netIvaBalance = ivaDebitoTotal - ivaCreditoTotal;
     const ivaAPagar = Math.max(0, netIvaBalance);
 
-    const monthlyData = months.map((m, i) => {
-      const monthStr = (i + 1).toString().padStart(2, '0');
+    const monthlyData = months.map((m, index) => {
+      const monthStr = (index + 1).toString().padStart(2, '0');
       const monthIngresos = ingresos
-        .filter(ing => ing.estado === 'cobrada' && (ing.fecha || '').startsWith(`${currentYear}-${monthStr}`))
-        .reduce((s, ing) => s + Number(ing.monto), 0);
+        .filter((ing: any) => ing.estado === 'cobrada' && (ing.fecha_emision || '').startsWith(`${currentYear}-${monthStr}`))
+        .reduce((s: number, ing: any) => s + Number(ing.monto), 0);
       const monthGastos = facturasGastos
-        .filter(gas => (gas.fecha_factura || '').startsWith(`${currentYear}-${monthStr}`))
-        .reduce((s, gas) => s + Number(gas.monto), 0);
+        .filter((gas: any) => (gas.fecha_factura || '').startsWith(`${currentYear}-${monthStr}`))
+        .reduce((s: number, gas: any) => s + Number(gas.monto), 0);
       return { mes: m, ingresos: monthIngresos, gastos: monthGastos };
     }).filter(d => d.ingresos > 0 || d.gastos > 0).slice(-6);
 
-    const finalMonthlyData = monthlyData.length > 0 ? monthlyData : [
-      { mes: 'Ene', ingresos: 0, gastos: 0 }
-    ];
+    const finalMonthlyData = monthlyData.length > 0 ? monthlyData : [{ mes: 'Ene', ingresos: 0, gastos: 0 }];
 
     const pieData = Object.entries(
-      facturasGastos.reduce((acc, f) => {
+      facturasGastos.reduce((acc: any, f: any) => {
         acc[f.tipo_gasto] = (acc[f.tipo_gasto] || 0) + Number(f.monto);
         return acc;
       }, {} as Record<string, number>)
@@ -126,7 +121,7 @@ export default function Dashboard() {
       color: getGastoColor(key as any) 
     })).sort((a: any, b: any) => b.value - a.value);
 
-    const activeProjectsList = proyectos.filter(p => ['en_progreso', 'cotizacion', 'entregado', 'facturado'].includes(p.estado));
+    const activeProjectsList = proyectos.filter((p: any) => ['en_progreso', 'cotizacion', 'entregado', 'facturado', 'pagado'].includes(p.estado));
 
     return { 
         totalIngresos, totalGastos, margen, proyectosActivos, 
@@ -185,17 +180,17 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" tooltip="Dinero real disponible tras restar todos los gastos de tus ingresos cobrados." loading={loadingIngresos || loadingFacturas} />
         <StatCard index={1} title="Cobros Pendientes" value={formatGs(stats.ingresosPendientes)} desc="Facturas por cobrar" icon={<Clock size={20} />} color="indigo" tooltip="Suma de todas las facturas emitidas, enviadas o vencidas que aún no han sido cobradas." loading={loadingIngresos} />
         <StatCard index={2} title="Caja Proyectada (30d)" value={formatGs(stats.cajaProyectada)} desc="Estimado con cobros" icon={<TrendingUp size={20} />} color="emerald" tooltip="Saldo actual + Cobros pendientes. Refleja tu liquidez potencial al cierre del ciclo." loading={loadingIngresos || loadingFacturas} />
-        <StatCard index={3} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." loading={loadingIngresos || loadingFacturas} />
+        <StatCard index={3} title="Rentabilidad Horaria" value={formatGsShort(rentabilidadHoraria)} desc="Ingreso real / hora" icon={<Activity size={20} />} color="indigo" tooltip="Promedio de ganancia por hora trabajada en proyectos cerrados." loading={loadingIngresos || loadingFacturas} />
+        <StatCard index={4} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." loading={loadingIngresos || loadingFacturas} />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-3xl lg:rounded-[2.5rem] border border-gray-100 p-6 lg:p-10 shadow-sm relative overflow-hidden min-w-0">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-10" />
-          <h3 className="font-black text-gray-900 text-xl mb-10">Proyección Mensual Consolidada</h3>
           <div className="h-[300px] w-full">
             {(loadingIngresos || loadingFacturas) ? (
               <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-2xl animate-pulse">
@@ -203,10 +198,11 @@ export default function Dashboard() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.monthlyData}>
+                <AreaChart data={[...stats.monthlyData, ...financialIntelligence.proyecciones]}>
                   <defs>
                     <linearGradient id="ingresGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10B981" stopOpacity={0.15}/><stop offset="95%" stopColor="#10B981" stopOpacity={0}/></linearGradient>
                     <linearGradient id="gastosGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#F43F5E" stopOpacity={0.1}/><stop offset="95%" stopColor="#F43F5E" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="proyecGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366F1" stopOpacity={0.1}/><stop offset="95%" stopColor="#6366F1" stopOpacity={0}/></linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
                   <XAxis dataKey="mes" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 600 }} dy={10} />
@@ -214,6 +210,7 @@ export default function Dashboard() {
                   <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} formatter={(val) => formatGs(Number(val))} />
                   <Area type="monotone" dataKey="ingresos" stroke="#10B981" strokeWidth={5} fillOpacity={1} fill="url(#ingresGrad)" />
                   <Area type="monotone" dataKey="gastos" stroke="#F43F5E" strokeWidth={5} fillOpacity={1} fill="url(#gastosGrad)" />
+                  <Area name="Proyección" type="monotone" dataKey="ingresos" data={financialIntelligence.proyecciones} stroke="#6366F1" strokeWidth={3} strokeDasharray="10 10" fillOpacity={1} fill="url(#proyecGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -221,6 +218,12 @@ export default function Dashboard() {
         </motion.div>
 
         <div className="space-y-6 lg:space-y-8">
+            <SafeToSpendCard 
+                disponible={financialIntelligence.disponibleReal}
+                ivaEstimado={financialIntelligence.ivaEstimadoAPagar}
+                reserva={financialIntelligence.reservaEmergencia}
+                gastosFijos={financialIntelligence.gastosFijosMes}
+            />
             {(profile?.facturacion_habilitada || profile?.nivel_acceso === 1) ? (
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5 }} className="bg-slate-900 rounded-3xl lg:rounded-[2.5rem] p-6 lg:p-10 text-white shadow-2xl relative overflow-hidden group">
                   <div className="flex items-center justify-between gap-3 mb-8">

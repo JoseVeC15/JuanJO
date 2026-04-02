@@ -18,8 +18,11 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
     const [cliente, setCliente] = useState({
         razon_social: '',
         ruc: '',
-        direccion: ''
+        direccion: '',
+        email: ''
     });
+
+    const [condicionOperacion, setCondicionOperacion] = useState<'contado' | 'credito'>('contado');
 
     const [clientesSugeridos, setClientesSugeridos] = useState<any[]>([]);
 
@@ -42,17 +45,44 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
         { id: '1', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }
     ]);
 
+    const [itemsSugeridos, setItemsSugeridos] = useState<{ [key: string]: any[] }>({});
+
     const agregarProducto = () => {
         setProductos([...productos, { id: Date.now().toString(), descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }]);
     };
 
     const eliminarProducto = (id: string) => {
         setProductos(productos.filter(p => p.id !== id));
+        const nuevasSugerencias = { ...itemsSugeridos };
+        delete nuevasSugerencias[id];
+        setItemsSugeridos(nuevasSugerencias);
     };
 
-    const calcularTotal = () => {
-        return productos.reduce((suma, p) => suma + (p.cantidad * p.precio_unitario), 0);
+    const buscarItemsCatalogo = async (texto: string, productoId: string) => {
+        if (texto.length < 2) {
+            setItemsSugeridos(prev => ({ ...prev, [productoId]: [] }));
+            return;
+        }
+        const { data } = await supabase
+            .from('items_catalogo')
+            .select('*')
+            .ilike('nombre', `%${texto}%`)
+            .limit(5);
+        
+        setItemsSugeridos(prev => ({ ...prev, [productoId]: data || [] }));
     };
+
+    const calcularTotalesPorIva = () => {
+        return productos.reduce((acc, p) => {
+            const monto = p.cantidad * p.precio_unitario;
+            if (p.iva_tipo === 10) acc.iva10 += Math.round(monto / 11);
+            if (p.iva_tipo === 5) acc.iva5 += Math.round(monto / 21);
+            acc.total += monto;
+            return acc;
+        }, { iva10: 0, iva5: 0, total: 0 });
+    };
+
+    const calcularTotal = () => calcularTotalesPorIva().total;
 
     const getBusinessErrorMessage = (errorCode?: string) => {
         const code = errorCode || 'UNEXPECTED';
@@ -121,8 +151,11 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                     numero_factura: numeroFactura,
                     fecha_emision: new Date().toISOString().split('T')[0],
                     monto_total: calcularTotal(),
+                    condicion_operacion: condicionOperacion,
                     receptor_ruc: cliente.ruc,
                     receptor_razon_social: cliente.razon_social,
+                    receptor_direccion: cliente.direccion,
+                    receptor_email: cliente.email,
                     estado_sifen: 'pendiente'
                 })
                 .select()
@@ -198,7 +231,12 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                                         <button 
                                                             key={c.id}
                                                             onClick={() => {
-                                                                setCliente({ razon_social: c.razon_social, ruc: c.ruc, direccion: c.direccion || '' });
+                                                                setCliente({ 
+                                                                    razon_social: c.razon_social, 
+                                                                    ruc: c.ruc, 
+                                                                    direccion: c.direccion || '',
+                                                                    email: c.email || '' 
+                                                                });
                                                                 setClientesSugeridos([]);
                                                             }}
                                                             className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 flex items-center gap-3"
@@ -220,11 +258,28 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                             className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                                         />
                                         <input 
-                                            placeholder="Dirección Fiscal" 
-                                            value={cliente.direccion}
-                                            onChange={e => setCliente({...cliente, direccion: e.target.value})}
+                                            placeholder="Email del Receptor" 
+                                            type="email"
+                                            value={cliente.email}
+                                            onChange={e => setCliente({...cliente, email: e.target.value})}
                                             className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                                         />
+                                        <div className="col-span-1 md:col-span-2 flex gap-4">
+                                            <input 
+                                                placeholder="Dirección Fiscal" 
+                                                value={cliente.direccion}
+                                                onChange={e => setCliente({...cliente, direccion: e.target.value})}
+                                                className="flex-1 px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                            />
+                                            <select 
+                                                value={condicionOperacion}
+                                                onChange={e => setCondicionOperacion(e.target.value as any)}
+                                                className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-xs uppercase outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                                            >
+                                                <option value="contado">CONTADO</option>
+                                                <option value="credito">CRÉDITO</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </section>
 
@@ -239,8 +294,8 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                     </div>
                                     <div className="space-y-3">
                                         {productos.map((producto, indice) => (
-                                            <div key={producto.id} className="grid grid-cols-12 gap-3 items-center p-3 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm">
-                                                <div className="col-span-6">
+                                            <div key={producto.id} className="grid grid-cols-12 gap-3 items-center p-3 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm relative">
+                                                <div className="col-span-6 relative">
                                                    <input 
                                                         placeholder="Descripción del producto o servicio" 
                                                         value={producto.descripcion}
@@ -248,9 +303,34 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                                             const nuevosProductos = [...productos];
                                                             nuevosProductos[indice].descripcion = e.target.value;
                                                             setProductos(nuevosProductos);
+                                                            buscarItemsCatalogo(e.target.value, producto.id);
                                                         }}
                                                         className="w-full bg-transparent font-bold text-sm outline-none"
                                                    />
+                                                   {itemsSugeridos[producto.id]?.length > 0 && (
+                                                       <div className="absolute left-0 right-0 top-full mt-2 bg-white rounded-xl shadow-xl border border-slate-100 z-[140] overflow-hidden">
+                                                           {itemsSugeridos[producto.id].map(item => (
+                                                               <button 
+                                                                    key={item.id}
+                                                                    onClick={() => {
+                                                                        const nuevosProductos = [...productos];
+                                                                        nuevosProductos[indice] = {
+                                                                            ...nuevosProductos[indice],
+                                                                            descripcion: item.nombre,
+                                                                            precio_unitario: Number(item.precio_sugerido),
+                                                                            iva_tipo: Number(item.iva_tipo)
+                                                                        };
+                                                                        setProductos(nuevosProductos);
+                                                                        setItemsSugeridos(prev => ({ ...prev, [producto.id]: [] }));
+                                                                    }}
+                                                                    className="w-full px-4 py-2 text-left hover:bg-slate-50 border-b border-slate-50 last:border-0 flex items-center justify-between"
+                                                               >
+                                                                   <span className="text-xs font-black text-slate-700 uppercase">{item.nombre}</span>
+                                                                   <span className="text-[10px] font-bold text-indigo-500">₲ {item.precio_sugerido.toLocaleString()}</span>
+                                                               </button>
+                                                           ))}
+                                                       </div>
+                                                   )}
                                                 </div>
                                                 <div className="col-span-2">
                                                     <input 
@@ -266,17 +346,32 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                                     />
                                                 </div>
                                                 <div className="col-span-3">
-                                                    <input 
-                                                        type="number"
-                                                        placeholder="Precio (₲)" 
-                                                        value={producto.precio_unitario}
-                                                        onChange={e => {
-                                                            const nuevosProductos = [...productos];
-                                                            nuevosProductos[indice].precio_unitario = Number(e.target.value);
-                                                            setProductos(nuevosProductos);
-                                                        }}
-                                                        className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 font-bold text-right text-sm"
-                                                    />
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            type="number"
+                                                            placeholder="Precio" 
+                                                            value={producto.precio_unitario}
+                                                            onChange={e => {
+                                                                const nuevosProductos = [...productos];
+                                                                nuevosProductos[indice].precio_unitario = Number(e.target.value);
+                                                                setProductos(nuevosProductos);
+                                                            }}
+                                                            className="w-full bg-white px-3 py-2 rounded-xl border border-slate-200 font-bold text-right text-sm"
+                                                        />
+                                                        <select 
+                                                            value={producto.iva_tipo}
+                                                            onChange={e => {
+                                                                const nuevosProductos = [...productos];
+                                                                nuevosProductos[indice].iva_tipo = Number(e.target.value);
+                                                                setProductos(nuevosProductos);
+                                                            }}
+                                                            className="bg-white px-2 py-2 rounded-xl border border-slate-200 font-black text-[10px] text-center"
+                                                        >
+                                                            <option value={10}>10%</option>
+                                                            <option value={5}>5%</option>
+                                                            <option value={0}>Ext</option>
+                                                        </select>
+                                                    </div>
                                                 </div>
                                                 <div className="col-span-1 flex justify-end">
                                                     <button onClick={() => eliminarProducto(producto.id)} className="text-red-300 hover:text-red-500 transition-colors"><Trash2 size={18} /></button>
@@ -322,9 +417,19 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
 
                 {paso === 'formulario' && (
                     <div className="p-8 bg-slate-50 flex items-center justify-between border-t border-slate-100">
-                        <div className="text-right">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Total a Facturar</p>
-                            <p className="text-3xl font-black text-slate-900">₲ {calcularTotal().toLocaleString()}</p>
+                        <div className="flex gap-8 items-center">
+                            <div className="text-right">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Liquidación IVA 10%</p>
+                                <p className="text-sm font-black text-slate-600">₲ {calcularTotalesPorIva().iva10.toLocaleString()}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Liquidación IVA 5%</p>
+                                <p className="text-sm font-black text-slate-600">₲ {calcularTotalesPorIva().iva5.toLocaleString()}</p>
+                            </div>
+                            <div className="text-right ml-4 border-l pl-8 border-slate-200">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Total a Facturar</p>
+                                <p className="text-3xl font-black text-slate-900">₲ {calcularTotal().toLocaleString()}</p>
+                            </div>
                         </div>
                         <button 
                             onClick={procesarEmision} 

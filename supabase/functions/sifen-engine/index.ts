@@ -131,11 +131,11 @@ function generarXmlSifen(doc: any, perfil: any, cdc: string) {
                 <dTotBruItem>${item.monto_total_item || (item.cantidad * item.precio_unitario)}</dTotBruItem>
             </gValorItem>
             <gCamIVA>
-                <iAfecIVA>${Number(item.iva_tipo) === 0 ? '3' : '1'}</iAfecIVA>
+                <iAfecIVA>${item.iva_tipo === 0 ? '3' : '1'}</iAfecIVA>
                 <dPropIVA>100</dPropIVA>
-                <dTasaIVA>${Number(item.iva_tipo ?? 10)}</dTasaIVA>
-                <dBasGrav>${item.monto_total_item || (item.cantidad * item.precio_unitario)}</dBasGrav>
-                <dTotIVA>${Number(item.iva_tipo) === 0 ? '0' : Math.round(item.monto_total_item / 11)}</dTotIVA>
+                <dTasaIVA>${item.iva_tipo}</dTasaIVA>
+                <dBasGrav>${item.iva_tipo === 10 ? Math.round(item.monto_total_item / 1.1) : item.iva_tipo === 5 ? Math.round(item.monto_total_item / 1.05) : item.monto_total_item}</dBasGrav>
+                <dTotIVA>${item.iva_tipo === 10 ? Math.round(item.monto_total_item / 11) : item.iva_tipo === 5 ? Math.round(item.monto_total_item / 21) : 0}</dTotIVA>
             </gCamIVA>
         </gCamItem>`).join('');
 
@@ -152,12 +152,18 @@ function generarXmlSifen(doc: any, perfil: any, cdc: string) {
             <dDirEmi>${perfil.direccion || 'Asunción, PY'}</dDirEmi>
         </gEmis>
         <gDatRec>
+            <iNatRec>1</iNatRec>
+            <iTiDocRec>1</iTiDocRec>
             <dRucRec>${doc.receptor_ruc || '44444401'}</dRucRec>
-            <dNomRec>${doc.receptor_razon_social || 'AOSTA SA'}</dNomRec>
+            <dDVRec>${doc.receptor_ruc?.split('-')[1] || '0'}</dDVRec>
+            <dNomRec>${doc.receptor_razon_social || 'CONSUMIDOR FINAL'}</dNomRec>
+            <dDirRec>${doc.receptor_direccion || 'Asunción, PY'}</dDirRec>
+            <dEmailRec>${doc.receptor_email || 'sin-email@factura.py'}</dEmailRec>
         </gDatRec>
         <gDtipDE>
             <gCamFE>
                 <iIndPres>1</iIndPres>
+                <iCondOpe>${doc.condicion_operacion === 'credito' ? '2' : '1'}</iCondOpe>
             </gCamFE>
             ${xmlDetalle}
         </gDtipDE>

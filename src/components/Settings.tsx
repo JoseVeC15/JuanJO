@@ -9,7 +9,8 @@ import {
   Download,
   FileCode,
   CheckCircle,
-  Clock
+  Clock,
+  Package
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSupabaseData } from '../hooks/useSupabaseData';
@@ -17,16 +18,21 @@ import { useSupabaseData } from '../hooks/useSupabaseData';
 export default function Settings() {
   const { user } = useAuth();
   const { profile, facturasGastos, proyectos, ingresos } = useSupabaseData();
-  const [activeTab, setActiveTab] = useState<'profile' | 'categories' | 'currency' | 'backup' | 'billing'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'branding' | 'categories' | 'currency' | 'backup' | 'billing' | 'catalog'>('profile');
   
   const [customCategories, setCustomCategories] = useState<{id: string, label: string, color: string}[]>([]);
   const [newCatLabel, setNewCatLabel] = useState('');
+
+  // Estados del Catálogo
+  const [itemsCatalogo, setItemsCatalogo] = useState<any[]>([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(false);
+  const [newItem, setNewItem] = useState({ nombre: '', precio: 0, iva: 10 });
 
   const [rates, setRates] = useState<any>(null);
   const [loadingRates, setLoadingRates] = useState(false);
   const [savingStatus, setSavingStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  // Estados Fiscales (SIFEN) - Refactorizado a Español
+  // Estados Fiscales (SIFEN)
   const [perfilFiscal, setPerfilFiscal] = useState({
       ruc: '',
       dv: '',
@@ -43,6 +49,14 @@ export default function Settings() {
       punto_expedicion: '001'
   });
 
+  const [branding, setBranding] = useState({
+      logo_url: '',
+      color_primario: '#0f172a',
+      portfolio_url: '',
+      telefono_contacto: '',
+      direccion_fisica: ''
+  });
+
   const [certData, setCertData] = useState<{name: string, file: File | null, password?: string}>({name: '', file: null, password: ''});
   const [certStatus, setCertStatus] = useState<'none' | 'uploaded' | 'expired'>('none');
 
@@ -55,7 +69,17 @@ export default function Settings() {
     fetchRates();
     const saved = localStorage.getItem(`finance_cats_${user?.id}`);
     if (saved) setCustomCategories(JSON.parse(saved));
-  }, [user]);
+    
+    if (profile) {
+      setBranding({
+        logo_url: profile.logo_url || '',
+        color_primario: profile.color_primario || '#0f172a',
+        portfolio_url: profile.portfolio_url || '',
+        telefono_contacto: profile.telefono_contacto || '',
+        direccion_fisica: profile.direccion_fisica || ''
+      });
+    }
+  }, [user, profile]);
 
   useEffect(() => {
       const loadFiscalProfile = async () => {
@@ -111,7 +135,52 @@ export default function Settings() {
       if (activeTab === 'billing') {
           loadFiscalProfile();
       }
+      if (activeTab === 'catalog') {
+          fetchCatalog();
+      }
   }, [activeTab, user]);
+
+  const fetchCatalog = async () => {
+    if (!user) return;
+    setLoadingCatalog(true);
+    const { data } = await supabase
+      .from('items_catalogo')
+      .select('*')
+      .order('nombre', { ascending: true });
+    setItemsCatalogo(data || []);
+    setLoadingCatalog(false);
+  };
+
+  const addCatalogItem = async () => {
+    if (!newItem.nombre) return;
+    setSavingStatus('saving');
+    const { error } = await supabase
+      .from('items_catalogo')
+      .insert({
+        user_id: user?.id,
+        nombre: newItem.nombre,
+        precio_sugerido: newItem.precio,
+        iva_tipo: newItem.iva
+      });
+    
+    if (!error) {
+      setNewItem({ nombre: '', precio: 0, iva: 10 });
+      fetchCatalog();
+      setSavingStatus('saved');
+      setTimeout(() => setSavingStatus('idle'), 2000);
+    } else {
+      setSavingStatus('idle');
+      alert('Error al guardar item');
+    }
+  };
+
+  const deleteCatalogItem = async (id: string) => {
+    const { error } = await supabase
+      .from('items_catalogo')
+      .delete()
+      .eq('id', id);
+    if (!error) fetchCatalog();
+  };
 
   const fetchRates = async () => {
     setLoadingRates(true);
@@ -158,7 +227,6 @@ export default function Settings() {
           throw new Error('CSC e ID CSC son obligatorios y deben ser validos antes de guardar.');
         }
 
-          // 1. Guardar Perfil Fiscal
           const { error } = await supabase
             .from('perfiles_fiscales')
             .upsert({
@@ -173,7 +241,6 @@ export default function Settings() {
           
           if (error) throw error;
 
-          // 2. Guardar Configuración SIFEN
           const { error: configError } = await supabase
             .from('configuracion_sifen')
             .upsert({
@@ -188,7 +255,6 @@ export default function Settings() {
 
           if (configError) throw configError;
           
-          // 3. Procesar Certificado (si existe)
           if (certData.file) {
               await new Promise((resolve, reject) => {
                   const reader = new FileReader();
@@ -215,27 +281,7 @@ export default function Settings() {
                   };
                   reader.onerror = reject;
               });
-
-                try {
-                  await supabase.from('secret_rotation_audit').insert({
-                    user_id: user?.id,
-                    secret_scope: 'certificado_digital',
-                    notes: `Rotacion de certificado: ${certData.name || 'sin_nombre'}`
-                  });
-                } catch {
-                  // No bloqueamos el guardado principal por una auditoria secundaria.
-                }
           }
-
-              try {
-                await supabase.from('secret_rotation_audit').insert({
-                  user_id: user?.id,
-                  secret_scope: 'configuracion_sifen',
-                  notes: 'Actualizacion de CSC/ID CSC/Timbrado'
-                });
-              } catch {
-                // No bloqueamos el guardado principal por una auditoria secundaria.
-              }
 
           setSavingStatus('saved');
           setTimeout(() => setSavingStatus('idle'), 2500);
@@ -244,6 +290,30 @@ export default function Settings() {
           setSavingStatus('idle');
           alert(`Error al guardar: ${e.message || 'Error desconocido'}`);
       }
+  };
+
+  const guardarBranding = async () => {
+    setSavingStatus('saving');
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          logo_url: branding.logo_url,
+          color_primario: branding.color_primario,
+          portfolio_url: branding.portfolio_url,
+          telefono_contacto: branding.telefono_contacto,
+          direccion_fisica: branding.direccion_fisica
+        })
+        .eq('id', user?.id);
+
+      if (error) throw error;
+      setSavingStatus('saved');
+      setTimeout(() => setSavingStatus('idle'), 2500);
+    } catch (e: any) {
+      console.error(e);
+      setSavingStatus('idle');
+      alert(`Error al guardar: ${e.message}`);
+    }
   };
 
   const exportAllData = () => {
@@ -284,9 +354,11 @@ export default function Settings() {
       <div className="flex flex-col md:flex-row gap-8">
         <div className="w-full md:w-64 space-y-2">
           <TabButton active={activeTab === 'profile'} onClick={() => setActiveTab('profile')} icon={<User size={18} />} label="Perfil" />
+          <TabButton active={activeTab === 'branding'} onClick={() => setActiveTab('branding')} icon={<Save size={18} />} label="Marca & Logo" />
           <TabButton active={activeTab === 'categories'} onClick={() => setActiveTab('categories')} icon={<Database size={18} />} label="Categorías" />
           <TabButton active={activeTab === 'currency'} onClick={() => setActiveTab('currency')} icon={<Globe size={18} />} label="Divisas" />
           <TabButton active={activeTab === 'billing'} onClick={() => setActiveTab('billing')} icon={<ShieldCheck size={18} />} label="Facturación" />
+          <TabButton active={activeTab === 'catalog'} onClick={() => setActiveTab('catalog')} icon={<Package size={18} />} label="Catálogo" />
           <TabButton active={activeTab === 'backup'} onClick={() => setActiveTab('backup')} icon={<FileCode size={18} />} label="Backup Pro" />
         </div>
 
@@ -303,6 +375,81 @@ export default function Settings() {
                   </span>
                   <span className="text-[10px] bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-black uppercase tracking-widest leading-none">Status: Active</span>
                 </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'branding' && (
+            <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 mb-1">Branding e Identidad Visual</h3>
+                <p className="text-sm text-gray-500">Configura la apariencia de tus presupuestos y propuestas comerciales.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-gray-50 p-8 rounded-[2.5rem] border border-gray-100">
+                <div className="space-y-6">
+                  <InputGroup 
+                    label="URL Logo (Empresa)" 
+                    value={branding.logo_url} 
+                    onChange={(e: any) => setBranding({...branding, logo_url: e.target.value})}
+                    placeholder="https://tupagina.com/logo.png" 
+                  />
+                  <div className="space-y-1.5">
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Color Principal Presupuestos</label>
+                    <div className="flex gap-2">
+                       <input 
+                        type="color" 
+                        value={branding.color_primario} 
+                        onChange={(e) => setBranding({...branding, color_primario: e.target.value})}
+                        className="w-12 h-12 bg-white rounded-xl border border-gray-100 outline-none cursor-pointer"
+                      />
+                      <input 
+                        type="text" 
+                        value={branding.color_primario} 
+                        onChange={(e) => setBranding({...branding, color_primario: e.target.value})}
+                        className="flex-1 px-5 py-3 bg-white rounded-xl border border-gray-100 font-bold text-gray-800 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <InputGroup 
+                    label="WhatsApp / Teléfono" 
+                    value={branding.telefono_contacto} 
+                    onChange={(e: any) => setBranding({...branding, telefono_contacto: e.target.value})}
+                    placeholder="+595 981..." 
+                  />
+                </div>
+                <div className="space-y-6">
+                  <InputGroup 
+                    label="Enlace a Portafolio (Vimeo / Behance)" 
+                    value={branding.portfolio_url} 
+                    onChange={(e: any) => setBranding({...branding, portfolio_url: e.target.value})}
+                    placeholder="https://vimeo.com/usuario" 
+                  />
+                   <InputGroup 
+                    label="Dirección Física (Opcional)" 
+                    value={branding.direccion_fisica} 
+                    onChange={(e: any) => setBranding({...branding, direccion_fisica: e.target.value})}
+                    placeholder="Asunción, Paraguay" 
+                  />
+                  <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-3xl flex items-center gap-3">
+                    <Save size={20} className="text-indigo-500" />
+                    <p className="text-[10px] text-indigo-700 font-medium leading-tight">
+                      Estos datos se usarán para generar el código QR y la cabecera en tus presupuestos PDF automáticos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button 
+                  onClick={guardarBranding}
+                  disabled={savingStatus === 'saving'}
+                  className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all ${
+                    savingStatus === 'saved' ? 'bg-indigo-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
+                  } disabled:opacity-50`}
+                >
+                  {savingStatus === 'saving' ? 'Guardando...' : savingStatus === 'saved' ? '¡Marca Actualizada! ✨' : 'Guardar Configuración de Marca'}
+                </button>
               </div>
             </motion.div>
           )}
@@ -568,6 +715,94 @@ export default function Settings() {
                            savingStatus === 'saved' ? '¡Datos Sincronizados! ✨' : 
                            'Guardar Identidad Fiscal'}
                       </button>
+                  </div>
+              </motion.div>
+          )}
+
+          {activeTab === 'catalog' && (
+              <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
+                  <div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-1">Catálogo de Servicios y Precios</h3>
+                      <p className="text-sm text-gray-500">Configura tus servicios frecuentes para facturar en un solo clic.</p>
+                  </div>
+
+                  <div className="bg-slate-50 p-6 rounded-[2rem] border border-slate-100 grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                      <div className="md:col-span-6">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Nombre del Servicio / Producto</label>
+                        <input 
+                            type="text" 
+                            value={newItem.nombre}
+                            onChange={(e) => setNewItem({...newItem, nombre: e.target.value})}
+                            placeholder="Ej: Consultoría Mensual, Diseño de Logo..."
+                            className="w-full px-5 py-3 bg-white rounded-2xl border border-slate-100 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm"
+                        />
+                      </div>
+                      <div className="md:col-span-3">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">Precio Sugerido</label>
+                        <input 
+                            type="number" 
+                            value={newItem.precio}
+                            onChange={(e) => setNewItem({...newItem, precio: Number(e.target.value)})}
+                            className="w-full px-5 py-3 bg-white rounded-2xl border border-slate-100 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm"
+                        />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1 block">IVA</label>
+                        <select 
+                            value={newItem.iva}
+                            onChange={(e) => setNewItem({...newItem, iva: Number(e.target.value)})}
+                            className="w-full px-4 py-3 bg-white rounded-2xl border border-slate-100 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-sm appearance-none"
+                        >
+                            <option value={10}>10%</option>
+                            <option value={5}>5%</option>
+                            <option value={0}>Exenta</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-1">
+                        <button 
+                            onClick={addCatalogItem}
+                            disabled={!newItem.nombre || savingStatus === 'saving'}
+                            className="w-full h-[48px] bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-lg hover:scale-105 transition-all disabled:opacity-50"
+                        >
+                            <Plus size={20} />
+                        </button>
+                      </div>
+                  </div>
+
+                  <div className="space-y-3">
+                      {loadingCatalog ? (
+                          <div className="py-10 flex justify-center"><RefreshCw className="animate-spin text-slate-300" /></div>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3">
+                            {itemsCatalogo.map((item) => (
+                                <div key={item.id} className="flex items-center justify-between p-5 bg-white rounded-[1.5rem] border border-slate-100 hover:shadow-md transition-all group">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center font-black text-xs group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-all">
+                                            {item.nombre.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-slate-800 uppercase text-xs tracking-tight">{item.nombre}</p>
+                                            <p className="text-[10px] font-bold text-slate-400">
+                                                ₲ {item.precio_sugerido.toLocaleString()} • IVA {item.iva_tipo === 0 ? 'Exenta' : `${item.iva_tipo}%`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => deleteCatalogItem(item.id)}
+                                        className="p-2 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                            {itemsCatalogo.length === 0 && (
+                                <div className="py-20 border-2 border-dashed border-slate-50 rounded-[2.5rem] flex flex-col items-center justify-center text-slate-300">
+                                    <Package size={48} strokeWidth={1} className="mb-4 opacity-20" />
+                                    <p className="text-sm font-black uppercase tracking-widest opacity-30">Catálogo Vacío</p>
+                                </div>
+                            )}
+                        </div>
+                      )}
                   </div>
               </motion.div>
           )}

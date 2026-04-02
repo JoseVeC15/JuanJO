@@ -12,12 +12,18 @@ const MODULE_OPTIONS = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'gastos', label: 'Gastos' },
   { key: 'ingresos', label: 'Ingresos' },
+  { key: 'cobros', label: 'Centro de Cobros' },
+  { key: 'agenda', label: 'Agenda Freelancer' },
+  { key: 'planificacion', label: 'Disponibilidad/Offtime' },
+  { key: 'set', label: 'Asistente SET (Fiscal)' },
+  { key: 'conciliacion', label: 'Conciliación Bancaria' },
+  { key: 'cierre', label: 'Cierre Mensual' },
   { key: 'sifen', label: 'Facturas SIFEN' },
   { key: 'clientes', label: 'Clientes (SIFEN)' },
   { key: 'proyectos', label: 'Proyectos' },
   { key: 'inventario', label: 'Activos' },
-  { key: 'reportes', label: 'Analisis' },
-  { key: 'settings', label: 'Configuracion' },
+  { key: 'reportes', label: 'Análisis' },
+  { key: 'settings', label: 'Configuración' },
 ] as const;
 
 const BILLING_MODULES = new Set(['sifen', 'clientes']);
@@ -300,8 +306,8 @@ export default function AdminPanel() {
                       <button
                         onClick={() => {
                           const fallback = (p.facturacion_habilitada
-                            ? ['dashboard', 'gastos', 'ingresos', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
-                            : ['dashboard', 'gastos', 'ingresos', 'proyectos', 'inventario', 'reportes', 'settings']);
+                            ? ['dashboard', 'gastos', 'ingresos', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
+                            : ['dashboard', 'gastos', 'ingresos', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'inventario', 'reportes', 'settings']);
 
                           setModuleData({
                             id: p.id,

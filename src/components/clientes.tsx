@@ -3,32 +3,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Users, Trash2, Search, Loader2, 
     UserPlus, Mail, Phone, MapPin, X, 
-    CheckCircle, Info 
+    CheckCircle, Info, TrendingUp, CreditCard, Briefcase
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import RucBuscador from './RucBuscador';
 
-interface Cliente {
-    id: string;
-    ruc: string;
-    razon_social: string;
-    direccion?: string;
-    email?: string;
-    telefono?: string;
-    created_at: string;
-}
-
-interface ClientesProps {
-    hideHeader?: boolean;
-    forceOpenAddModal?: boolean;
-    onModalOpenHandled?: () => void;
-}
-
-export default function Clientes({ hideHeader = false, forceOpenAddModal = false, onModalOpenHandled }: ClientesProps) {
+export default function Clientes({ hideHeader = false, forceOpenAddModal = false, onModalOpenHandled }: any) {
     const { user } = useAuth();
-    const [clientes, setClientes] = useState<Cliente[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { clientes, loading: loadingData } = useSupabaseData(); // useSupabaseData already provides clientes with stats
     const [search, setSearch] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -47,27 +31,6 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
             if (onModalOpenHandled) onModalOpenHandled();
         }
     }, [forceOpenAddModal, onModalOpenHandled]);
-
-    useEffect(() => {
-        if (user) fetchClientes();
-    }, [user]);
-
-    const fetchClientes = async () => {
-        try {
-            setLoading(true);
-            const { data, error } = await supabase
-                .from('clientes')
-                .select('*')
-                .order('razon_social', { ascending: true });
-            
-            if (error) throw error;
-            setClientes(data || []);
-        } catch (error) {
-            console.error('Error fetching clientes:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleAddFromRuc = (data: any) => {
         setNuevoCliente({
@@ -93,7 +56,6 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
             
             if (error) throw error;
             
-            await fetchClientes();
             setShowAddModal(false);
             setNuevoCliente({ ruc: '', razon_social: '', direccion: '', email: '', telefono: '' });
         } catch (error: any) {
@@ -109,22 +71,21 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
         try {
             const { error } = await supabase.from('clientes').delete().eq('id', id);
             if (error) throw error;
-            fetchClientes();
         } catch (error) {
             console.error('Error deleting cliente:', error);
         }
     };
 
-    const filteredClientes = clientes.filter(c => 
+    const filteredClientes = (clientes || []).filter((c: any) => 
         c.razon_social.toLowerCase().includes(search.toLowerCase()) || 
         c.ruc.includes(search)
     );
 
-    if (loading && clientes.length === 0) {
+    if (loadingData && clientes.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                <Loader2 className="text-emerald-500 animate-spin" size={40} />
-                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Sincronizando Directorio...</p>
+                <Loader2 className="text-indigo-500 animate-spin" size={40} />
+                <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">Sincronizando CRM...</p>
             </div>
         );
     }
@@ -135,12 +96,12 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                 <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
                     <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
                         <div className="flex items-center gap-2 text-indigo-500 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
-                            <Users size={14} /> Gestión de Cartera
+                            <Users size={14} /> Inteligencia de Cartera
                         </div>
                         <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
-                            Directorio de Clientes
+                            CRM de Clientes
                         </h1>
-                        <p className="text-gray-500 font-medium italic">Base de datos privada para facturación recurrente.</p>
+                        <p className="text-gray-500 font-medium italic">Control de facturación y proyectos por cuenta.</p>
                     </motion.div>
                     
                     <div className="flex items-center gap-3">
@@ -152,6 +113,34 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                         </button>
                     </div>
                 </header>
+            )}
+
+            {/* Client Stats Summary */}
+            {!hideHeader && filteredClientes.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <SummaryCard 
+                        label="Clientes Activos" 
+                        value={filteredClientes.length} 
+                        icon={<Users size={20} />} 
+                        color="bg-white border-slate-100"
+                    />
+                    <SummaryCard 
+                        label="Facturación Total" 
+                        value={new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', maximumFractionDigits: 0 }).format(
+                            filteredClientes.reduce((acc, curr: any) => acc + (curr.total_facturado || 0), 0)
+                        )} 
+                        icon={<TrendingUp size={20} />} 
+                        color="bg-emerald-50 border-emerald-100 text-emerald-700"
+                    />
+                    <SummaryCard 
+                        label="Cuentas por Cobrar" 
+                        value={new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', maximumFractionDigits: 0 }).format(
+                            filteredClientes.reduce((acc, curr: any) => acc + (curr.deuda_pendiente || 0), 0)
+                        )} 
+                        icon={<CreditCard size={20} />} 
+                        color="bg-rose-50 border-rose-100 text-rose-700"
+                    />
+                </div>
             )}
 
             {/* RUC Search Engine */}
@@ -172,7 +161,7 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                     {filteredClientes.length === 0 ? (
                         <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-slate-100">
                            <Info size={40} className="mx-auto text-slate-200 mb-4" />
@@ -180,48 +169,73 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                            <p className="text-slate-300 text-sm mt-1">Usa la herramienta de búsqueda de RUC arriba para agregar nuevos.</p>
                         </div>
                     ) : (
-                        filteredClientes.map((c) => (
+                        filteredClientes.map((c: any) => (
                             <motion.div 
                                 layout
                                 key={c.id} 
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative"
+                                className="bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative border-b-4 border-b-transparent hover:border-b-indigo-500 flex flex-col justify-between"
                             >
-                                <div className="absolute top-0 right-0 w-24 h-24 bg-slate-50/50 rounded-bl-full -z-0 opacity-50 transition-transform group-hover:scale-110" />
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-slate-50/50 rounded-bl-full -z-0 opacity-50 transition-transform group-hover:scale-110" />
                                 
-                                <div className="relative z-10 space-y-4">
+                                <div className="relative z-10 space-y-6">
                                     <div className="flex justify-between items-start">
-                                        <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center font-black">
+                                        <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-slate-200">
                                             {c.razon_social.charAt(0)}
                                         </div>
                                         <button 
                                             onClick={() => eliminarCliente(c.id)}
-                                            className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                                            className="p-3 text-slate-300 hover:text-red-500 hover:bg-rose-50 rounded-xl transition-all"
                                         >
-                                            <Trash2 size={16} />
+                                            <Trash2 size={18} />
                                         </button>
                                     </div>
-
-                                    <div>
-                                        <h3 className="font-black text-slate-900 truncate uppercase tracking-tight">{c.razon_social}</h3>
-                                        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mt-0.5">RUC: {c.ruc}</p>
+                                    
+                                    <div className="min-h-[60px]">
+                                        <h3 className="font-black text-slate-900 text-xl tracking-tight leading-7 line-clamp-2 group-hover:text-indigo-600 transition-colors uppercase">{c.razon_social}</h3>
+                                        <p className="text-[11px] font-black text-indigo-500 uppercase tracking-widest mt-1 bg-indigo-50 inline-block px-2 py-0.5 rounded-lg border border-indigo-100">RUC: {c.ruc}</p>
                                     </div>
 
-                                    <div className="space-y-2 pt-2">
+                                    <div className="grid grid-cols-2 gap-4 pb-4">
+                                      <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Facturado</p>
+                                        <p className="font-black text-slate-900 truncate">
+                                          {new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', maximumFractionDigits: 0 }).format(c.total_facturado || 0)}
+                                        </p>
+                                      </div>
+                                      <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 text-center">
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Proyectos</p>
+                                        <p className="font-black text-slate-900 flex items-center justify-center gap-1.5"><Briefcase size={12} className="text-slate-400" /> {c.total_proyectos || 0}</p>
+                                      </div>
+                                    </div>
+
+                                    {c.deuda_pendiente > 0 && (
+                                      <div className="bg-rose-50 text-rose-600 p-4 rounded-2xl flex items-center justify-between border border-rose-100 shadow-sm animate-pulse">
+                                        <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><CreditCard size={14} /> Deuda</span>
+                                        <span className="font-black">
+                                          {new Intl.NumberFormat('es-PY', { style: 'currency', currency: 'PYG', maximumFractionDigits: 0 }).format(c.deuda_pendiente)}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    <div className="space-y-3 pt-2">
                                         {c.direccion && (
-                                            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                                                <MapPin size={12} className="shrink-0" /> {c.direccion}
+                                            <div className="flex items-center gap-3 text-xs text-slate-500 font-bold">
+                                                <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400"><MapPin size={14} /></div>
+                                                <span className="truncate">{c.direccion}</span>
                                             </div>
                                         )}
                                         {c.email && (
-                                            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                                                <Mail size={12} className="shrink-0" /> {c.email}
+                                            <div className="flex items-center gap-3 text-xs text-slate-500 font-bold">
+                                                <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400"><Mail size={14} /></div>
+                                                <span className="truncate">{c.email}</span>
                                             </div>
                                         )}
                                         {c.telefono && (
-                                            <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
-                                                <Phone size={12} className="shrink-0" /> {c.telefono}
+                                            <div className="flex items-center gap-3 text-xs text-slate-500 font-bold">
+                                                <div className="w-6 h-6 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400"><Phone size={14} /></div>
+                                                <span>{c.telefono}</span>
                                             </div>
                                         )}
                                     </div>
@@ -309,6 +323,18 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                     </div>
                 )}
             </AnimatePresence>
+        </div>
+    );
+}
+
+function SummaryCard({ label, value, icon, color }: any) {
+    return (
+        <div className={`p-8 rounded-[2.5rem] border shadow-sm transition-all hover:shadow-lg ${color}`}>
+            <div className="flex items-center gap-3 opacity-60 mb-3">
+                {icon}
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">{label}</p>
+            </div>
+            <p className="text-3xl font-black tracking-tight">{value}</p>
         </div>
     );
 }

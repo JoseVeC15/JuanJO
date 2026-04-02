@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { X, Clock, TrendingUp, Wallet, Receipt, Plus, AlertCircle } from 'lucide-react';
+import { X, Clock, TrendingUp, Wallet, Receipt, Plus, AlertCircle, FileText } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGsShort, getStatusLabel, getStatusColor } from '../data/sampleData';
-import type { Proyecto, RegistroHora } from '../data/sampleData';
+import ProposalCreator from './ProposalCreator';
+import type { Proyecto } from '../data/sampleData';
 
 interface ProjectDetailsModalProps {
   project: Proyecto & {
@@ -22,6 +23,7 @@ interface ProjectDetailsModalProps {
 export default function ProjectDetailsModal({ project, onClose }: ProjectDetailsModalProps) {
   const { facturasGastos, addHorasTrabajadas } = useSupabaseData();
   const [isAddingHours, setIsAddingHours] = useState(false);
+  const [showProposalCreator, setShowProposalCreator] = useState(false);
   const [newHour, setNewHour] = useState({ cantidad_horas: 1, descripcion: '', fecha: new Date().toISOString().split('T')[0] });
 
   const projectGastos = facturasGastos.filter(g => g.proyecto_id === project.id);
@@ -38,7 +40,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
         {/* Header */}
         <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
           <div className="flex items-center gap-4">
@@ -52,9 +54,17 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
               </span>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-100">
-            <X size={24} className="text-gray-400" />
-          </button>
+          <div className="flex items-center gap-3">
+             <button 
+              onClick={() => setShowProposalCreator(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 border border-gray-200 rounded-2xl font-black uppercase tracking-widest text-xs shadow-sm hover:shadow-md transition-all active:scale-95"
+            >
+              <FileText size={18} className="text-indigo-600" /> Presupuesto PDF
+            </button>
+            <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-100">
+              <X size={24} className="text-gray-400" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar">
@@ -95,7 +105,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <Clock size={20} className="text-blue-500" />
-                  Mano de Obra (Horas)
+                  Mano de Obra ({project.unidad_tiempo || 'horas'})
                 </h3>
                 <button 
                   onClick={() => setIsAddingHours(!isAddingHours)}
@@ -109,7 +119,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
                 <div className="bg-blue-50/50 border border-blue-100 rounded-3xl p-6 mb-4 space-y-4 animate-in fade-in slide-in-from-top-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-[10px] font-black text-blue-600 uppercase mb-2 block ml-1">Horas</label>
+                      <label className="text-[10px] font-black text-blue-600 uppercase mb-2 block ml-1">{project.unidad_tiempo === 'dias' ? 'Días' : 'Horas'}</label>
                       <input 
                         type="number"
                         min="0.5"
@@ -156,9 +166,8 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
                 </div>
               )}
 
-              {/* Lista de Horas - Simulado u obtenido del hook si existiera una lista filtrada */}
               <div className="bg-gray-50 rounded-3xl p-6 min-h-[200px]">
-                <p className="text-gray-400 text-sm text-center italic mt-4">Los registros de horas aparecerán aquí una vez que ejecutes el comando SQL en Supabase.</p>
+                <p className="text-gray-400 text-sm text-center italic mt-4">Registra tu tiempo trabajado para analizar el margen real.</p>
               </div>
             </div>
 
@@ -198,6 +207,13 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
           </div>
           <p className="text-xs text-slate-400">ID: {project.id}</p>
         </div>
+
+        {showProposalCreator && (
+          <ProposalCreator 
+            proyecto={project} 
+            onClose={() => setShowProposalCreator(false)} 
+          />
+        )}
       </div>
     </div>
   );

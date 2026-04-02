@@ -21,6 +21,11 @@ export interface Profile {
   estado?: 'activo' | 'suspendido';
   facturacion_habilitada?: boolean;
   modulos_habilitados?: string[];
+  logo_url?: string;
+  color_primario?: string;
+  portfolio_url?: string;
+  telefono_contacto?: string;
+  direccion_fisica?: string;
   created_at: string;
 }
 
@@ -150,6 +155,31 @@ export interface AgendaTarea {
   prioridad: PrioridadTarea;
   completada: boolean;
   created_at: string;
+}
+
+export interface Propuesta {
+  id: string;
+  proyecto_id: string;
+  user_id: string;
+  numero_correlativo: number;
+  titulo: string;
+  notas_condiciones: string;
+  total_neto: number;
+  total_iva_10: number;
+  total_iva_5: number;
+  total_bruto: number;
+  estado: 'pendiente' | 'enviado' | 'aceptado' | 'rechazado';
+  valido_hasta: string;
+  created_at: string;
+}
+
+export interface PropuestaItem {
+  id: string;
+  propuesta_id: string;
+  descripcion: string;
+  cantidad: number;
+  precio_unitario: number;
+  iva_tipo: number; // 0, 5, 10
 }
 
 // ============ PROYECTOS ============
