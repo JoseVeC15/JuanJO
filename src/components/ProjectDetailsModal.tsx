@@ -14,6 +14,7 @@ interface ProjectDetailsModalProps {
     margen_real_gs: number;
     margen_real_porc: number;
     salud_margen: string;
+    unidad_tiempo?: 'horas' | 'dias';
   };
   onClose: () => void;
 }
@@ -84,7 +85,7 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
               value={`${project.horas_reales}h`} 
               icon={<Clock className="text-blue-500" />} 
               color="text-blue-600"
-              subtext={`Estimado: ${project.horas_estimadas || 0}h`}
+              subtext={`Estimado: ${project.horas_estimadas || 0}${project.unidad_tiempo === 'dias' ? 'd' : 'h'}`}
             />
           </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Save, AlertCircle, DollarSign, Clock, Target } from 'lucide-react';
+import { X, Save, DollarSign, Clock, Target } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
@@ -35,6 +35,7 @@ export default function ProjectFormModal({ project, onClose }: ProjectFormModalP
     margen_objetivo: 30,
     precio_hora: 0,
     horas_estimadas: 0,
+    unidad_tiempo: 'horas',
     estado: 'cotizacion'
   });
 
@@ -179,13 +180,33 @@ export default function ProjectFormModal({ project, onClose }: ProjectFormModalP
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-black text-blue-400 uppercase mb-2 block ml-1">Horas Estimadas</label>
-                  <input 
-                    type="number"
-                    value={formData.horas_estimadas}
-                    onChange={(e) => setFormData({ ...formData, horas_estimadas: Number(e.target.value) })}
-                    className="w-full bg-white rounded-2xl p-4 border border-blue-100 focus:ring-2 focus:ring-blue-500 outline-none font-bold"
-                  />
+                  <label className="text-[10px] font-black text-blue-400 uppercase mb-2 block ml-1">
+                    Tiempo Estimado ({formData.unidad_tiempo === 'dias' ? 'Días' : 'Horas'})
+                  </label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="number"
+                      value={formData.horas_estimadas}
+                      onChange={(e) => setFormData({ ...formData, horas_estimadas: Number(e.target.value) })}
+                      className="flex-1 bg-white rounded-2xl p-4 border border-blue-100 focus:ring-2 focus:ring-blue-500 outline-none font-bold"
+                    />
+                    <div className="flex bg-blue-100 rounded-2xl p-1">
+                      <button 
+                        type="button"
+                        onClick={() => setFormData({ ...formData, unidad_tiempo: 'horas' })}
+                        className={`px-3 rounded-xl text-[10px] font-black transition-all ${formData.unidad_tiempo === 'horas' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-400'}`}
+                      >
+                        H
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setFormData({ ...formData, unidad_tiempo: 'dias' })}
+                        className={`px-3 rounded-xl text-[10px] font-black transition-all ${formData.unidad_tiempo === 'dias' ? 'bg-white text-blue-600 shadow-sm' : 'text-blue-400'}`}
+                      >
+                        D
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

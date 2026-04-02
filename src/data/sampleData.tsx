@@ -36,6 +36,7 @@ export interface Proyecto {
   margen_objetivo?: number;
   precio_hora?: number;
   horas_estimadas?: number;
+  unidad_tiempo?: 'horas' | 'dias';
   estado: EstadoProyecto;
   created_at: string;
 }

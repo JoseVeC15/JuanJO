@@ -29,7 +29,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('proyectos')
-        .select('id, nombre_cliente, tipo_servicio, descripcion, fecha_inicio, fecha_entrega, monto_presupuestado, monto_facturado, margen_objetivo, precio_hora, horas_estimadas, estado, created_at')
+        .select('id, nombre_cliente, tipo_servicio, descripcion, fecha_inicio, fecha_entrega, monto_presupuestado, monto_facturado, margen_objetivo, precio_hora, horas_estimadas, unidad_tiempo, estado, created_at')
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
