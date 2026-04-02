@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Calendar, CheckCircle2, Clock, FileText, Wallet, Plus, MoreVertical, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSupabaseData } from '../hooks/useSupabaseData';
@@ -13,6 +13,7 @@ const typeConfig: any = {
 export default function AgendaFreelancer() {
   const { agendaTareas, loadingAgenda, addTarea, toggleTarea, deleteTarea } = useSupabaseData();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<'todas' | 'entrega' | 'facturacion' | 'cobro'>('todas');
   const [newTarea, setNewTarea] = useState<Partial<AgendaTarea>>({
     titulo: '',
     tipo: 'entrega',
@@ -28,8 +29,12 @@ export default function AgendaFreelancer() {
     setNewTarea({ titulo: '', tipo: 'entrega', prioridad: 'media', fecha_limite: new Date().toISOString().split('T')[0] });
   };
 
-  const tareasHoy = agendaTareas.filter(t => !t.completada);
-  const tareasCompletadas = agendaTareas.filter(t => t.completada);
+  const filteredAgenda = useMemo(() => {
+    return agendaTareas.filter(t => typeFilter === 'todas' || t.tipo === typeFilter);
+  }, [agendaTareas, typeFilter]);
+
+  const tareasHoy = filteredAgenda.filter(t => !t.completada);
+  const tareasCompletadas = filteredAgenda.filter(t => t.completada);
 
   return (
     <div className="space-y-8">
@@ -85,6 +90,23 @@ export default function AgendaFreelancer() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Filtros de Agenda */}
+      <div className="flex gap-2 pb-2 overflow-x-auto no-scrollbar">
+        {(['todas', 'entrega', 'facturacion', 'cobro'] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setTypeFilter(type)}
+            className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border ${
+              typeFilter === type 
+                ? 'bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-900/20' 
+                : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200'
+            }`}
+          >
+            {type === 'todas' ? 'Todo' : type}
+          </button>
+        ))}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-4">
