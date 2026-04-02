@@ -1,8 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown } from 'lucide-react';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import SuspensionGuard from './components/SuspensionGuard';
 
@@ -16,6 +16,144 @@ const Reportes = lazy(() => import('./components/reportes'));
 const Settings = lazy(() => import('./components/Settings'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const ManualsScreen = lazy(() => import('./screens/ManualsScreen'));
+
+// Componente para sub-menú en móvil
+function MobileSubMenu({ item }: { item: any }) {
+  const location = useLocation();
+  const isParentActive = item.children?.some((child: any) => location.pathname === child.path);
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex flex-col items-center gap-1 p-2 min-w-[64px] relative transition-colors ${
+          isParentActive || isOpen ? 'text-emerald-600' : 'text-slate-400'
+        }`}
+      >
+        {isParentActive && (
+          <motion.div 
+            layoutId="activeNavMobile"
+            className="absolute top-0 w-8 h-1 bg-emerald-500 rounded-b-full"
+          />
+        )}
+        <div className="text-xl leading-none relative">
+            {item.icon}
+            <motion.div 
+              animate={{ rotate: isOpen ? 180 : 0 }}
+              className="absolute -right-2 -top-1"
+            >
+              <ChevronDown size={10} />
+            </motion.div>
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-tighter">{item.label}</span>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+              className="fixed inset-0 bg-slate-900/20 backdrop-blur-[2px] z-40"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 min-w-[160px] z-50 overflow-hidden"
+            >
+              <div className="flex flex-col gap-1">
+                {item.children.map((child: any) => (
+                  <NavLink
+                    key={child.key}
+                    to={child.path}
+                    onClick={() => setIsOpen(false)}
+                    className={({ isActive }) => `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                      isActive ? 'bg-emerald-50 text-emerald-600 font-bold' : 'text-slate-600 active:bg-slate-50'
+                    }`}
+                  >
+                    {child.icon}
+                    <span className="text-xs uppercase font-black tracking-tight">{child.label}</span>
+                  </NavLink>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Componente para items colapsables en el sidebar
+function CollapsibleNavItem({ item }: { item: any }) {
+  const location = useLocation();
+  const isParentActive = item.children?.some((child: any) => location.pathname === child.path);
+  const [isOpen, setIsOpen] = useState(isParentActive);
+
+  return (
+    <div className="space-y-1">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl transition-all relative overflow-hidden group ${
+          isParentActive || isOpen
+            ? 'bg-slate-800/50 text-slate-200 border border-slate-700/50'
+            : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <span className="relative z-10">{item.icon}</span>
+          <span className="relative z-10 uppercase tracking-tighter text-xs font-bold">{item.label}</span>
+        </div>
+        <motion.div
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          <ChevronDown size={16} className={isParentActive ? 'text-emerald-400' : 'text-slate-500'} />
+        </motion.div>
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden pl-4 space-y-1"
+          >
+            {item.children.map((child: any) => (
+              <NavLink
+                key={child.key}
+                to={child.path}
+                className={({ isActive }) => `flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all relative ${
+                  isActive
+                    ? 'text-emerald-400 font-bold bg-emerald-500/5'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                {({ isActive }) => (
+                  <>
+                    <span className="text-current opacity-70">{child.icon}</span>
+                    <span className="uppercase tracking-tighter text-[11px]">{child.label}</span>
+                    {isActive && (
+                      <motion.div 
+                        layoutId="activeSubNav"
+                        className="absolute right-2 w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)]"
+                      />
+                    )}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 function RouterWrapper() {
   const { user, loading, mustChangePassword, signOut } = useAuth();
@@ -62,8 +200,15 @@ function RouterWrapper() {
 
   const navItems = [
     { key: 'dashboard', path: '/dashboard', label: 'DASHBOARD', icon: <Layout size={20} /> },
-    { key: 'gastos', path: '/analizador-ia/gastos', label: 'GASTOS', icon: <ArrowDownLeft size={20} /> },
-    { key: 'ingresos', path: '/analizador-ia/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
+    { 
+      key: 'analizador-ia', 
+      label: 'ANALIZADOR IA', 
+      icon: <PieChart size={20} className="text-emerald-400" />,
+      children: [
+        { key: 'gastos', path: '/analizador-ia/gastos', label: 'GASTOS', icon: <ArrowDownLeft size={20} /> },
+        { key: 'ingresos', path: '/analizador-ia/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
+      ]
+    },
     { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
@@ -75,12 +220,11 @@ function RouterWrapper() {
     (navItems as any).push({ key: 'admin', path: '/admin', label: 'Admin Panel', icon: <ShieldCheck size={20} className="text-indigo-400" /> });
   }
 
-  // El Super Admin tiene acceso total. El flag facturacion_habilitada solo desbloquea SIFEN y Clientes.
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
   const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'gastos', 'ingresos', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
-    : ['dashboard', 'gastos', 'ingresos', 'proyectos', 'inventario', 'reportes', 'settings'];
+    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
+    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'proyectos', 'inventario', 'reportes', 'settings'];
 
   const enabledModules = (() => {
     const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
@@ -101,9 +245,18 @@ function RouterWrapper() {
     return true;
   };
 
-  const filteredNavItems = hasBillingAccess 
-    ? navItems.filter(item => canAccess(item.key))
-    : navItems.filter(item => canAccess(item.key));
+  const filteredNavItems = navItems.filter(item => {
+    if (item.children) {
+      const visibleChildren = item.children.filter(child => canAccess(child.key));
+      return visibleChildren.length > 0;
+    }
+    return canAccess(item.key);
+  }).map(item => {
+     if (item.children) {
+       return { ...item, children: item.children.filter(child => canAccess(child.key)) };
+     }
+     return item;
+  });
 
   return (
       <SuspensionGuard>
@@ -126,30 +279,35 @@ function RouterWrapper() {
             </div>
 
             <nav className="flex-1 p-4 space-y-1 mt-4">
-              {filteredNavItems.map((item) => (
-                <NavLink
-                  key={item.key}
-                  to={item.path}
-                  className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative overflow-hidden group ${
-                    isActive
-                      ? 'bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20'
-                      : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
-                  }`}
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <motion.div 
-                          layoutId="activeNav"
-                          className="absolute left-0 w-1 h-6 bg-emerald-400 rounded-r-full"
-                        />
-                      )}
-                      <span className="relative z-10">{item.icon}</span>
-                      <span className="relative z-10 uppercase tracking-tighter text-xs">{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
+              {filteredNavItems.map((item) => {
+                if (item.children) {
+                  return <CollapsibleNavItem key={item.key} item={item} />;
+                }
+                return (
+                  <NavLink
+                    key={item.key}
+                    to={item.path!}
+                    className={({ isActive }) => `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative overflow-hidden group ${
+                      isActive
+                        ? 'bg-emerald-500/10 text-emerald-400 font-bold border border-emerald-500/20'
+                        : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+                    }`}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.div 
+                            layoutId="activeNav"
+                            className="absolute left-0 w-1 h-6 bg-emerald-400 rounded-r-full"
+                          />
+                        )}
+                        <span className="relative z-10">{item.icon}</span>
+                        <span className="relative z-10 uppercase tracking-tighter text-xs">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
             </nav>
 
             <div className="p-4 border-t border-slate-800">
@@ -279,30 +437,35 @@ function RouterWrapper() {
 
             {/* Mobile Nav Bottom */}
             <nav className="lg:hidden bg-white/80 backdrop-blur-md border-t border-slate-200 px-2 py-2 flex items-center justify-around sticky bottom-0 z-50">
-              {filteredNavItems.filter(item => item.key !== 'settings').map((item) => (
-                <NavLink
-                   key={item.key}
-                   to={item.path}
-                   className={({ isActive }) => `flex flex-col items-center gap-1 p-2 min-w-[64px] relative ${
-                     isActive ? 'text-emerald-600' : 'text-slate-400'
-                   }`}
-                >
-                  {({ isActive }) => (
-                    <>
-                      {isActive && (
-                        <motion.div 
-                          layoutId="activeNavMobile"
-                          className="absolute top-0 w-8 h-1 bg-emerald-500 rounded-b-full"
-                        />
-                      )}
-                      <div className="text-xl leading-none">
-                        {item.icon}
-                      </div>
-                      <span className="text-[10px] font-black uppercase tracking-tighter">{item.label}</span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
+              {filteredNavItems.filter(item => item.key !== 'settings').map((item) => {
+                if (item.children) {
+                   return <MobileSubMenu key={item.key} item={item} />;
+                }
+                return (
+                  <NavLink
+                     key={item.key}
+                     to={item.path!}
+                     className={({ isActive }) => `flex flex-col items-center gap-1 p-2 min-w-[64px] relative ${
+                       isActive ? 'text-emerald-600' : 'text-slate-400'
+                     }`}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        {isActive && (
+                          <motion.div 
+                            layoutId="activeNavMobile"
+                            className="absolute top-0 w-8 h-1 bg-emerald-500 rounded-b-full"
+                          />
+                        )}
+                        <div className="text-xl leading-none">
+                          {item.icon}
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-tighter">{item.label}</span>
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
               <NavLink
                 to="/config"
                 className={({ isActive }) => `flex flex-col items-center gap-1 p-2 min-w-[64px] relative ${
