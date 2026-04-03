@@ -4,17 +4,23 @@ import {
     CheckCircle2, AlertCircle, Receipt,
     ChevronLeft, ChevronRight,
     Calculator, ShieldCheck, Download, Loader2,
-    Lock, Unlock, History, AlertTriangle
+    Lock, Unlock, History, AlertTriangle,
+    Building2,
+    Briefcase,
+    LayoutGrid,
+    FileText,
+    TrendingUp
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGs } from '../data/sampleData';
 
 const STEPS = [
-    { id: 'ingresos', title: 'Auditoría de Ventas', icon: <Receipt size={18} /> },
-    { id: 'gastos', title: 'Auditoría de Compras', icon: <Calculator size={18} /> },
-    { id: 'fiscal', title: 'Liquidación SET', icon: <ShieldCheck size={18} /> },
-    { id: 'confirmacion', title: 'Cierre Legal', icon: <Lock size={18} /> },
+    { id: 'setup', title: 'Actividad', icon: LayoutGrid },
+    { id: 'analysis', title: 'Ventas', icon: Receipt },
+    { id: 'purchases', title: 'Compras', icon: Calculator },
+    { id: 'settlement', title: 'Liquidación', icon: ShieldCheck },
+    { id: 'review', title: 'Cierre', icon: FileText }
 ];
 
 export default function CierreMensualWizard() {
@@ -30,6 +36,8 @@ export default function CierreMensualWizard() {
     const [reopenReason, setReopenReason] = useState('');
     const [showReopenModal, setShowReopenModal] = useState<string | null>(null);
     const [retenciones, setRetenciones] = useState<number>(0);
+    const [actividad, setActividad] = useState<'general' | 'alquileres' | 'servicios'>('general');
+    const [ivaIndiviso, setIvaIndiviso] = useState<number>(0);
 
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
@@ -83,7 +91,15 @@ export default function CierreMensualWizard() {
     }, [cierresPeriodos, currentMonth, currentYear]);
 
     const ivaDebitoTotal = statsVentas.iva10 + statsVentas.iva5;
-    const ivaCreditoTotal = statsCompras.iva10 + statsCompras.iva5 + saldoArrastrado;
+    
+    // Lógica de Prorrateo (Rubro 3)
+    const ventasGravadas = statsVentas.v10 + statsVentas.v5;
+    const ventasTotales = ventasGravadas + statsVentas.ex;
+    const factorProrrateo = ventasTotales > 0 ? (ventasGravadas / ventasTotales) : 1;
+    
+    const ivaCreditoComputable = (statsCompras.iva10 + statsCompras.iva5) + (ivaIndiviso * factorProrrateo);
+    const ivaCreditoTotal = ivaCreditoComputable + saldoArrastrado;
+    
     const saldoTecnico = ivaDebitoTotal - ivaCreditoTotal;
     const saldoFinalAPagar = saldoTecnico > 0 ? Math.max(0, saldoTecnico - retenciones) : 0;
     const saldoAFavorFinanciero = saldoTecnico < 0 ? Math.abs(saldoTecnico) + retenciones : (saldoTecnico < retenciones ? retenciones - saldoTecnico : 0);
@@ -197,13 +213,18 @@ export default function CierreMensualWizard() {
         drawRubroHeader('RUBRO 3: COMPRAS LOCALES E IMPORTACIONES (CRÉDITO FISCAL)');
         drawCasilla('C35', 'Compras gravadas al 10% (Base Imponible)', formatGs(datos.compras_10));
         drawCasilla('C32', 'Compras gravadas al 5% (Base Imponible)', formatGs(datos.compras_5));
+        y += 2;
+        if (datos.factor_prorrateo < 1) {
+            drawCasilla('PR%', 'Factor de Prorrateo Calculado', `${(datos.factor_prorrateo * 100).toFixed(2)}%`);
+            drawCasilla('C41', 'IVA Crédito Proporcional (Indiviso)', formatGs(datos.iva_indiviso * datos.factor_prorrateo));
+        }
         drawCasilla('C38', 'IVA Crédito atribuido directamente (10%)', formatGs(datos.compras_10 * 0.1));
         drawCasilla('C164', 'IVA Crédito atribuido (5%)', formatGs(datos.compras_5 * 0.05));
         y += 2;
         drawCasilla('C30', 'Compras del mes exoneradas (Exentas)', formatGs(datos.compras_exentas));
         y += 2;
         doc.line(margin, y, pageWidth - margin, y); y += 6;
-        drawCasilla('C43', 'TOTAL DE IVA CRÉDITO PARA OPERACIONES EN MERCADO INTERNO', formatGs(datos.iva_credito_total - datos.saldo_arrastrado), true);
+        drawCasilla('C43', 'TOTAL DE IVA CRÉDITO COMPUTABLE', formatGs(datos.iva_credito_total - datos.saldo_arrastrado), true);
         y += 5;
 
         // RUBRO 4: DETERMINACIÓN
@@ -398,6 +419,44 @@ export default function CierreMensualWizard() {
                         className="space-y-6"
                     >
                         {currentStep === 0 && (
+                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                <div className="text-center space-y-2">
+                                    <h3 className="text-2xl font-black text-slate-800 tracking-tight">Tipo de Actividad Económica</h3>
+                                    <p className="text-slate-500 font-medium italic">Selecciona tu régimen para optimizar el Formulario 120.</p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {[
+                                        { id: 'general', title: 'Régimen General', desc: 'Comercio y servicios 10%', icon: Briefcase },
+                                        { id: 'alquileres', title: 'Alquileres', desc: 'Vivienda 5% / Comercial 10%', icon: Building2 },
+                                        { id: 'servicios', title: 'Prof. Independiente', desc: 'IVA Servicios Personales', icon: TrendingUp },
+                                    ].map((opt) => {
+                                        const Icon = opt.icon;
+                                        return (
+                                            <button
+                                                key={opt.id}
+                                                onClick={() => setActividad(opt.id as any)}
+                                                className={`p-6 rounded-[2.5rem] border-4 text-left transition-all duration-300 relative group ${
+                                                    actividad === opt.id 
+                                                    ? 'bg-slate-50 border-slate-900 ring-4 ring-slate-900/5 shadow-2xl scale-[1.02]' 
+                                                    : 'bg-white border-slate-50 hover:border-slate-200'
+                                                }`}
+                                            >
+                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 ${
+                                                    actividad === opt.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400'
+                                                }`}>
+                                                    <Icon size={28} />
+                                                </div>
+                                                <p className="font-black text-slate-900 mb-2 text-lg">{opt.title}</p>
+                                                <p className="text-xs text-slate-500 font-bold leading-relaxed">{opt.desc}</p>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {currentStep === 1 && (
                             <StepContent 
                                 title="Ingresos Declarables" 
                                 desc="Auditoría de facturas emitidas (electrónicas y manuales)."
@@ -425,7 +484,7 @@ export default function CierreMensualWizard() {
                             </StepContent>
                         )}
 
-                        {currentStep === 1 && (
+                        {currentStep === 2 && (
                             <StepContent 
                                 title="Compras y Crédito Fiscal" 
                                 desc="Validación de gastos deducibles registrados."
@@ -441,7 +500,7 @@ export default function CierreMensualWizard() {
                             </StepContent>
                         )}
 
-                        {currentStep === 2 && (
+                        {currentStep === 3 && (
                             <StepContent 
                                 title="Liquidación del Periodo (Rubros F120)" 
                                 desc="Proyección detallada según estructura de la DNIT v4."
@@ -470,22 +529,41 @@ export default function CierreMensualWizard() {
                                     </div>
 
                                     <div className="p-8 rounded-[2rem] border-4 bg-white border-slate-100 space-y-6">
-                                        <div className="flex items-center justify-between">
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Determinación (Rubro 4)</p>
+                                        <div className="flex items-start justify-between gap-6">
+                                            <div className="flex-1">
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-2">Determinación Técnica (Rubro 4)</p>
                                                 <p className={`text-3xl font-black ${saldoTecnico > 0 ? 'text-amber-600' : 'text-indigo-600'}`}>
                                                     {saldoTecnico > 0 ? '+' : '-'}{formatGs(Math.abs(saldoTecnico))}
                                                 </p>
+                                                {factorProrrateo < 1 && (
+                                                    <p className="text-[10px] text-indigo-500 font-bold mt-2 uppercase">
+                                                        * Factor Prorrateo: {(factorProrrateo * 100).toFixed(1)}% aplicado.
+                                                    </p>
+                                                )}
                                             </div>
-                                            <div className="w-1/3">
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Retenciones (C52)</p>
-                                                <input 
-                                                    type="number" 
-                                                    placeholder="₲ 0"
-                                                    value={retenciones || ''}
-                                                    onChange={(e) => setRetenciones(Number(e.target.value))}
-                                                    className="w-full bg-slate-50 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500"
-                                                />
+                                            <div className="w-1/3 space-y-4">
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Retenciones (C52)</p>
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="₲ 0"
+                                                        value={retenciones || ''}
+                                                        onChange={(e) => setRetenciones(Number(e.target.value))}
+                                                        className="w-full bg-slate-50 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 text-right"
+                                                    />
+                                                </div>
+                                                {factorProrrateo < 1 && (
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-2">IVA Crédito Indiviso</p>
+                                                        <input 
+                                                            type="number" 
+                                                            placeholder="IVA Gastos Gral."
+                                                            value={ivaIndiviso || ''}
+                                                            onChange={(e) => setIvaIndiviso(Number(e.target.value))}
+                                                            className="w-full bg-indigo-50/50 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500 text-right"
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
@@ -503,7 +581,7 @@ export default function CierreMensualWizard() {
                             </StepContent>
                         )}
 
-                        {currentStep === 3 && (
+                        {currentStep === 4 && (
                             <StepContent 
                                 title="Finalizar Cierre Legal" 
                                 desc="Confirma que la información declarada es correcta."
