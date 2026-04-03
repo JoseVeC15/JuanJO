@@ -919,13 +919,32 @@ export const calculateSuggestedVAT10 = (total: number) => {
   };
 };
 
-export const calculateSuggestedVAT5 = (total: number) => {
-  const totalNum = Number(total);
-  if (isNaN(totalNum) || totalNum <= 0) return { iva_10: 0, iva_5: 0, exentas: 0 };
-  return { 
-    iva_10: 0, 
-    iva_5: Math.floor(totalNum / 21), 
-    exentas: 0 
-  };
+/**
+ * Calcula la fecha de vencimiento del IVA (F120) según terminación de RUC.
+ * Regla SET/DNIT: 0 -> 7, 1 -> 8, ..., 9 -> 16.
+ * Si cae en fin de semana, se traslada al siguiente día hábil.
+ */
+export const getIVAExpirationDate = (ruc: string | undefined | null, month: number, year: number): Date => {
+  if (!ruc) return new Date(year, month, 10); // Default day 10 if no RUC
+  
+  // Extraer el último dígito antes del guion
+  const rucBase = ruc.split('-')[0];
+  const lastDigit = parseInt(rucBase.charAt(rucBase.length - 1));
+  
+  // Tabla de vencimientos: 0 -> 7, 1 -> 8, ..., 9 -> 16
+  let day = 7 + lastDigit;
+  
+  // El mes de presentación es el mes SIGUIENTE al periodo liquidado
+  // Si liquidamos Marzo (month=3), presentamos en Abril.
+  let expirationDate = new Date(year, month, day); 
+  
+  // Ajuste por fin de semana (DNIT: Siguiente día hábil)
+  const dayOfWeek = expirationDate.getDay();
+  if (dayOfWeek === 0) { // Domingo
+    expirationDate.setDate(expirationDate.getDate() + 1);
+  } else if (dayOfWeek === 6) { // Sábado
+    expirationDate.setDate(expirationDate.getDate() + 2);
+  }
+  
+  return expirationDate;
 };
-

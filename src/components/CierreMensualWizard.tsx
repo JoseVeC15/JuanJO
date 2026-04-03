@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-    CheckCircle2, AlertCircle, Receipt, ArrowRight,
+    CheckCircle2, AlertCircle, Receipt,
     ChevronLeft, ChevronRight,
     Calculator, ShieldCheck, Download, Loader2,
     Lock, Unlock, History, AlertTriangle, PieChart
@@ -45,8 +45,8 @@ export default function CierreMensualWizard() {
 
         return {
             total: delMes.reduce((s, i) => s + Number(i.monto), 0),
-            v10: delMes.reduce((s, i) => s + Number(i.iva_10 || 0), 0) * 11, // Base imponible aprox
-            v5: delMes.reduce((s, i) => s + Number(i.iva_5 || 0), 0) * 21,
+            v10: delMes.reduce((s, i) => s + Number(i.iva_10 || 0), 0) * 10, // Base imponible = IVA * 10
+            v5: delMes.reduce((s, i) => s + Number(i.iva_5 || 0), 0) * 20,  // Base imponible = IVA * 20
             ex: delMes.reduce((s, i) => s + Number(i.exentas || 0), 0),
             iva10: delMes.reduce((s, i) => s + Number(i.iva_10 || 0), 0),
             iva5: delMes.reduce((s, i) => s + Number(i.iva_5 || 0), 0),
@@ -63,8 +63,8 @@ export default function CierreMensualWizard() {
 
         return {
             total: delMes.reduce((s, g) => s + Number(g.monto), 0),
-            c10: delMes.reduce((s, g) => s + Number(g.iva_10 || 0), 0) * 11,
-            c5: delMes.reduce((s, g) => s + Number(g.iva_5 || 0), 0) * 21,
+            c10: delMes.reduce((s, g) => s + Number(g.iva_10 || 0), 0) * 10,
+            c5: delMes.reduce((s, g) => s + Number(g.iva_5 || 0), 0) * 20,
             ex: delMes.reduce((s, g) => s + Number(g.exentas || 0), 0),
             iva10: delMes.reduce((s, g) => s + Number(g.iva_10 || 0), 0),
             iva5: delMes.reduce((s, g) => s + Number(g.iva_5 || 0), 0),
@@ -73,8 +73,16 @@ export default function CierreMensualWizard() {
         };
     }, [facturasGastos, currentMonth, currentYear]);
 
+    // 3. Arrastre de Saldo del Mes Anterior (DNIT v4)
+    const saldoArrastrado = useMemo(() => {
+        const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+        const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+        const cierrePrevio = cierresPeriodos.find(c => c.mes === prevMonth && c.anio === prevYear);
+        return cierrePrevio ? Number(cierrePrevio.saldo_a_favor_contribuyente || 0) : 0;
+    }, [cierresPeriodos, currentMonth, currentYear]);
+
     const ivaDebitoTotal = statsVentas.iva10 + statsVentas.iva5;
-    const ivaCreditoTotal = statsCompras.iva10 + statsCompras.iva5;
+    const ivaCreditoTotal = statsCompras.iva10 + statsCompras.iva5 + saldoArrastrado;
     const saldoTecnico = ivaDebitoTotal - ivaCreditoTotal;
 
     const handleNext = () => {
@@ -100,6 +108,7 @@ export default function CierreMensualWizard() {
                 compras_exentas: statsCompras.ex,
                 iva_debito_total: ivaDebitoTotal,
                 iva_credito_total: ivaCreditoTotal,
+                saldo_arrastrado: saldoArrastrado,
                 saldo_a_favor_contribuyente: saldoTecnico < 0 ? Math.abs(saldoTecnico) : 0,
                 saldo_a_favor_fisco: saldoTecnico > 0 ? saldoTecnico : 0,
             };
@@ -152,6 +161,13 @@ export default function CierreMensualWizard() {
         addRow('Compras Gravadas 10%:', formatGs(datos.compras_10));
         addRow('Compras Gravadas 5%:', formatGs(datos.compras_5));
         addRow('Compras Exentas:', formatGs(datos.compras_exentas));
+        
+        // El IVA Crédito Total en el objeto 'datos' ya incluye el arrastre si se pasó correctamente
+        // Pero para el reporte es mejor desglosarlo si tenemos acceso a él
+        if (datos.saldo_arrastrado > 0) {
+            addRow('Saldo Arrastrado Mes Anterior:', formatGs(datos.saldo_arrastrado));
+        }
+        
         addRow('IVA Crédito Total:', formatGs(datos.iva_credito_total), true);
         y += 10;
         
@@ -365,32 +381,46 @@ export default function CierreMensualWizard() {
 
                         {currentStep === 2 && (
                             <StepContent 
-                                title="Liquidación del Periodo" 
-                                desc="Proyección del saldo técnico para el Formulario 120."
+                                title="Liquidación del Periodo (Rubros F120)" 
+                                desc="Proyección detallada según estructura de la DNIT v4."
                             >
-                                <div className="grid grid-cols-1 gap-4">
-                                    <div className="flex items-center justify-between p-6 bg-rose-50 rounded-3xl border border-rose-100">
-                                        <div>
-                                            <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Débito Fiscal (Tus Ventas)</p>
-                                            <p className="text-2xl font-black text-rose-900">+{formatGs(ivaDebitoTotal)}</p>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="p-5 bg-white border border-slate-100 rounded-3xl space-y-3">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Ventas (Débito Fiscal)</p>
+                                            <div className="flex justify-between text-xs"><span>Base 10%</span><span className="font-bold">{formatGs(statsVentas.v10)}</span></div>
+                                            <div className="flex justify-between text-xs"><span>Base 5%</span><span className="font-bold">{formatGs(statsVentas.v5)}</span></div>
+                                            <div className="flex justify-between text-xs"><span>Exentas</span><span className="font-bold">{formatGs(statsVentas.ex)}</span></div>
+                                            <div className="h-px bg-slate-50" />
+                                            <div className="flex justify-between text-xs text-rose-600 font-black"><span>IVA DÉBITO</span><span>{formatGs(ivaDebitoTotal)}</span></div>
                                         </div>
-                                        <ArrowRight size={24} className="text-rose-200" />
-                                    </div>
-                                    <div className="flex items-center justify-between p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
-                                        <div>
-                                            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Crédito Fiscal (Tus Compras)</p>
-                                            <p className="text-2xl font-black text-emerald-900">-{formatGs(ivaCreditoTotal)}</p>
+                                        <div className="p-5 bg-white border border-slate-100 rounded-3xl space-y-3">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-2">Compras y Créditos (Rubro 2/3)</p>
+                                            <div className="flex justify-between text-xs"><span>IVA Crédito (10% + 5%)</span><span className="font-bold">{formatGs(statsCompras.iva10 + statsCompras.iva5)}</span></div>
+                                            <div className="flex justify-between text-xs text-indigo-500 font-bold">
+                                                <span>Arrastre Mes Anterior</span>
+                                                <span>+{formatGs(saldoArrastrado)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-xs"><span>Exentas</span><span className="font-bold">{formatGs(statsCompras.ex)}</span></div>
+                                            <div className="h-px bg-slate-50" />
+                                            <div className="flex justify-between text-xs text-emerald-600 font-black"><span>IVA CRÉDITO TOTAL</span><span>{formatGs(ivaCreditoTotal)}</span></div>
                                         </div>
-                                        <ArrowRight size={24} className="text-emerald-200" />
                                     </div>
-                                    <div className={`p-8 rounded-[2.5rem] flex items-center justify-between border-4 ${saldoTecnico > 0 ? 'bg-amber-50 border-amber-100' : 'bg-indigo-50 border-indigo-100'}`}>
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] mb-1">
-                                                {saldoTecnico > 0 ? 'Saldo a Pagar al Fisco' : 'Saldo a Favor Contribuyente'}
-                                            </p>
+
+                                    <div className={`p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between border-4 ${saldoTecnico > 0 ? 'bg-amber-50 border-amber-100' : 'bg-indigo-50 border-indigo-100'} gap-6`}>
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <ShieldCheck size={16} className={saldoTecnico > 0 ? 'text-amber-500' : 'text-indigo-500'} />
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                                                    {saldoTecnico > 0 ? 'Saldo a Favor del Fisco' : 'Saldo a Favor Contribuyente'}
+                                                </p>
+                                            </div>
                                             <p className={`text-4xl font-black ${saldoTecnico > 0 ? 'text-amber-900' : 'text-indigo-900'}`}>{formatGs(Math.abs(saldoTecnico))}</p>
+                                            <p className="text-[9px] text-slate-400 font-bold mt-2 uppercase tracking-widest italic">* Montos redondeados sin centavos según norma DNIT.</p>
                                         </div>
-                                        <PieChart size={48} className={saldoTecnico > 0 ? 'text-amber-200' : 'text-indigo-200'} />
+                                        <div className="shrink-0">
+                                            <PieChart size={64} className={saldoTecnico > 0 ? 'text-amber-200' : 'text-indigo-200'} />
+                                        </div>
                                     </div>
                                 </div>
                             </StepContent>

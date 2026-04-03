@@ -6,7 +6,7 @@ import {
     Clock
 } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
-import { formatGs } from '../data/sampleData';
+import { formatGs, getIVAExpirationDate } from '../data/sampleData';
 
 interface Suggestion {
     id: string;
@@ -22,7 +22,7 @@ interface Suggestion {
 export default function SmartSuggestions() {
     const { 
         ingresos, proyectos, financialIntelligence, 
-        agendaTareas, loading 
+        agendaTareas, loading, perfilFiscal 
     } = useSupabaseData();
 
     const suggestions = useMemo(() => {
@@ -82,7 +82,30 @@ export default function SmartSuggestions() {
             });
         }
 
-        // 4. Agenda Próxima
+        // 4. Vencimiento SET (Formulario 120)
+        if (perfilFiscal?.ruc) {
+            const hoyObj = new Date();
+            const lastMonth = hoyObj.getMonth() === 0 ? 12 : hoyObj.getMonth();
+            const lastYear = hoyObj.getMonth() === 0 ? hoyObj.getFullYear() - 1 : hoyObj.getFullYear();
+            
+            const vencimiento = getIVAExpirationDate(perfilFiscal.ruc, lastMonth, lastYear);
+            const daysLeft = Math.ceil((vencimiento.getTime() - hoyObj.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (daysLeft > 0 && daysLeft <= 10) {
+                items.push({
+                    id: 'set-deadline',
+                    type: 'tax',
+                    title: '¡Vencimiento IVA Próximo!',
+                    description: `Tu formulario 120 de ${new Date(lastYear, lastMonth - 1).toLocaleString('es-PY', { month: 'long' })} vence el ${vencimiento.toLocaleDateString('es-PY')}. Tienes ${daysLeft} días para cerrar tu periodo fiscal.`,
+                    actionLabel: 'Iniciar Cierre',
+                    icon: <ShieldCheck size={20} />,
+                    color: 'indigo',
+                    priority: 0 // Máxima prioridad
+                });
+            }
+        }
+
+        // 5. Agenda Próxima
         const hoy = new Date().toISOString().split('T')[0];
         const tareasHoy = agendaTareas.filter(t => !t.completada && t.fecha_limite === hoy);
         if (tareasHoy.length > 0) {
