@@ -131,6 +131,8 @@ export default function CierreMensualWizard() {
                 iva_credito_total: ivaCreditoTotal,
                 saldo_arrastrado: saldoArrastrado,
                 retenciones: retenciones,
+                factor_prorrateo: factorProrrateo,
+                iva_indiviso: ivaIndiviso,
                 saldo_a_favor_contribuyente: saldoTecnico < 0 ? Math.abs(saldoTecnico) : 0,
                 saldo_a_favor_fisco: saldoTecnico > 0 ? saldoTecnico : 0,
                 saldo_final_pagar: saldoFinalAPagar,
