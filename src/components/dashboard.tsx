@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Wallet,
   ArrowUpRight, Loader2,
-  Activity, Zap,
+  Activity,
   ShieldCheck, AlertTriangle, Shield, Calendar, Clock
 } from 'lucide-react';
 import {
@@ -18,6 +18,7 @@ import {
   getGastoLabel, getGastoColor
 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
+import SmartSuggestions from './SmartSuggestions';
 
 export default function Dashboard() {
   const { 
@@ -187,6 +188,8 @@ export default function Dashboard() {
         <StatCard index={3} title="Rentabilidad Horaria" value={formatGsShort(rentabilidadHoraria)} desc="Ingreso real / hora" icon={<Activity size={20} />} color="indigo" tooltip="Promedio de ganancia por hora trabajada en proyectos cerrados." loading={loadingIngresos || loadingFacturas} />
         <StatCard index={4} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." loading={loadingIngresos || loadingFacturas} />
       </div>
+
+      <SmartSuggestions />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-3xl lg:rounded-[2.5rem] border border-gray-100 p-6 lg:p-10 shadow-sm relative overflow-hidden min-w-0">

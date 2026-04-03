@@ -197,6 +197,20 @@ export function useSupabaseData() {
     }
   });
 
+  const { data: cierresPeriodos = [], isLoading: loadingCierres } = useQuery({
+    queryKey: ['cierres_periodos', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('cierres_periodos')
+        .select('*')
+        .order('anio', { ascending: false })
+        .order('mes', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+  });
+
   // ========== MOTOR DE RENTABILIDAD ==========
   const proyectosConRentabilidad = useMemo(() => {
     return proyectos.map(p => {
@@ -322,7 +336,8 @@ export function useSupabaseData() {
       { nombre: 'public:documentos_electronicos', clave: 'documentos_electronicos', tabla: 'documentos_electronicos' },
       { nombre: 'public:agenda_tareas', clave: 'agenda_tareas', tabla: 'agenda_tareas' },
       { nombre: 'public:propuestas', clave: 'propuestas', tabla: 'propuestas' },
-      { nombre: 'public:calendario_bloqueos', clave: 'calendario_bloqueos', tabla: 'calendario_bloqueos' }
+      { nombre: 'public:calendario_bloqueos', clave: 'calendario_bloqueos', tabla: 'calendario_bloqueos' },
+      { nombre: 'public:cierres_periodos', clave: 'cierres_periodos', tabla: 'cierres_periodos' }
     ].map(({ nombre, clave, tabla }) => 
       supabase.channel(nombre)
         .on('postgres_changes', { 
@@ -370,7 +385,8 @@ export function useSupabaseData() {
     configSifen,
     documentosElectronicos,
     agendaTareas,
-    loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen || loadingAgenda || loadingPropuestasQuery || loadingHoras || loadingClientes, 
+    cierresPeriodos,
+    loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen || loadingAgenda || loadingPropuestasQuery || loadingHoras || loadingClientes || loadingCierres, 
     loadingProfile,
     loadingProyectos,
     loadingFacturas,
@@ -466,6 +482,43 @@ export function useSupabaseData() {
       const { error } = await supabase.from('calendario_bloqueos').delete().eq('id', id);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['calendario_bloqueos', sessionUser?.id] });
+    },
+    isPeriodoBloqueado(fecha: string) {
+      if (!fecha) return false;
+      const d = new Date(fecha);
+      const mes = d.getMonth() + 1;
+      const anio = d.getFullYear();
+      return cierresPeriodos.some((c: any) => c.mes === mes && c.anio === anio && c.bloqueado);
+    },
+    async ejecutarCierre(datos: any) {
+      const { error } = await supabase
+        .from('cierres_periodos')
+        .upsert({ ...datos, user_id: sessionUser?.id, cerrado_by: sessionUser?.id, cerrado_at: new Date().toISOString(), bloqueado: true });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['cierres_periodos', sessionUser?.id] });
+    },
+    async reabrirPeriodo(cierreId: string, motivo: string) {
+      if (profile?.nivel_acceso !== 1) throw new Error("Acción permitida solo para Superadmin");
+      
+      const { error: updateError } = await supabase
+        .from('cierres_periodos')
+        .update({ bloqueado: false })
+        .eq('id', cierreId);
+      
+      if (updateError) throw updateError;
+
+      const { error: logError } = await supabase
+        .from('bitacora_cierres')
+        .insert({
+          cierre_id: cierreId,
+          accion: 'REAPERTURA',
+          motivo,
+          realizado_by: sessionUser?.id
+        });
+      
+      if (logError) throw logError;
+
+      queryClient.invalidateQueries({ queryKey: ['cierres_periodos', sessionUser?.id] });
     },
     suggestCategory
   };

@@ -43,7 +43,11 @@ interface FacturasProps {
 export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { facturasGastos, ingresos, loading: dataLoading, perfilFiscal, configSifen, documentosElectronicos } = useSupabaseData();
+  const { 
+    facturasGastos, ingresos, loading: dataLoading, 
+    perfilFiscal, configSifen, documentosElectronicos,
+    isPeriodoBloqueado
+  } = useSupabaseData();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen' | 'clientes'>(initialTab);
@@ -418,7 +422,14 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
 
           {activeTab !== 'sifen' && activeTab !== 'clientes' && (
             <button
-              onClick={() => { setShowOCR(!showOCR); setUploadStatus('idle'); }}
+              onClick={() => { 
+                if (isPeriodoBloqueado(new Date().toISOString())) {
+                  alert("⚠️ El periodo actual está CERRADO y BLOQUEADO. No se pueden subir nuevos documentos.");
+                  return;
+                }
+                setShowOCR(!showOCR); 
+                setUploadStatus('idle'); 
+              }}
               className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
             >
               {uploading ? <Loader2 className="animate-spin" size={18} /> : <Scan size={18} />}
@@ -715,7 +726,19 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                                     {moveMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <Shield size={16} />}
                                     Mover a {activeTab === 'gastos' ? 'Ingresos' : 'Gastos'}
                                   </button>
-                                  <button onClick={(e) => { e.stopPropagation(); confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); }} className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"><Trash2 size={20} /></button>
+                                  <button 
+                                    onClick={(e) => { 
+                                      e.stopPropagation(); 
+                                      if (isPeriodoBloqueado(activeTab === 'gastos' ? f.fecha_factura : f.fecha_emision)) {
+                                        alert("🛑 No se puede anular un documento en un periodo CERRADO legalmente.");
+                                        return;
+                                      }
+                                      confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); 
+                                    }} 
+                                    className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"
+                                  >
+                                    <Trash2 size={20} />
+                                  </button>
                                 </div>
                               </div>
                             </motion.div>
