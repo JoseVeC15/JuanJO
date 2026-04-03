@@ -28,7 +28,7 @@ const MODULE_OPTIONS = [
   { key: 'settings', label: 'Configuración' },
 ] as const;
 
-const BILLING_MODULES = new Set(['sifen', 'clientes']);
+const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
 
 export default function AdminPanel() {
   const queryClient = useQueryClient();
@@ -150,13 +150,16 @@ export default function AdminPanel() {
     setIsSubmitting(true);
     setStatus(null);
     try {
-      const { error } = await supabase.functions.invoke('admin-manage-user', {
+      console.log('📡 [AdminOp] Iniciando:', { action, userId, dataObj });
+      const response = await supabase.functions.invoke('admin-manage-user', {
         body: { action, userId, data: dataObj }
       });
-
-
+      
+      console.log('🏁 [AdminOp] Respuesta:', response);
+      const { data, error } = response;
 
       if (error) {
+        console.error('❌ [AdminOp] Error detectado:', error);
         let errorMsg = 'Fallo en la operación administrativa';
         try {
           const body = await error.context?.json();
@@ -167,6 +170,7 @@ export default function AdminPanel() {
         throw new Error(`${errorMsg} (Status: ${error.status || '???'})`);
       }
 
+      console.log('✅ [AdminOp] Éxito. Datos retornados:', data);
       setStatus({ type: 'success', msg: `Operación ${action} completada con éxito.` });
       await queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
 

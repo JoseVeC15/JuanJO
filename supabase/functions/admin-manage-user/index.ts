@@ -1,8 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  // Solo se permite la ejecución desde tu dominio oficial
-  'Access-Control-Allow-Origin': 'https://finance.josevec.uk',
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, preferred-timezone-id',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, PATCH, DELETE',
 };
@@ -27,7 +26,7 @@ const ALLOWED_MODULES = new Set([
   'settings',
 ]);
 
-const BILLING_MODULES = new Set(['sifen', 'clientes']);
+const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
 
 function normalizeModules(value: unknown): string[] {
   if (!Array.isArray(value)) {
@@ -57,6 +56,7 @@ Deno.serve(async (req: Request) => {
     });
 
     const body = await req.json();
+    console.log('📦 [Backend] Body recibido:', JSON.stringify(body, null, 2));
     const { action, userId, data = {} } = body;
 
     if (!action || !userId) {
