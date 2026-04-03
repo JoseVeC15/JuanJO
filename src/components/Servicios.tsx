@@ -92,7 +92,7 @@ function EstadoBadge({ estado }: { estado: FichaEstado }) {
 }
 
 // ─── Componente principal ────────────────────────────────────────────────────
-export default function Fichas() {
+export default function Servicios() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const location = useLocation();
@@ -276,7 +276,7 @@ export default function Fichas() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <ClipboardList size={28} className="text-emerald-500" />
-            Fichas de Servicio
+            Gestión de Servicios
           </h1>
           <p className="text-slate-500 text-sm mt-0.5">Órdenes de trabajo y registros de servicio</p>
         </div>
@@ -284,7 +284,7 @@ export default function Fichas() {
           onClick={openNew}
           className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20"
         >
-          <Plus size={18} /> Nueva Ficha
+          <Plus size={18} /> Nuevo Servicio
         </button>
       </div>
 
@@ -416,7 +416,7 @@ export default function Fichas() {
                     <button onClick={() => openEdit(f)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit2 size={14} />
                     </button>
-                    <button onClick={() => { if (confirm('¿Eliminar esta ficha?')) deleteMutation.mutate(f.id); }}
+                    <button onClick={() => { if (confirm('¿Eliminar este servicio?')) deleteMutation.mutate(f.id); }}
                       className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                       <Trash2 size={14} />
                     </button>
@@ -467,8 +467,8 @@ export default function Fichas() {
           {filtered.length === 0 && (
             <div className="col-span-full text-center py-16 text-slate-400">
               <ClipboardList size={40} className="mx-auto mb-3 opacity-30" />
-              <p className="font-bold">No hay fichas para mostrar</p>
-              <p className="text-sm">Creá la primera ficha con el botón "Nueva Ficha"</p>
+              <p className="font-bold">No hay servicios para mostrar</p>
+              <p className="text-sm">Creá el primer registro con el botón "Nuevo Servicio"</p>
             </div>
           )}
         </div>
@@ -481,7 +481,7 @@ export default function Fichas() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
-                  <th className="text-left px-4 py-3 text-[11px] font-black text-slate-500 uppercase tracking-wider">Nº Ficha</th>
+                  <th className="text-left px-4 py-3 text-[11px] font-black text-slate-500 uppercase tracking-wider">Ref. Servicio</th>
                   <th className="text-left px-4 py-3 text-[11px] font-black text-slate-500 uppercase tracking-wider">Cliente</th>
                   <th className="text-left px-4 py-3 text-[11px] font-black text-slate-500 uppercase tracking-wider">Servicio</th>
                   <th className="text-left px-4 py-3 text-[11px] font-black text-slate-500 uppercase tracking-wider">Estado</th>
@@ -506,7 +506,7 @@ export default function Fichas() {
                         <button onClick={() => openEdit(f)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                           <Edit2 size={14} />
                         </button>
-                        <button onClick={() => { if (confirm('¿Eliminar esta ficha?')) deleteMutation.mutate(f.id); }}
+                        <button onClick={() => { if (confirm('¿Eliminar este registro?')) deleteMutation.mutate(f.id); }}
                           className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                           <Trash2 size={14} />
                         </button>
@@ -544,7 +544,7 @@ export default function Fichas() {
               <div className="flex items-center justify-between p-6 border-b border-slate-100">
                 <h2 className="font-black text-slate-900 text-lg flex items-center gap-2">
                   <ClipboardList size={20} className="text-emerald-500" />
-                  {editingFicha ? 'Editar Ficha' : 'Nueva Ficha de Servicio'}
+                  {editingFicha ? 'Editar Registro' : 'Nuevo Servicio'}
                 </h2>
                 <button onClick={closeModal} className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl">
                   <X size={18} />
@@ -555,12 +555,12 @@ export default function Fichas() {
                 {/* Número y Estado */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs font-black text-slate-500 uppercase mb-1 block">Nº Ficha *</label>
+                    <label className="text-xs font-black text-slate-500 uppercase mb-1 block">Referencia *</label>
                     <input
                       value={form.numero_ficha}
                       onChange={e => setForm(p => ({ ...p, numero_ficha: e.target.value }))}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                      placeholder="F-2026-0001"
+                      placeholder="S-2026-0001"
                     />
                   </div>
                   <div>
@@ -733,7 +733,7 @@ export default function Fichas() {
                   className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-all"
                 >
                   {saveMutation.isPending ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-                  {editingFicha ? 'Guardar Cambios' : 'Crear Ficha'}
+                  {editingFicha ? 'Guardar Cambios' : 'Crear Registro'}
                 </button>
               </div>
             </motion.div>

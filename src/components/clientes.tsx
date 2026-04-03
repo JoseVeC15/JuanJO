@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
     Users, Trash2, Search, Loader2, 
-    UserPlus, Mail, Phone, MapPin, X, 
+    UserPlus, Mail, Phone, MapPin, X, Edit2,
     CheckCircle, Info, TrendingUp, CreditCard, ClipboardList
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
     const [search, setSearch] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const [nuevoCliente, setNuevoCliente] = useState({
         ruc: '',
@@ -34,12 +35,26 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
         }
     }, [forceOpenAddModal, onModalOpenHandled]);
 
-    const handleAddFromRuc = (data: any) => {
+    const handleEditCliente = (cliente: any) => {
+        setEditingId(cliente.id);
         setNuevoCliente({
-            ...nuevoCliente,
+            ruc: cliente.ruc,
+            razon_social: cliente.razon_social,
+            direccion: cliente.direccion || '',
+            email: cliente.email || '',
+            telefono: cliente.telefono || ''
+        });
+        setShowAddModal(true);
+    };
+
+    const handleAddFromRuc = (data: any) => {
+        setEditingId(null);
+        setNuevoCliente({
             ruc: data.ruc,
             razon_social: data.razon_social,
-            direccion: data.direccion || ''
+            direccion: data.direccion || '',
+            email: '',
+            telefono: ''
         });
         setShowAddModal(true);
     };
@@ -49,19 +64,28 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
         
         try {
             setSaving(true);
-            const { error } = await supabase
-                .from('clientes')
-                .insert({
-                    user_id: user.id,
-                    ...nuevoCliente
-                });
             
-            if (error) throw error;
+            if (editingId) {
+                const { error } = await supabase
+                    .from('clientes')
+                    .update(nuevoCliente)
+                    .eq('id', editingId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('clientes')
+                    .insert({
+                        user_id: user.id,
+                        ...nuevoCliente
+                    });
+                if (error) throw error;
+            }
             
             setShowAddModal(false);
+            setEditingId(null);
             setNuevoCliente({ ruc: '', razon_social: '', direccion: '', email: '', telefono: '' });
         } catch (error: any) {
-            alert("Error al guardar cliente: " + (error.message || "RUC duplicado"));
+            alert("Error al procesar cliente: " + (error.message || "RUC duplicado"));
         } finally {
             setSaving(false);
         }
@@ -186,12 +210,22 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                                         <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-slate-200">
                                             {c.razon_social.charAt(0)}
                                         </div>
-                                        <button 
-                                            onClick={() => eliminarCliente(c.id)}
-                                            className="p-3 text-slate-300 hover:text-red-500 hover:bg-rose-50 rounded-xl transition-all"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                        <div className="flex gap-1">
+                                            <button 
+                                                onClick={() => handleEditCliente(c)}
+                                                className="p-3 text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-xl transition-all"
+                                                title="Editar Cliente"
+                                            >
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button 
+                                                onClick={() => eliminarCliente(c.id)}
+                                                className="p-3 text-slate-300 hover:text-red-500 hover:bg-rose-50 rounded-xl transition-all"
+                                                title="Eliminar Cliente"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </div>
                                     
                                     <div className="min-h-[60px]">
@@ -207,8 +241,8 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                                         </p>
                                       </div>
                                       <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 text-center cursor-pointer hover:bg-emerald-50 hover:border-emerald-200 transition-all group/btn"
-                                           onClick={() => navigate('/fichas', { state: { search: c.razon_social } })}>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover/btn:text-emerald-500">Fichas / SVC</p>
+                                           onClick={() => navigate('/servicios', { state: { search: c.razon_social } })}>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover/btn:text-emerald-500">Servicios / SVC</p>
                                         <p className="font-black text-slate-900 flex items-center justify-center gap-1.5"><ClipboardList size={12} className="text-slate-400 group-hover/btn:text-emerald-500" /> Gestionar</p>
                                       </div>
                                     </div>

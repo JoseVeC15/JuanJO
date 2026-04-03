@@ -22,7 +22,7 @@ const AsistenteSET = lazy(() => import('./components/AsistenteSET'));
 const Disponibilidad = lazy(() => import('./components/Disponibilidad'));
 const ConciliacionBancaria = lazy(() => import('./components/ConciliacionBancaria'));
 const CierreMensualWizard = lazy(() => import('./components/CierreMensualWizard'));
-const Fichas = lazy(() => import('./components/Fichas'));
+const Servicios = lazy(() => import('./components/Servicios'));
 
 // Componente para sub-menú en móvil
 function MobileSubMenu({ item }: { item: any }) {
@@ -242,7 +242,7 @@ function RouterWrapper() {
     },
     { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
-    { key: 'fichas', path: '/fichas', label: 'FICHAS', icon: <ClipboardList size={20} className="text-teal-400" /> },
+    { key: 'servicios', path: '/servicios', label: 'SERVICIOS', icon: <ClipboardList size={20} className="text-teal-400" /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
     { key: 'reportes', path: '/analisis', label: 'ANÁLISIS', icon: <PieChart size={20} /> },
     { key: 'settings', path: '/config', label: 'CONFIG', icon: <SettingsIcon size={20} /> },
@@ -255,8 +255,8 @@ function RouterWrapper() {
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
   const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'fichas', 'inventario', 'catalog', 'reportes', 'settings']
-    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'fichas', 'inventario', 'catalog', 'reportes', 'settings'];
+    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'servicios', 'inventario', 'catalog', 'reportes', 'settings']
+    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'servicios', 'inventario', 'catalog', 'reportes', 'settings'];
 
   const enabledModules = (() => {
     const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
@@ -475,10 +475,10 @@ function RouterWrapper() {
                       </motion.div>
                     ) : <Navigate to="/config" replace />
                   } />
-                  <Route path="/fichas" element={
-                    canAccess('fichas') ? (
+                  <Route path="/servicios" element={
+                    canAccess('servicios') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <Fichas />
+                        <Servicios />
                       </motion.div>
                     ) : <Navigate to="/dashboard" replace />
                   } />
