@@ -919,6 +919,16 @@ export const calculateSuggestedVAT10 = (total: number) => {
   };
 };
 
+export const calculateSuggestedVAT5 = (total: number) => {
+  const totalNum = Number(total);
+  if (isNaN(totalNum) || totalNum <= 0) return { iva_10: 0, iva_5: 0, exentas: 0 };
+  return { 
+    iva_10: 0, 
+    iva_5: Math.floor(totalNum / 21), 
+    exentas: 0 
+  };
+};
+
 /**
  * Calcula la fecha de vencimiento del IVA (F120) según terminación de RUC.
  * Regla SET/DNIT: 0 -> 7, 1 -> 8, ..., 9 -> 16.
