@@ -4,7 +4,7 @@ import {
     CheckCircle2, AlertCircle, Receipt,
     ChevronLeft, ChevronRight,
     Calculator, ShieldCheck, Download, Loader2,
-    Lock, Unlock, History, AlertTriangle, PieChart
+    Lock, Unlock, History, AlertTriangle
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useSupabaseData } from '../hooks/useSupabaseData';
@@ -29,6 +29,7 @@ export default function CierreMensualWizard() {
     const [view, setView] = useState<'wizard' | 'history'>('wizard');
     const [reopenReason, setReopenReason] = useState('');
     const [showReopenModal, setShowReopenModal] = useState<string | null>(null);
+    const [retenciones, setRetenciones] = useState<number>(0);
 
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
@@ -84,6 +85,8 @@ export default function CierreMensualWizard() {
     const ivaDebitoTotal = statsVentas.iva10 + statsVentas.iva5;
     const ivaCreditoTotal = statsCompras.iva10 + statsCompras.iva5 + saldoArrastrado;
     const saldoTecnico = ivaDebitoTotal - ivaCreditoTotal;
+    const saldoFinalAPagar = saldoTecnico > 0 ? Math.max(0, saldoTecnico - retenciones) : 0;
+    const saldoAFavorFinanciero = saldoTecnico < 0 ? Math.abs(saldoTecnico) + retenciones : (saldoTecnico < retenciones ? retenciones - saldoTecnico : 0);
 
     const handleNext = () => {
         if (currentStep < STEPS.length - 1) setCurrentStep(v => v + 1);
@@ -106,11 +109,15 @@ export default function CierreMensualWizard() {
                 compras_10: statsCompras.c10,
                 compras_5: statsCompras.c5,
                 compras_exentas: statsCompras.ex,
+                iva_debito_10: statsVentas.iva10,
+                iva_debito_5: statsVentas.iva5,
                 iva_debito_total: ivaDebitoTotal,
                 iva_credito_total: ivaCreditoTotal,
                 saldo_arrastrado: saldoArrastrado,
+                retenciones: retenciones,
                 saldo_a_favor_contribuyente: saldoTecnico < 0 ? Math.abs(saldoTecnico) : 0,
                 saldo_a_favor_fisco: saldoTecnico > 0 ? saldoTecnico : 0,
+                saldo_final_pagar: saldoFinalAPagar,
             };
             
             await ejecutarCierre(dataCierre);
@@ -173,39 +180,58 @@ export default function CierreMensualWizard() {
 
         // RUBRO 1: VENTAS (DÉBITO)
         drawRubroHeader('RUBRO 1: ENAJENACIÓN DE BIENES Y PRESTACIÓN DE SERVICIOS (DÉBITO FISCAL)');
-        drawCasilla('C10', 'Enajenación de bienes y/o prestación de servicios gravados con la tasa del 10%', formatGs(datos.ventas_10));
-        drawCasilla('C11', 'Enajenación de bienes y/o prestación de servicios gravados con la tasa del 5%', formatGs(datos.ventas_5));
-        drawCasilla('C12', 'Enajenación de bienes y/o prestación de servicios exonerados (Exentas)', formatGs(datos.ventas_exentas));
+        drawCasilla('C10', 'Gravados con la tasa del 10% (Base Imponible)', formatGs(datos.ventas_10));
+        drawCasilla('C22', 'IVA Débito generado al 10%', formatGs(datos.iva_debito_10));
         y += 2;
-        doc.setLineWidth(0.1);
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 6;
-        drawCasilla('C15', 'TOTAL IMPUESTO DEVENGADO (DÉBITO FISCAL DEL MES)', formatGs(datos.iva_debito_total), true);
+        drawCasilla('C151', 'Gravados con la tasa del 5% (Base Imponible)', formatGs(datos.ventas_5));
+        drawCasilla('C157', 'IVA Débito generado al 5%', formatGs(datos.iva_debito_5));
+        y += 2;
+        drawCasilla('C12', 'Exonerados o no alcanzados por el Impuesto', formatGs(datos.ventas_exentas));
+        y += 2;
+        doc.setLineWidth(0.1); doc.line(margin, y, pageWidth - margin, y); y += 6;
+        drawCasilla('C18', 'TOTAL MONTO IMPONIBLE RUBRO 1', formatGs(datos.ventas_10 + datos.ventas_5 + datos.ventas_exentas), true);
+        drawCasilla('C24', 'TOTAL IVA DÉBITO FISCAL (C22 + C23 + C157 + C158 + C159)', formatGs(datos.iva_debito_total), true);
         y += 5;
 
-        // RUBRO 2: COMPRAS (CRÉDITO)
-        drawRubroHeader('RUBRO 2: COMPRAS LOCALES E IMPORTACIONES (CRÉDITO FISCAL)');
-        drawCasilla('C28', 'Compras locales gravadas con la tasa del 10%', formatGs(datos.compras_10));
-        drawCasilla('C29', 'Compras locales gravadas con la tasa del 5%', formatGs(datos.compras_5));
-        drawCasilla('C30', 'Compras locales y/o importaciones exoneradas (Exentas)', formatGs(datos.compras_exentas));
+        // RUBRO 3: COMPRAS (CRÉDITO)
+        drawRubroHeader('RUBRO 3: COMPRAS LOCALES E IMPORTACIONES (CRÉDITO FISCAL)');
+        drawCasilla('C35', 'Compras gravadas al 10% (Base Imponible)', formatGs(datos.compras_10));
+        drawCasilla('C32', 'Compras gravadas al 5% (Base Imponible)', formatGs(datos.compras_5));
+        drawCasilla('C38', 'IVA Crédito atribuido directamente (10%)', formatGs(datos.compras_10 * 0.1));
+        drawCasilla('C164', 'IVA Crédito atribuido (5%)', formatGs(datos.compras_5 * 0.05));
         y += 2;
-        doc.line(margin, y, pageWidth - margin, y);
-        y += 6;
-        drawCasilla('C35', 'TOTAL IMPUESTO ACREDITABLE (CRÉDITO FISCAL DEL MES)', formatGs(datos.compras_10 * 0.1 + datos.compras_5 * 0.05), true);
+        drawCasilla('C30', 'Compras del mes exoneradas (Exentas)', formatGs(datos.compras_exentas));
+        y += 2;
+        doc.line(margin, y, pageWidth - margin, y); y += 6;
+        drawCasilla('C43', 'TOTAL DE IVA CRÉDITO PARA OPERACIONES EN MERCADO INTERNO', formatGs(datos.iva_credito_total - datos.saldo_arrastrado), true);
         y += 5;
 
-        // RUBRO 3: LIQUIDACIÓN
-        drawRubroHeader('RUBRO 3: LIQUIDACIÓN Y DETERMINACIÓN DEL IMPUESTO');
-        drawCasilla('C56', 'Saldo a favor del contribuyente (Periodo Anterior)', formatGs(datos.saldo_arrastrado));
-        y += 4;
-        
-        const saldoFisco = datos.saldo_a_favor_fisco;
-        const saldoContribuyente = datos.saldo_a_favor_contribuyente;
-
-        if (saldoFisco > 0) {
-            drawCasilla('C89', 'SALDO TÉCNICO A FAVOR DEL FISCO', formatGs(saldoFisco), true);
+        // RUBRO 4: DETERMINACIÓN
+        drawRubroHeader('RUBRO 4: DETERMINACIÓN DEL IMPUESTO O DEL SALDO TÉCNICO');
+        drawCasilla('C44', 'IVA Débito (Proviene del Rubro 1)', formatGs(datos.iva_debito_total));
+        drawCasilla('C45', 'IVA Crédito (Proviene del Rubro 3)', formatGs(datos.iva_credito_total - datos.saldo_arrastrado));
+        drawCasilla('C46', 'Saldo a favor del contribuyente (Periodo Anterior)', formatGs(datos.saldo_arrastrado));
+        y += 2;
+        doc.line(margin, y, pageWidth - margin, y); y += 6;
+        if (datos.saldo_a_favor_fisco > 0) {
+            drawCasilla('C48', 'SALDO A FAVOR DEL FISCO', formatGs(datos.saldo_a_favor_fisco), true);
         } else {
-            drawCasilla('C90', 'SALDO TÉCNICO A FAVOR DEL CONTRIBUYENTE', formatGs(saldoContribuyente), true);
+            drawCasilla('C47', 'SALDO A FAVOR DEL CONTRIBUYENTE (Siguiente Periodo)', formatGs(datos.saldo_a_favor_contribuyente), true);
+        }
+        y += 5;
+
+        // RUBRO 5: FINANCIERO
+        drawRubroHeader('RUBRO 5: DETERMINACIÓN DEL SALDO FINANCIERO A FAVOR');
+        if (datos.saldo_a_favor_fisco > 0) {
+            drawCasilla('C55', 'Impuesto determinado (Proviene del Rubro 4)', formatGs(datos.saldo_a_favor_fisco));
+        }
+        drawCasilla('C52', 'Retenciones computables por operaciones gravadas', formatGs(datos.retenciones));
+        y += 2;
+        doc.line(margin, y, pageWidth - margin, y); y += 6;
+        if (datos.saldo_final_pagar > 0) {
+            drawCasilla('C58', 'SALDO A PAGAR A FAVOR DEL FISCO', formatGs(datos.saldo_final_pagar), true);
+        } else {
+            drawCasilla('C54', 'SALDO A FAVOR DEL CONTRIBUYENTE', formatGs(datos.saldo_a_favor_contribuyente + datos.retenciones), true);
         }
 
         // --- PIE DE PÁGINA Y VALIDACIÓN ---
@@ -443,19 +469,34 @@ export default function CierreMensualWizard() {
                                         </div>
                                     </div>
 
-                                    <div className={`p-8 rounded-[2rem] flex flex-col md:flex-row items-center justify-between border-4 ${saldoTecnico > 0 ? 'bg-amber-50 border-amber-100' : 'bg-indigo-50 border-indigo-100'} gap-6`}>
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <ShieldCheck size={16} className={saldoTecnico > 0 ? 'text-amber-500' : 'text-indigo-500'} />
-                                                <p className="text-[10px] font-black uppercase tracking-[0.2em]">
-                                                    {saldoTecnico > 0 ? 'Saldo a Favor del Fisco' : 'Saldo a Favor Contribuyente'}
+                                    <div className="p-8 rounded-[2rem] border-4 bg-white border-slate-100 space-y-6">
+                                        <div className="flex items-center justify-between">
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Determinación (Rubro 4)</p>
+                                                <p className={`text-3xl font-black ${saldoTecnico > 0 ? 'text-amber-600' : 'text-indigo-600'}`}>
+                                                    {saldoTecnico > 0 ? '+' : '-'}{formatGs(Math.abs(saldoTecnico))}
                                                 </p>
                                             </div>
-                                            <p className={`text-4xl font-black ${saldoTecnico > 0 ? 'text-amber-900' : 'text-indigo-900'}`}>{formatGs(Math.abs(saldoTecnico))}</p>
-                                            <p className="text-[9px] text-slate-400 font-bold mt-2 uppercase tracking-widest italic">* Montos redondeados sin centavos según norma DNIT.</p>
+                                            <div className="w-1/3">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Retenciones (C52)</p>
+                                                <input 
+                                                    type="number" 
+                                                    placeholder="₲ 0"
+                                                    value={retenciones || ''}
+                                                    onChange={(e) => setRetenciones(Number(e.target.value))}
+                                                    className="w-full bg-slate-50 border-none rounded-xl p-3 text-sm font-bold focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="shrink-0">
-                                            <PieChart size={64} className={saldoTecnico > 0 ? 'text-amber-200' : 'text-indigo-200'} />
+
+                                        <div className={`p-6 rounded-2xl flex items-center justify-between ${saldoFinalAPagar > 0 ? 'bg-rose-50 border border-rose-100' : 'bg-emerald-50 border border-emerald-100'}`}>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest mb-1">
+                                                    {saldoFinalAPagar > 0 ? 'Total Saldo a Pagar (C58)' : 'Saldo a Favor del Contribuyente'}
+                                                </p>
+                                                <p className={`text-4xl font-black ${saldoFinalAPagar > 0 ? 'text-rose-900' : 'text-emerald-900'}`}>{formatGs(saldoFinalAPagar > 0 ? saldoFinalAPagar : saldoAFavorFinanciero)}</p>
+                                            </div>
+                                            <ShieldCheck size={48} className={saldoFinalAPagar > 0 ? 'text-rose-200' : 'text-emerald-200'} />
                                         </div>
                                     </div>
                                 </div>
