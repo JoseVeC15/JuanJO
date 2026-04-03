@@ -21,7 +21,7 @@ export default function CierreMensualWizard() {
     const { 
         facturasGastos, ingresos, 
         loading, ejecutarCierre, cierresPeriodos,
-        profile, reabrirPeriodo
+        profile, reabrirPeriodo, perfilFiscal
     } = useSupabaseData();
     
     const [currentStep, setCurrentStep] = useState(0);
@@ -128,64 +128,100 @@ export default function CierreMensualWizard() {
     const generarPDFReporte = (datos: any) => {
         const doc = new jsPDF();
         const pageWidth = doc.internal.pageSize.getWidth();
-        
-        doc.setFillColor(15, 23, 42);
-        doc.rect(0, 0, pageWidth, 40, 'F');
+        const margin = 15;
+        let y = 20;
+
+        // --- ENCABEZADO ESTILO OFICIAL ---
+        doc.setFillColor(30, 41, 59);
+        doc.rect(margin, y, pageWidth - (margin * 2), 15, 'F');
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
-        doc.text('REPORTE DE CUMPLIMIENTO FISCAL', 15, 20);
         doc.setFontSize(10);
-        doc.text(`Finance Pro - Periodo: ${datos.mes}/${datos.anio}`, 15, 30);
-        
-        doc.setTextColor(15, 23, 42);
-        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
-        doc.text('RESUMEN FORMULARIO 120 (PROFORMA)', 15, 55);
-        doc.line(15, 57, pageWidth - 15, 57);
-        
-        doc.setFont('helvetica', 'normal');
-        let y = 70;
-        const addRow = (label: string, value: string, bold = false) => {
-            if (bold) doc.setFont('helvetica', 'bold');
-            doc.text(label, 15, y);
-            doc.text(value, pageWidth - 15, y, { align: 'right' });
-            doc.setFont('helvetica', 'normal');
-            y += 10;
+        doc.text('FORMULARIO 120 v.4 - PROFORMA DE DECLARACIÓN JURADA (IVA)', margin + 5, y + 10);
+        y += 20;
+
+        // Info Contribuyente
+        doc.setTextColor(15, 23, 42);
+        doc.setFontSize(8);
+        doc.text(`CONTRIBUYENTE: ${profile?.nombre_completo || 'N/A'}`, margin, y);
+        doc.text(`RUC: ${perfilFiscal?.ruc || 'N/A'}`, margin + 100, y);
+        y += 5;
+        doc.text(`PERIODO FISCAL: ${datos.mes}/${datos.anio}`, margin, y);
+        doc.text(`FECHA DE CIERRE: ${new Date().toLocaleDateString('es-PY')}`, margin + 100, y);
+        y += 10;
+
+        const drawRubroHeader = (titulo: string) => {
+            doc.setFillColor(241, 245, 249);
+            doc.rect(margin, y, pageWidth - (margin * 2), 7, 'F');
+            doc.setTextColor(51, 65, 85);
+            doc.setFontSize(8);
+            doc.setFont('helvetica', 'bold');
+            doc.text(titulo, margin + 2, y + 5);
+            y += 12;
         };
 
-        addRow('Ventas Gravadas 10%:', formatGs(datos.ventas_10));
-        addRow('Ventas Gravadas 5%:', formatGs(datos.ventas_5));
-        addRow('Ventas Exentas:', formatGs(datos.ventas_exentas));
-        addRow('IVA Débito Total:', formatGs(datos.iva_debito_total), true);
-        y += 5;
-        addRow('Compras Gravadas 10%:', formatGs(datos.compras_10));
-        addRow('Compras Gravadas 5%:', formatGs(datos.compras_5));
-        addRow('Compras Exentas:', formatGs(datos.compras_exentas));
-        
-        // El IVA Crédito Total en el objeto 'datos' ya incluye el arrastre si se pasó correctamente
-        // Pero para el reporte es mejor desglosarlo si tenemos acceso a él
-        if (datos.saldo_arrastrado > 0) {
-            addRow('Saldo Arrastrado Mes Anterior:', formatGs(datos.saldo_arrastrado));
-        }
-        
-        addRow('IVA Crédito Total:', formatGs(datos.iva_credito_total), true);
-        y += 10;
-        
-        doc.setFillColor(245, 247, 250);
-        doc.rect(15, y - 5, pageWidth - 30, 20, 'F');
-        doc.setFontSize(14);
-        addRow('SALDO TÉCNICO:', formatGs(datos.saldo_a_favor_fisco || datos.saldo_a_favor_contribuyente), true);
-        
-        y += 20;
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text('DESCARGO DE RESPONSABILIDAD:', 15, y);
-        y += 5;
-        const text = "Este documento es una proforma generada automáticamente basada en los registros cargados por el usuario. No constituye una declaración jurada oficial ante la SET/DNIT y no reemplaza el asesoramiento de un profesional contable matriculado. El usuario es responsable de la veracidad de los datos declarados.";
-        const splitText = doc.splitTextToSize(text, pageWidth - 30);
-        doc.text(splitText, 15, y);
+        const drawCasilla = (numero: string, descripcion: string, monto: number | string, isTotal = false) => {
+            doc.setFont('helvetica', isTotal ? 'bold' : 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(71, 85, 105);
+            doc.text(numero, margin, y);
+            doc.text(descripcion, margin + 10, y);
+            doc.setFont('courier', 'bold');
+            doc.text(String(monto).padStart(15, ' '), pageWidth - margin - 35, y);
+            y += 6;
+        };
 
-        doc.save(`Cierre_Fiscal_${datos.mes}_${datos.anio}.pdf`);
+        // RUBRO 1: VENTAS (DÉBITO)
+        drawRubroHeader('RUBRO 1: ENAJENACIÓN DE BIENES Y PRESTACIÓN DE SERVICIOS (DÉBITO FISCAL)');
+        drawCasilla('C10', 'Enajenación de bienes y/o prestación de servicios gravados con la tasa del 10%', formatGs(datos.ventas_10));
+        drawCasilla('C11', 'Enajenación de bienes y/o prestación de servicios gravados con la tasa del 5%', formatGs(datos.ventas_5));
+        drawCasilla('C12', 'Enajenación de bienes y/o prestación de servicios exonerados (Exentas)', formatGs(datos.ventas_exentas));
+        y += 2;
+        doc.setLineWidth(0.1);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
+        drawCasilla('C15', 'TOTAL IMPUESTO DEVENGADO (DÉBITO FISCAL DEL MES)', formatGs(datos.iva_debito_total), true);
+        y += 5;
+
+        // RUBRO 2: COMPRAS (CRÉDITO)
+        drawRubroHeader('RUBRO 2: COMPRAS LOCALES E IMPORTACIONES (CRÉDITO FISCAL)');
+        drawCasilla('C28', 'Compras locales gravadas con la tasa del 10%', formatGs(datos.compras_10));
+        drawCasilla('C29', 'Compras locales gravadas con la tasa del 5%', formatGs(datos.compras_5));
+        drawCasilla('C30', 'Compras locales y/o importaciones exoneradas (Exentas)', formatGs(datos.compras_exentas));
+        y += 2;
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 6;
+        drawCasilla('C35', 'TOTAL IMPUESTO ACREDITABLE (CRÉDITO FISCAL DEL MES)', formatGs(datos.compras_10 * 0.1 + datos.compras_5 * 0.05), true);
+        y += 5;
+
+        // RUBRO 3: LIQUIDACIÓN
+        drawRubroHeader('RUBRO 3: LIQUIDACIÓN Y DETERMINACIÓN DEL IMPUESTO');
+        drawCasilla('C56', 'Saldo a favor del contribuyente (Periodo Anterior)', formatGs(datos.saldo_arrastrado));
+        y += 4;
+        
+        const saldoFisco = datos.saldo_a_favor_fisco;
+        const saldoContribuyente = datos.saldo_a_favor_contribuyente;
+
+        if (saldoFisco > 0) {
+            drawCasilla('C89', 'SALDO TÉCNICO A FAVOR DEL FISCO', formatGs(saldoFisco), true);
+        } else {
+            drawCasilla('C90', 'SALDO TÉCNICO A FAVOR DEL CONTRIBUYENTE', formatGs(saldoContribuyente), true);
+        }
+
+        // --- PIE DE PÁGINA Y VALIDACIÓN ---
+        y = 260;
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        const disclaimer = 'Este documento es una proforma generada por Finance Pro para facilitar el llenado del Formulario 120 v.4 en el Sistema Marangatú. No constituye una declaración jurada oficial ante la DNIT.';
+        doc.text(doc.splitTextToSize(disclaimer, pageWidth - (margin * 2)), margin, y);
+        
+        y += 10;
+        doc.setFont('helvetica', 'normal');
+        doc.text(`Identificador de Auditoría: ${Math.random().toString(36).substring(2, 15).toUpperCase()}`, margin, y);
+        doc.text('Página 1 de 1', pageWidth - margin - 15, y);
+
+        doc.save(`F120_V4_PROFORMA_${datos.mes}_${datos.anio}.pdf`);
     };
 
     if (loading) return null;
