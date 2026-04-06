@@ -1,33 +1,31 @@
-# Dashboard Estratégico 📊
+# El Dashboard Estratégico
 
-El **Dashboard** de Finance Pro es tu panel de control principal. Aquí consolidas toda la información de flujos de caja y rentabilidad de manera gráfica y directa.
+El **Dashboard** es el corazón analítico de Finance Pro. Ha sido diseñado para consolidar toda tu realidad financiera en una sola pantalla visual de alto impacto que puedes analizar en menos de diez segundos.
 
-![Panel Principal del Dashboard](/manuales/dashboard.png)
+![Dashboard de Control](/manuales/dashboard.png)
 
-## 💡 Explicación de Métricas (Tarjetas de Control)
+> [!IMPORTANT]
+> El Dashboard no requiere que tú calcules nada; todas las cifras mostradas se actualizan en tiempo real de forma autónoma con cada comprobante que procesas en el resto del sistema.
 
-Cada tarjeta en la parte superior representa un pilar de tu salud financiera:
+## 💶 Indicador Safe-to-Spend™
 
-1.  **Efectivo en Caja:** Indica el saldo real disponible en tus cuentas bancarias y caja chica, restando los gastos pagados de los ingresos cobrados.
-2.  **Ventas del Período:** Suma total de facturas de ingresos emitidas en el mes actual. Te ayuda a medir tu volumen de facturación.
-3.  **Eficiencia Operativa:** Un porcentaje que compara tus ingresos contra tus gastos operativos. Un valor alto indica que estás manteniendo tus costos bajo control en relación a lo que facturas.
-4.  **Salud Fiscal (SET/DNIT):** Una estimación del IVA neto a pagar o crédito fiscal acumulado, basado en tus facturas de compra y venta registradas.
+Esta es posiblemente la métrica más importante que mirarás cada día. En lugar de decirte simplemente "cuánto dinero tienes en el banco", el **Safe-to-Spend** (Dinero Seguro para Gastar) aplica una fórmula descontando:
+* Provisiones fiscales (IVA, IRE/IRP a pagar).
+* Cuentas por pagar a corto plazo que ya has agendado.
+* Objetivos de ahorro bloqueados por ti mismo.
 
-## 📉 Proyección Mensual Consolidada
+**Si el Safe-to-Spend está en verde**, puedes disponer de ese capital para retiros o inversiones. Si está en amarillo o rojo, aunque el saldo banco sea alto, significa que ese dinero ya está comprometido.
 
-Este gráfico interactivo te permite visualizar:
-- **Ingresos (Puntos Verdes):** Entradas de dinero por proyectos o ventas directas.
-- **Gastos (Puntos Rojos):** Salidas de dinero por compras o servicios externos.
-- **La Brecha de Rentabilidad:** La distancia entre puntos te indica visualmente qué tan rentable está siendo tu mes.
+## 📊 Panel de Tracción Financiera
 
-## 🛡️ Resguardo DNIT (Monitor Fiscal)
+### Estado de Flujo de Efectivo Real
+Revisa el termómetro financiero que contrasta los **Ingresos Netos Reales** frente a **Gastos (Operativos + Dedicibles)** a lo largo del periodo actual. Un desglose mes a mes se ilustra en el gráfico de barras central.
 
-Ubicado a la derecha, este módulo te da una vista rápida de tu situación ante la SET (Paraguay):
-- **IVA Débito:** Lo que debes por tus ventas.
-- **IVA Crédito:** Lo que has "ahorrado" por tus compras deducibles.
-- **Crédito Fiscal:** El balance final que determinará tu pago de impuestos mensual.
+### Rentabilidad en Tiempo Real (EBITDA)
+A diferencia del flujo de dinero, aquí analizas la viabilidad de tus operaciones sin importar qué se cobró o qué falta por pagar. Finance Pro te proyecta cuál será la rentabilidad esperada a cierre del trimestre.
 
----
+## 🎯 Metas y Objetivos Dinámicos
+Puedes fijar reservas especiales de capital (como "Compra de Equipamiento 2026" o "Fondo de Emergencia"). El panel deducirá el capital necesario y rastreará porcentualmente el nivel de acercamiento hacia dicha meta según los criterios de fondeo inteligente.
 
 > [!TIP]
-> Filtra la vista del dashboard por rango de fechas (ej. "Últimos 30 días") para identificar picos de gasto estacional y mejorar tu previsibilidad financiera.
+> **Interacción Rápida:** Haz clic sobre los widgets de "Documentos Pendientes" o "Facturas Vencidas" en el Dashboard. El sistema te redigirá instantáneamente al documento origen para que gestiones el pago, sin tener que buscarlo en menús secundarios.

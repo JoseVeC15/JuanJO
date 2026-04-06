@@ -1,24 +1,30 @@
-# Centro de Proyectos 🚀
+# El Centro de Proyectos (Rentabilidad)
 
-Lleva el control de rentabilidad de cada uno de tus **Proyectos** de forma centralizada e independiente.
+Llevar cuenta del dinero total es vital, pero entender qué clientes, departamentos o servicios específicos están alimentando (o desangrando) ese capital es el verdadero superpoder. Para esto sirve el **Centro de Proyectos**.
 
-![Vista del Centro de Proyectos](/manuales/proyectos.png)
+![Gestión de Proyectos](/manuales/proyectos.png)
 
-## 🎯 Proyectos: Rentabilidad por Iniciativa
+> [!IMPORTANT]
+> Un proyecto puede ser lo que tú definas: "Construcción Obra X", "Campaña de Marketing Y", "Cliente A anualizado" o "Mantenimiento Local Centro".
 
- FINANCE PRO te ayuda a separar los gastos de tu negocio de los gastos operativos de cada rodaje o edición:
+## 📊 Presupuesto vs Realidad
 
-1.  **Vínculo Inteligente:** Cuando cargas una factura en *Gastos* o *Ingresos*, asóciala a un proyecto específico.
-2.  **Cálculo de Margen:** El sistema resta todos los gastos (alquileres, honorarios, transporte) del monto facturado al cliente.
-3.  **Rentabilidad Real:** Sabrás instantáneamente cuánto dinero te quedó "en mano" tras descontar los costes directos de cada trabajo.
+Cada Proyecto te permite asignar un techo presupuestario (Ingresos proyectados y Gastos Límite).
+A medida que registras transacciones en el módulo principal (Gastos) o facturas electrónicas (Ingresos), la plataforma te permitirá *etiquetar/enlazar* ese comprobante a un proyecto en específico.
 
-## 📊 Presupuesto vs. Real
+Automáticamente el Panel del Proyecto se actualizará, exhibiendo un tacómetro con tu rentabilidad operativa exacta (en dinero o porcentaje del 0 al 100%).
 
-- **Monto Presupuestado:** Es el valor inicial que cotizaste al cliente. Sirve como referencia de tu margen de ganancia teórica.
-- **Monto Facturado:** Es el dinero real que ya has solicitado cobrar o ya has recibido.
-- **Estados del Proyecto:** Desde **Cotización** hasta **Pagado**. Cambia el estado para que el sistema sepa si debe contar ese dinero en tu flujo de caja proyectado o confirmado.
+## 🎯 Centro de Cobros y Trazabilidad
 
----
+En esta pestaña verás el consolidado de *Cuentas a Cobrar* específicas del Proyecto. Si ofreces un servicio modular o con anticipos (ej: 30%, 30%, 40%):
+1. Podrás programar hitos de pago.
+2. Vincular recordatorios y pagos parciales usando WhatsApp CRM.
+3. Emitir Facturas Electrónicas y Recibos por cuota completada.
 
-> [!NOTE]
-> Recuerda que un gasto cargado a un proyecto se reducirá del "presupuesto asignado" inicial para darte una visión clara de los desvíos financieros que podrías afrontar.
+## 🛠️ Gastos Estructurales (Prorrateo)
+
+Finance Pro entiende que no todos los gastos corresponden a un proyecto aislado; algunos son estructurales (como internet, software o alquiler de la oficina general). 
+En este módulo, puedes activar **Reglas de Prorrateo**: Dividir dinámicamente un porcentaje de gastos fijos (Ej: 10% del alquiler) hacia un Proyecto activo grande para asimilar costos indirectos de fabricación/servicios, y entender verdaderamente tu P&L Neto real.
+
+> [!CAUTION]
+> Si el indicador de Progreso Financiero alcanza el lado rojo significa que tu proyecto está generando márgenes negativos. Revisa de manera urgente la pestaña "Auditoría de Sobrecostos" del proyecto en alerta para encontrar dónde ocurrió la filtración sin autorización.

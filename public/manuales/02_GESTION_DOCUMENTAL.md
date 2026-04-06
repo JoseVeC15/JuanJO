@@ -1,27 +1,31 @@
-# Gestión de Gastos e Ingresos 💸
+# Gestión Documental Eficiente
 
-Centraliza tus transacciones y automatiza el procesamiento documental. La plataforma de **Gastos e Ingresos** te libera de la tarea manual y mantiene tus libros al día.
+Finance Pro revolucionará la manera en la que procesas entradas y salidas de dinero. El enfoque es dejar que la tecnología trabaje por ti, convirtiendo fotografías o PDFs en datos financieros puros.
 
-![Módulo de Gastos e Ingresos](/manuales/gastos.png)
+## 📤 Extracción Automatizada (Ingresos y Gastos)
 
-## 🔄 Flujo de Automatización (OCR Inteligente)
+La plataforma cuenta con un núcleo de Inteligencia Artificial que procesa el contenido visual de tus comprobantes.
 
-Nuestro sistema utiliza una potente IA (vía n8n) para analizar cada imagen o PDF y autocompletar la información comercial:
+![Módulo de Gastos](/manuales/gastos.png)
+![Módulo de Ingresos](/manuales/ingresos.png)
 
-1.  **Sube tus facturas:** Registra un nuevo gasto o ingreso adjuntando el soporte documental.
-2.  **Extracción de Datos:** El sistema detectará automáticamente:
-    *   **Proveedor:** Razón social y RUC del comercio.
-    *   **Importe:** Monto total de la operación (₲).
-    *   **IVA (5% o 10%):** Cálculo de impuestos deducibles para Hacienda.
-    *   **Timbrado:** Número de comprobante legal de la SET (Paraguay).
-3.  **Confirmación Final:** Siempre tendrás la decisión antes de confirmar el registro.
+1. **Subida por Interfaz o Telegram:** Arrastra los PDFs de facturas o reenvía las imágenes desde WhatsApp a nuestro Bot estructurador.
+2. **Reconocimiento Óptico (OCR) + Lógica de Negocio:** La IA procesa y extrae el *RUC*, *Monto Total*, *IVA discriminado*, *Concepto* y *Fecha*.
+3. **Validación Automática:** Se cruza con el Padrón Nacional o tus reglas prestablecidas. En el 95% de los casos, la carga es en "un solo clic" (Auto-Guardado).
 
-## 📁 Clasificación y Categorías
+> [!TIP]
+> Las carpetas en la nube de tu ordenador también se pueden enlazar (ver Integraciones). Coloca una factura allí, y aparecerá registrada en tu módulo como Borrador automáticamente.
 
-- **Tipo de Gasto:** ¿Es equipamiento, transporte, alimentación o subcontratación? Clasificar tus compras ayuda a entender en qué estás invirtiendo tu capital.
-- **Vínculo con Proyecto:** Si realizas una compra específica para un rodaje o edición (ej. alquiler de luces), asócialo al proyecto para calcular su rentabilidad real.
+## 🏛️ Integración con SIFEN (DNIT e-Kuatia)
+Tu plataforma es compatible de manera bidireccional mediante APIs con el Sistema Integrado de Facturación Electrónica Nacional.
 
----
+* **Descarga de Recibidos:** Todos los KuDEs emitidos a tu nombre o a tu RUC desde proveedores, pueden importarse directamente al módulo de Gastos de forma periódica, previniendo fraude y evitando perder documentación deducible.
+* **Emisión Directa:** Desde el Panel de Ingresos o desde el Centro de Servicios al Cliente puedes emitir Notas de Crédito, Facturas Contado/Crédito Oficialmente validadas ante DNIT.
 
-> [!CAUTION]
-> **Aviso Legal:** La exactitud de los datos sugeridos por el procesamiento automático depende de la legibilidad de tu factura (iluminación, nitidez). FINANCE PRO no guarda los datos definitivamente sin que tú apruebes su exactitud.
+> [!NOTE]
+> Para utilizar la emisión y descarga automática con SIFEN, recuerda haber gestionado tu certificado p12 y tu clave SIFEN de ambiente Producción/Pruebas en la pantalla de *Configuración* -> *Credenciales Fiscales*.
+
+## 🔄 Conciliación Bancaria
+
+En lugar de confirmar a ciegas, el módulo te pide respaldos, integrándolos contra flujos de caja. 
+Sube un extracto `.csv` bancario, y Finance Pro asociará los montos de salidas de banco con los Gastos registrados previamente, buscando emparejar Fechas y Montos de tolerancia, consolidando en el *Libro Mayor* tu saldo real impecable.
