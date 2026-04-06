@@ -14,7 +14,9 @@ import {
   Layout, 
   PieChart,
   ChevronRight,
-  Wallet
+  Wallet,
+  Briefcase,
+  ShieldCheck
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -25,6 +27,8 @@ const MANUALS = [
   { id: '03_CENTRO_PROYECTOS.md', title: 'Proyectos', icon: <Activity size={18} />, description: 'Seguimiento de rentabilidad' },
   { id: '04_CONTROL_ACTIVOS.md', title: 'Activos', icon: <Shield size={18} />, description: 'Inventario y depreciación' },
   { id: '05_REPORTES_Y_AUDITORIA.md', title: 'Reportes', icon: <PieChart size={18} />, description: 'Análisis profundo de datos' },
+  { id: '06_GESTION_FREELANCER.md', title: 'Freelancer', icon: <Briefcase size={18} />, description: 'Agenda, Catálogo y Planificación' },
+  { id: '07_ASISTENTE_FISCAL_SET.md', title: 'Asistente SET', icon: <ShieldCheck size={18} />, description: 'Cumplimiento y Fiscalidad' },
 ];
 
 export default function ManualsScreen() {

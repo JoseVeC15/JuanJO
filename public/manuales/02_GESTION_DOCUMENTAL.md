@@ -13,8 +13,9 @@ La plataforma cuenta con un núcleo de Inteligencia Artificial que procesa el co
 2. **Reconocimiento Óptico (OCR) + Lógica de Negocio:** La IA procesa y extrae el *RUC*, *Monto Total*, *IVA discriminado*, *Concepto* y *Fecha*.
 3. **Validación Automática:** Se cruza con el Padrón Nacional o tus reglas prestablecidas. En el 95% de los casos, la carga es en "un solo clic" (Auto-Guardado).
 
-> [!TIP]
-> Las carpetas en la nube de tu ordenador también se pueden enlazar (ver Integraciones). Coloca una factura allí, y aparecerá registrada en tu módulo como Borrador automáticamente.
+> [!IMPORTANT]
+> **Actualización en Tiempo Real (Live IA):** 
+> Gracias a nuestras nuevas suscripciones Postgres, ya no necesitas recargar para ver el resultado. Al subir un archivo, el botón indicará "IA Procesando...". Quédate en la página de 5 a 15 segundos y verás cómo el registro aparece mágicamente en tu lista sin tocar nada.
 
 ## 🏛️ Integración con SIFEN (DNIT e-Kuatia)
 Tu plataforma es compatible de manera bidireccional mediante APIs con el Sistema Integrado de Facturación Electrónica Nacional.
