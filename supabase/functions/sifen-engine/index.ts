@@ -250,20 +250,27 @@ serve(async (peticion: Request) => {
             .eq('user_id', documento.user_id)
             .single();
 
-        if (!perfil || !config || !config.csc || !config.id_csc) {
-            throw new EngineError('CONFIG_INCOMPLETA', 'Falta perfil fiscal o configuracion SIFEN para este usuario', 422);
+        if (!perfil) {
+            throw new EngineError('CONFIG_INCOMPLETA', 'Falta perfil fiscal para este usuario', 422);
         }
 
-        if (!cert?.certificado_base64) {
-            throw new EngineError('CERTIFICADO_AUSENTE', 'No hay certificado digital cargado para este usuario', 422);
+        const esProduccion = perfil.ambiente === 'prod';
+        const tieneConfigSifenMinima = !!(config?.csc && config?.id_csc);
+
+        if (esProduccion && !tieneConfigSifenMinima) {
+            throw new EngineError('CONFIG_INCOMPLETA', 'En produccion se requiere CSC e ID CSC configurados', 422);
         }
 
-        if (cert?.vencimiento && new Date(cert.vencimiento).getTime() < Date.now()) {
+        if (esProduccion && !cert?.certificado_base64) {
+            throw new EngineError('CERTIFICADO_AUSENTE', 'En produccion se requiere certificado digital', 422);
+        }
+
+        if (esProduccion && cert?.vencimiento && new Date(cert.vencimiento).getTime() < Date.now()) {
             throw new EngineError('CERTIFICADO_VENCIDO', 'El certificado digital se encuentra vencido', 422);
         }
 
         const numeroSecuencial = obtenerNumeroSecuencial(documento.numero_factura);
-        const codigoSeguridad = Number(config.id_csc || 123456789);
+        const codigoSeguridad = Number(config?.id_csc || 123456789);
 
     // 2. Generar CDC v1.50
     const cdc = generarCDC({
@@ -282,11 +289,13 @@ serve(async (peticion: Request) => {
 
     // 4. LOGICA DE TRANSMISIÓN TEST (Set de Pruebas Phase 6)
         const tieneCertificado = !!cert?.certificado_base64;
+        const modoEmision = esProduccion ? 'real' : (tieneCertificado ? 'firma-local' : 'simulada');
     const respuestaSifen = { 
         estado: tieneCertificado ? "tramite" : "aprobado", 
         codigo_dn: "0000", 
         mensaje: tieneCertificado ? "Enviado a SIFEN UAT" : "Aprobado (Simulación Phase 6)",
-        cdc: cdc
+        cdc: cdc,
+        modo_emision: modoEmision
     };
 
         const latencyMs = Date.now() - startedAt;

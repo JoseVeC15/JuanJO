@@ -966,6 +966,252 @@ export const calculateSuggestedVAT5 = (total: number) => {
  * Regla SET/DNIT: 0 -> 7, 1 -> 8, ..., 9 -> 16.
  * Si cae en fin de semana, se traslada al siguiente día hábil.
  */
+// ============ FLOTA LOGISTICA ============
+
+export type TipoNegocio = 'audiovisual' | 'logistica';
+export type TipoVehiculo = 'camion' | 'camioneta' | 'furgon' | 'remolque' | 'otro';
+export type TipoPropiedadVehiculo = 'propietario' | 'alquilado';
+export type EstadoVehiculo = 'activo' | 'mantenimiento' | 'fuera_servicio';
+export type TipoMantenimiento = 'preventivo' | 'correctivo' | 'neumaticos' | 'aceite' | 'frenos' | 'otro';
+export type EstadoViaje = 'pendiente' | 'en_curso' | 'completado' | 'facturado' | 'anulado';
+
+export interface Vehiculo {
+  id: string;
+  user_id: string;
+  patente: string;
+  marca_modelo: string;
+  anio: number | null;
+  tipo_vehiculo: TipoVehiculo;
+  tipo_propiedad: TipoPropiedadVehiculo;
+  costo_adquisicion: number | null;
+  valor_actual: number | null;
+  fecha_compra: string | null;
+  proveedor_alquiler: string | null;
+  costo_alquiler_diario: number | null;
+  costo_alquiler_mensual: number | null;
+  fecha_inicio_alquiler: string | null;
+  fecha_fin_alquiler: string | null;
+  estado: EstadoVehiculo;
+  capacidad_carga_kg: number | null;
+  km_actual: number | null;
+  created_at: string;
+}
+
+export interface RegistroCombustible {
+  id: string;
+  user_id: string;
+  vehiculo_id: string;
+  fecha: string;
+  cantidad_litros: number;
+  precio_total: number;
+  precio_por_litro: number | null;
+  estacion: string | null;
+  km_actual: number | null;
+  created_at: string;
+}
+
+export interface RegistroMantenimiento {
+  id: string;
+  user_id: string;
+  vehiculo_id: string;
+  fecha: string;
+  tipo: TipoMantenimiento;
+  descripcion: string | null;
+  costo: number;
+  proveedor: string | null;
+  km_actual: number | null;
+  proximo_mantenimiento_km: number | null;
+  proxima_fecha_mantenimiento: string | null;
+  created_at: string;
+}
+
+export interface Viaje {
+  id: string;
+  user_id: string;
+  vehiculo_id: string;
+  cliente: string;
+  ruc_cliente: string | null;
+  origen: string | null;
+  destino: string | null;
+  fecha_salida: string | null;
+  fecha_llegada: string | null;
+  km_recorridos: number | null;
+  ingreso_total: number | null;
+  estado: EstadoViaje;
+  created_at: string;
+}
+
+export const getVehiculoIcon = (tipo: TipoVehiculo): string => {
+  const icons: Record<TipoVehiculo, string> = {
+    camion: '🚛',
+    camioneta: '🛻',
+    furgon: '🚐',
+    remolque: '🚚',
+    otro: '📦',
+  };
+  return icons[tipo] || '📦';
+};
+
+export const getVehiculoLabel = (tipo: TipoVehiculo): string => {
+  const labels: Record<TipoVehiculo, string> = {
+    camion: 'Camion',
+    camioneta: 'Camioneta',
+    furgon: 'Furgon',
+    remolque: 'Remolque',
+    otro: 'Otro',
+  };
+  return labels[tipo] || tipo;
+};
+
+export const getVehiculoColor = (estado: EstadoVehiculo): string => {
+  const colors: Record<EstadoVehiculo, string> = {
+    activo: '#10B981',
+    mantenimiento: '#F59E0B',
+    fuera_servicio: '#EF4444',
+  };
+  return colors[estado] || '#6B7280';
+};
+
+export const getVehiculoEstadoLabel = (estado: EstadoVehiculo): string => {
+  const labels: Record<EstadoVehiculo, string> = {
+    activo: 'Activo',
+    mantenimiento: 'En Mantenimiento',
+    fuera_servicio: 'Fuera de Servicio',
+  };
+  return labels[estado] || estado;
+};
+
+export const getMantenimientoLabel = (tipo: TipoMantenimiento): string => {
+  const labels: Record<TipoMantenimiento, string> = {
+    preventivo: 'Preventivo',
+    correctivo: 'Correctivo',
+    neumaticos: 'Neumaticos',
+    aceite: 'Cambio de Aceite',
+    frenos: 'Frenos',
+    otro: 'Otro',
+  };
+  return labels[tipo] || tipo;
+};
+
+export const getMantenimientoColor = (tipo: TipoMantenimiento): string => {
+  const colors: Record<TipoMantenimiento, string> = {
+    preventivo: '#3B82F6',
+    correctivo: '#EF4444',
+    neumaticos: '#F59E0B',
+    aceite: '#10B981',
+    frenos: '#8B5CF6',
+    otro: '#64748B',
+  };
+  return colors[tipo] || '#94A3B8';
+};
+
+export const getViajeEstadoLabel = (estado: EstadoViaje): string => {
+  const labels: Record<EstadoViaje, string> = {
+    pendiente: 'Pendiente',
+    en_curso: 'En Curso',
+    completado: 'Completado',
+    facturado: 'Facturado',
+    anulado: 'Anulado',
+  };
+  return labels[estado] || estado;
+};
+
+export const getViajeEstadoColor = (estado: EstadoViaje): string => {
+  const colors: Record<EstadoViaje, string> = {
+    pendiente: '#64748B',
+    en_curso: '#3B82F6',
+    completado: '#10B981',
+    facturado: '#8B5CF6',
+    anulado: '#EF4444',
+  };
+  return colors[estado] || '#94A3B8';
+};
+
+// ============ SEED DATA FLOTA LOGISTICA ============
+
+export const vehiculosSeed: Vehiculo[] = [
+  {
+    id: 'v1', user_id: 'demo', patente: 'ABC-123', marca_modelo: 'Volkswagen Delivery 8.160',
+    anio: 2022, tipo_vehiculo: 'camion', tipo_propiedad: 'propietario',
+    costo_adquisicion: 280000000, valor_actual: 245000000, fecha_compra: '2022-03-15',
+    proveedor_alquiler: null, costo_alquiler_diario: null, costo_alquiler_mensual: null,
+    fecha_inicio_alquiler: null, fecha_fin_alquiler: null,
+    estado: 'activo', capacidad_carga_kg: 8160, km_actual: 85000, created_at: '2022-03-15',
+  },
+  {
+    id: 'v2', user_id: 'demo', patente: 'DEF-456', marca_modelo: 'Mercedes-Benz Atego 1725',
+    anio: 2021, tipo_vehiculo: 'camion', tipo_propiedad: 'propietario',
+    costo_adquisicion: 350000000, valor_actual: 298000000, fecha_compra: '2021-07-20',
+    proveedor_alquiler: null, costo_alquiler_diario: null, costo_alquiler_mensual: null,
+    fecha_inicio_alquiler: null, fecha_fin_alquiler: null,
+    estado: 'activo', capacidad_carga_kg: 17000, km_actual: 120000, created_at: '2021-07-20',
+  },
+  {
+    id: 'v3', user_id: 'demo', patente: 'GHI-789', marca_modelo: 'Scania P360',
+    anio: 2023, tipo_vehiculo: 'camion', tipo_propiedad: 'propietario',
+    costo_adquisicion: 520000000, valor_actual: 468000000, fecha_compra: '2023-01-10',
+    proveedor_alquiler: null, costo_alquiler_diario: null, costo_alquiler_mensual: null,
+    fecha_inicio_alquiler: null, fecha_fin_alquiler: null,
+    estado: 'activo', capacidad_carga_kg: 25000, km_actual: 62000, created_at: '2023-01-10',
+  },
+  {
+    id: 'v4', user_id: 'demo', patente: 'JKL-012', marca_modelo: 'Iveco Daily 70C17',
+    anio: 2023, tipo_vehiculo: 'camioneta', tipo_propiedad: 'propietario',
+    costo_adquisicion: 185000000, valor_actual: 167000000, fecha_compra: '2023-06-01',
+    proveedor_alquiler: null, costo_alquiler_diario: null, costo_alquiler_mensual: null,
+    fecha_inicio_alquiler: null, fecha_fin_alquiler: null,
+    estado: 'mantenimiento', capacidad_carga_kg: 7000, km_actual: 45000, created_at: '2023-06-01',
+  },
+  {
+    id: 'v5', user_id: 'demo', patente: 'MNO-345', marca_modelo: 'Renault D-16 Wide',
+    anio: 2020, tipo_vehiculo: 'camion', tipo_propiedad: 'propietario',
+    costo_adquisicion: 310000000, valor_actual: 217000000, fecha_compra: '2020-11-05',
+    proveedor_alquiler: null, costo_alquiler_diario: null, costo_alquiler_mensual: null,
+    fecha_inicio_alquiler: null, fecha_fin_alquiler: null,
+    estado: 'activo', capacidad_carga_kg: 16000, km_actual: 156000, created_at: '2020-11-05',
+  },
+  {
+    id: 'v6', user_id: 'demo', patente: 'PQR-678', marca_modelo: 'Volvo FH 540',
+    anio: 2024, tipo_vehiculo: 'camion', tipo_propiedad: 'alquilado',
+    costo_adquisicion: null, valor_actual: null, fecha_compra: null,
+    proveedor_alquiler: 'Transportsa Paraguay SRL', costo_alquiler_diario: 1800000, costo_alquiler_mensual: 45000000,
+    fecha_inicio_alquiler: '2026-01-01', fecha_fin_alquiler: '2026-12-31',
+    estado: 'activo', capacidad_carga_kg: 30000, km_actual: 32000, created_at: '2026-01-01',
+  },
+];
+
+export const registroCombustibleSeed: RegistroCombustible[] = [
+  { id: 'c1', user_id: 'demo', vehiculo_id: 'v1', fecha: '2026-04-01', cantidad_litros: 120, precio_total: 600000, precio_por_litro: 5000, estacion: 'Copetrol Ruta 2', km_actual: 84500, created_at: '2026-04-01' },
+  { id: 'c2', user_id: 'demo', vehiculo_id: 'v1', fecha: '2026-04-03', cantidad_litros: 95, precio_total: 475000, precio_por_litro: 5000, estacion: 'Puma Asuncion', km_actual: 84800, created_at: '2026-04-03' },
+  { id: 'c3', user_id: 'demo', vehiculo_id: 'v2', fecha: '2026-04-02', cantidad_litros: 180, precio_total: 900000, precio_por_litro: 5000, estacion: 'Copetrol Ruta 2', km_actual: 119500, created_at: '2026-04-02' },
+  { id: 'c4', user_id: 'demo', vehiculo_id: 'v3', fecha: '2026-04-01', cantidad_litros: 250, precio_total: 1250000, precio_por_litro: 5000, estacion: 'Axion Luque', km_actual: 61500, created_at: '2026-04-01' },
+  { id: 'c5', user_id: 'demo', vehiculo_id: 'v3', fecha: '2026-04-04', cantidad_litros: 230, precio_total: 1150000, precio_por_litro: 5000, estacion: 'Copetrol Encarnacion', km_actual: 62000, created_at: '2026-04-04' },
+  { id: 'c6', user_id: 'demo', vehiculo_id: 'v5', fecha: '2026-04-02', cantidad_litros: 140, precio_total: 700000, precio_por_litro: 5000, estacion: 'Puma San Lorenzo', km_actual: 155200, created_at: '2026-04-02' },
+  { id: 'c7', user_id: 'demo', vehiculo_id: 'v6', fecha: '2026-04-01', cantidad_litros: 300, precio_total: 1500000, precio_por_litro: 5000, estacion: 'Copetrol Ruta 2', km_actual: 31500, created_at: '2026-04-01' },
+  { id: 'c8', user_id: 'demo', vehiculo_id: 'v6', fecha: '2026-04-05', cantidad_litros: 280, precio_total: 1400000, precio_por_litro: 5000, estacion: 'Axion Caacupe', km_actual: 32000, created_at: '2026-04-05' },
+  { id: 'c9', user_id: 'demo', vehiculo_id: 'v4', fecha: '2026-03-28', cantidad_litros: 60, precio_total: 300000, precio_por_litro: 5000, estacion: 'Puma Asuncion', km_actual: 44900, created_at: '2026-03-28' },
+  { id: 'c10', user_id: 'demo', vehiculo_id: 'v2', fecha: '2026-04-05', cantidad_litros: 165, precio_total: 825000, precio_por_litro: 5000, estacion: 'Copetrol Ruta 2', km_actual: 120000, created_at: '2026-04-05' },
+];
+
+export const registroMantenimientoSeed: RegistroMantenimiento[] = [
+  { id: 'm1', user_id: 'demo', vehiculo_id: 'v4', fecha: '2026-04-05', tipo: 'correctivo', descripcion: 'Reparacion sistema de freno neumático', costo: 4500000, proveedor: 'Talleres Rodriguez SRL', km_actual: 45000, proximo_mantenimiento_km: null, proxima_fecha_mantenimiento: null, created_at: '2026-04-05' },
+  { id: 'm2', user_id: 'demo', vehiculo_id: 'v1', fecha: '2026-03-25', tipo: 'preventivo', descripcion: 'Service 80.000 km — filtros, aceite, revisión general', costo: 2800000, proveedor: 'VW Centro de Servicio', km_actual: 84000, proximo_mantenimiento_km: 90000, proxima_fecha_mantenimiento: '2026-07-01', created_at: '2026-03-25' },
+  { id: 'm3', user_id: 'demo', vehiculo_id: 'v3', fecha: '2026-04-02', tipo: 'neumaticos', descripcion: 'Cambio de 4 neumaticos traseros Michelin XDA', costo: 8500000, proveedor: 'Neumaticos Paraguay', km_actual: 61500, proximo_mantenimiento_km: null, proxima_fecha_mantenimiento: null, created_at: '2026-04-02' },
+  { id: 'm4', user_id: 'demo', vehiculo_id: 'v2', fecha: '2026-03-20', tipo: 'aceite', descripcion: 'Cambio de aceite y filtros', costo: 1200000, proveedor: 'Mercedes-Benz Servicio', km_actual: 119000, proximo_mantenimiento_km: 130000, proxima_fecha_mantenimiento: '2026-08-15', created_at: '2026-03-20' },
+  { id: 'm5', user_id: 'demo', vehiculo_id: 'v6', fecha: '2026-04-03', tipo: 'frenos', descripcion: 'Reemplazo pastillas de freno completas', costo: 3200000, proveedor: 'Volvo Service Paraguay', km_actual: 31800, proximo_mantenimiento_km: null, proxima_fecha_mantenimiento: '2026-07-15', created_at: '2026-04-03' },
+];
+
+export const viajesSeed: Viaje[] = [
+  { id: 't1', user_id: 'demo', vehiculo_id: 'v1', cliente: 'Coca-Cola FEMSA', ruc_cliente: '80001234-5', origen: 'Asuncion', destino: 'Ciudad del Este', fecha_salida: '2026-04-01', fecha_llegada: '2026-04-01', km_recorridos: 330, ingreso_total: 4500000, estado: 'completado', created_at: '2026-04-01' },
+  { id: 't2', user_id: 'demo', vehiculo_id: 'v1', cliente: 'Coca-Cola FEMSA', ruc_cliente: '80001234-5', origen: 'Asuncion', destino: 'Encarnacion', fecha_salida: '2026-04-03', fecha_llegada: '2026-04-03', km_recorridos: 370, ingreso_total: 5200000, estado: 'completado', created_at: '2026-04-03' },
+  { id: 't3', user_id: 'demo', vehiculo_id: 'v2', cliente: 'Arca Continental', ruc_cliente: '80056789-1', origen: 'Asuncion', destino: 'Concepcion', fecha_salida: '2026-04-02', fecha_llegada: '2026-04-02', km_recorridos: 380, ingreso_total: 6800000, estado: 'completado', created_at: '2026-04-02' },
+  { id: 't4', user_id: 'demo', vehiculo_id: 'v3', cliente: 'Coca-Cola FEMSA', ruc_cliente: '80001234-5', origen: 'Asuncion', destino: 'Salto del Guaira', fecha_salida: '2026-04-04', fecha_llegada: null, km_recorridos: null, ingreso_total: 8500000, estado: 'en_curso', created_at: '2026-04-04' },
+  { id: 't5', user_id: 'demo', vehiculo_id: 'v5', cliente: 'Distribuidora Parana', ruc_cliente: '80034567-0', origen: 'Asuncion', destino: 'Pedro Juan Caballero', fecha_salida: '2026-04-02', fecha_llegada: '2026-04-02', km_recorridos: 450, ingreso_total: 7200000, estado: 'completado', created_at: '2026-04-02' },
+  { id: 't6', user_id: 'demo', vehiculo_id: 'v6', cliente: 'Coca-Cola FEMSA', ruc_cliente: '80001234-5', origen: 'Asuncion', destino: 'Ayolas', fecha_salida: '2026-04-05', fecha_llegada: null, km_recorridos: null, ingreso_total: 9500000, estado: 'en_curso', created_at: '2026-04-05' },
+  { id: 't7', user_id: 'demo', vehiculo_id: 'v2', cliente: 'Arca Continental', ruc_cliente: '80056789-1', origen: 'Asuncion', destino: 'Villarrica', fecha_salida: '2026-04-05', fecha_llegada: null, km_recorridos: null, ingreso_total: 4800000, estado: 'pendiente', created_at: '2026-04-05' },
+  { id: 't8', user_id: 'demo', vehiculo_id: 'v5', cliente: 'Distribuidora Parana', ruc_cliente: '80034567-0', origen: 'Asuncion', destino: 'Pilar', fecha_salida: '2026-04-06', fecha_llegada: null, km_recorridos: null, ingreso_total: 5500000, estado: 'pendiente', created_at: '2026-04-06' },
+];
+
 export const getIVAExpirationDate = (ruc: string | undefined | null, month: number, year: number): Date => {
   if (!ruc) return new Date(year, month, 10); // Default day 10 if no RUC
   

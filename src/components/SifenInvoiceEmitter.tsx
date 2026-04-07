@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, X, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { validarFacturaElectronicaPayload } from '../lib/sifen/paraguayCompliance';
 
 interface PropiedadesEmisorSifen {
     onClose: () => void;
@@ -136,6 +137,22 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
     };
 
     const procesarEmision = async () => {
+        const validacionFiscal = validarFacturaElectronicaPayload({
+            receptor_razon_social: cliente.razon_social,
+            receptor_ruc: cliente.ruc,
+            receptor_direccion: cliente.direccion,
+            receptor_email: cliente.email,
+            condicion_operacion: condicionOperacion,
+            items: productos,
+        });
+
+        if (!validacionFiscal.ok) {
+            setPaso('estado');
+            setEstadoEmision('error');
+            setErrorDetalle(validacionFiscal.errors[0]);
+            return;
+        }
+
         setCargando(true);
         setPaso('estado');
         setEstadoEmision('pendiente');
@@ -145,11 +162,18 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error("Usuario no autenticado");
 
-            // 1. Generar Código de Seguridad y Numeración
-            const nroFactura = Math.floor(Math.random() * 1000000); // En producción usar secuencia DB
+            // 1. Generar numeracion secuencial fiscal desde DB
             const establecimiento = configSifen.establecimiento || '001';
             const puntoExpedicion = configSifen.punto_expedicion || '001';
-            const numeroFactura = `${establecimiento}-${puntoExpedicion}-${nroFactura.toString().padStart(7, '0')}`;
+            const { data: numeroFactura, error: errorNumero } = await supabase.rpc('obtener_siguiente_numero_factura', {
+                p_tipo_documento: '1',
+                p_establecimiento: establecimiento,
+                p_punto_expedicion: puntoExpedicion,
+            });
+
+            if (errorNumero || !numeroFactura) {
+                throw errorNumero || new Error('No fue posible obtener numeracion fiscal.');
+            }
 
             // 2. Registrar en Base de Datos Local (Auditoría interna)
             const { data: factura, error: errorFactura } = await supabase
@@ -161,10 +185,10 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                     fecha_emision: new Date().toISOString().split('T')[0],
                     monto_total: calcularTotal(),
                     condicion_operacion: condicionOperacion,
-                    receptor_ruc: cliente.ruc,
-                    receptor_razon_social: cliente.razon_social,
-                    receptor_direccion: cliente.direccion,
-                    receptor_email: cliente.email,
+                    receptor_ruc: cliente.ruc.trim(),
+                    receptor_razon_social: cliente.razon_social.trim(),
+                    receptor_direccion: cliente.direccion.trim(),
+                    receptor_email: cliente.email.trim(),
                     estado_sifen: 'pendiente'
                 })
                 .select()
@@ -179,7 +203,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                     descripcion: p.descripcion,
                     cantidad: p.cantidad,
                     precio_unitario: p.precio_unitario,
-                    iva_tipo: p.iva_tipo.toString(),
+                    iva_tipo: p.iva_tipo,
                     monto_total_item: p.cantidad * p.precio_unitario
                 }))
             );

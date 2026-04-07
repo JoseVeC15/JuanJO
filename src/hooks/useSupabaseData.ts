@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { calculateSuggestedVAT10 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
-import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea, EstadoIngreso, RegistroHora, Propuesta, PropuestaItem, FacturaAutoimpreso } from '../data/sampleData';
+import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea, EstadoIngreso, RegistroHora, Propuesta, PropuestaItem, FacturaAutoimpreso, Vehiculo, RegistroCombustible, RegistroMantenimiento, Viaje } from '../data/sampleData';
 
 export function useSupabaseData() {
   const queryClient = useQueryClient();
@@ -225,6 +225,140 @@ export function useSupabaseData() {
     }
   });
 
+  // ========== FLOTA LOGISTICA ==========
+  const { data: vehiculos = [], isLoading: loadingVehiculos } = useQuery({
+    queryKey: ['vehiculos', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('vehiculos')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data as Vehiculo[];
+    }
+  });
+
+  const { data: registroCombustible = [], isLoading: loadingCombustible } = useQuery({
+    queryKey: ['registro_combustible', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('registro_combustible')
+        .select('*')
+        .order('fecha', { ascending: false });
+      if (error) throw error;
+      return data as RegistroCombustible[];
+    }
+  });
+
+  const { data: registroMantenimiento = [], isLoading: loadingMantenimiento } = useQuery({
+    queryKey: ['registro_mantenimiento', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('registro_mantenimiento')
+        .select('*')
+        .order('fecha', { ascending: false });
+      if (error) throw error;
+      return data as RegistroMantenimiento[];
+    }
+  });
+
+  const { data: viajes = [], isLoading: loadingViajes } = useQuery({
+    queryKey: ['viajes', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('viajes')
+        .select('*')
+        .order('fecha_salida', { ascending: false });
+      if (error) throw error;
+      return data as Viaje[];
+    }
+  });
+
+  // ========== FLOTA DERIVED STATS ==========
+  const flotaIntelligence = useMemo(() => {
+    const vehiculosPropios = vehiculos.filter(v => v.tipo_propiedad === 'propietario');
+    const vehiculosAlquilados = vehiculos.filter(v => v.tipo_propiedad === 'alquilado');
+    const vehiculosMantenimiento = vehiculos.filter(v => v.estado === 'mantenimiento');
+
+    const currentMonth = new Date().toISOString().substring(0, 7);
+
+    const gastoCombustible = registroCombustible
+      .filter(c => c.fecha?.startsWith(currentMonth))
+      .reduce((s, c) => s + Number(c.precio_total || 0), 0);
+
+    const gastoMantenimiento = registroMantenimiento
+      .filter(m => m.fecha?.startsWith(currentMonth))
+      .reduce((s, m) => s + Number(m.costo || 0), 0);
+
+    const gastoAlquilerMes = vehiculosAlquilados.reduce((s, v) => s + (Number(v.costo_alquiler_mensual) || 0), 0);
+
+    // Costo por vehiculo
+    const costoPorVehiculo = vehiculos.map(v => {
+      const combustible = registroCombustible
+        .filter(c => c.vehiculo_id === v.id && c.fecha?.startsWith(currentMonth))
+        .reduce((s, c) => s + Number(c.precio_total || 0), 0);
+
+      const mantenimiento = registroMantenimiento
+        .filter(m => m.vehiculo_id === v.id && m.fecha?.startsWith(currentMonth))
+        .reduce((s, m) => s + Number(m.costo || 0), 0);
+
+      const ingresosViajes = viajes
+        .filter(t => t.vehiculo_id === v.id && t.estado === 'completado')
+        .reduce((s, t) => s + (Number(t.ingreso_total) || 0), 0);
+
+      const kmTotal = viajes
+        .filter(t => t.vehiculo_id === v.id && t.estado === 'completado' && t.km_recorridos)
+        .reduce((s, t) => s + Number(t.km_recorridos || 0), 0);
+
+      const costoTotal = combustible + mantenimiento + (v.tipo_propiedad === 'alquilado' ? (Number(v.costo_alquiler_mensual) || 0) : 0);
+
+      return {
+        vehiculo_id: v.id,
+        patente: v.patente,
+        marca: v.marca_modelo,
+        combustible,
+        mantenimiento,
+        alquiler: v.tipo_propiedad === 'alquilado' ? (Number(v.costo_alquiler_mensual) || 0) : 0,
+        costoTotal,
+        ingresosViajes,
+        rentabilidad: ingresosViajes - costoTotal,
+        kmTotal,
+        costoPorKm: kmTotal > 0 ? costoTotal / kmTotal : 0,
+      };
+    });
+
+    const ingresoTotalViajes = viajes
+      .filter(t => t.estado === 'completado')
+      .reduce((s, t) => s + (Number(t.ingreso_total) || 0), 0);
+
+    const kmGlobales = viajes
+      .filter(t => t.estado === 'completado' && t.km_recorridos)
+      .reduce((s, t) => s + Number(t.km_recorridos || 0), 0);
+
+    const costoGlobal = gastoCombustible + gastoMantenimiento + gastoAlquilerMes;
+
+    return {
+      totalVehiculos: vehiculos.length,
+      propios: vehiculosPropios.length,
+      alquilados: vehiculosAlquilados.length,
+      enMantenimiento: vehiculosMantenimiento.length,
+      gastoCombustible,
+      gastoMantenimiento,
+      gastoAlquilerMes,
+      costoGlobal,
+      ingresoTotalViajes,
+      kmGlobales,
+      costoPorKmGlobal: kmGlobales > 0 ? costoGlobal / kmGlobales : 0,
+      rentabilidadOperativa: ingresoTotalViajes - costoGlobal,
+      costoPorVehiculo,
+      vehiculosAlquiladosFin: vehiculosAlquilados.filter(v => v.fecha_fin_alquiler && v.fecha_fin_alquiler < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]),
+    };
+  }, [vehiculos, registroCombustible, registroMantenimiento, viajes]);
+
   // ========== MOTOR DE RENTABILIDAD ==========
   const proyectosConRentabilidad = useMemo(() => {
     return proyectos.map(p => {
@@ -352,7 +486,11 @@ export function useSupabaseData() {
       { nombre: 'public:propuestas', clave: 'propuestas', tabla: 'propuestas' },
       { nombre: 'public:calendario_bloqueos', clave: 'calendario_bloqueos', tabla: 'calendario_bloqueos' },
       { nombre: 'public:cierres_periodos', clave: 'cierres_periodos', tabla: 'cierres_periodos' },
-      { nombre: 'public:facturas_autoimpreso', clave: 'facturas_autoimpreso', tabla: 'facturas_autoimpreso' }
+      { nombre: 'public:facturas_autoimpreso', clave: 'facturas_autoimpreso', tabla: 'facturas_autoimpreso' },
+      { nombre: 'public:vehiculos', clave: 'vehiculos', tabla: 'vehiculos' },
+      { nombre: 'public:registro_combustible', clave: 'registro_combustible', tabla: 'registro_combustible' },
+      { nombre: 'public:registro_mantenimiento', clave: 'registro_mantenimiento', tabla: 'registro_mantenimiento' },
+      { nombre: 'public:viajes', clave: 'viajes', tabla: 'viajes' }
     ].map(({ nombre, clave, tabla }) => 
       supabase.channel(nombre)
         .on('postgres_changes', { 
@@ -406,6 +544,11 @@ export function useSupabaseData() {
     documentosElectronicos,
     agendaTareas,
     cierresPeriodos,
+    vehiculos,
+    registroCombustible,
+    registroMantenimiento,
+    viajes,
+    flotaIntelligence,
     loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen || loadingAgenda || loadingPropuestasQuery || loadingHoras || loadingClientes || loadingCierres, 
     loadingProfile,
     loadingProyectos,
@@ -415,6 +558,10 @@ export function useSupabaseData() {
     loadingHoras,
     loadingClientes,
     loadingSifen: cargandoSifen || cargandoDocsSifen,
+    loadingVehiculos,
+    loadingCombustible,
+    loadingMantenimiento,
+    loadingViajes,
     loadingPropuestas: loadingPropuestasQuery,
     error: errorProyectos || errorFacturas || errorEquipo || errorIngresos ? 'Error al obtener datos' : null,
     async toggleTarea(id: string, completada: boolean) {
@@ -519,12 +666,12 @@ export function useSupabaseData() {
     },
     async reabrirPeriodo(cierreId: string, motivo: string) {
       if (profile?.nivel_acceso !== 1) throw new Error("Acción permitida solo para Superadmin");
-      
+
       const { error: updateError } = await supabase
         .from('cierres_periodos')
         .update({ bloqueado: false })
         .eq('id', cierreId);
-      
+
       if (updateError) throw updateError;
 
       const { error: logError } = await supabase
@@ -535,10 +682,67 @@ export function useSupabaseData() {
           motivo,
           realizado_by: sessionUser?.id
         });
-      
+
       if (logError) throw logError;
 
       queryClient.invalidateQueries({ queryKey: ['cierres_periodos', sessionUser?.id] });
+    },
+    // ========== FLOTA CRUD ==========
+    async addVehiculo(data: Partial<Vehiculo>) {
+      const { error } = await supabase.from('vehiculos').insert({ ...data, user_id: sessionUser?.id });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['vehiculos', sessionUser?.id] });
+    },
+    async updateVehiculo(id: string, data: Partial<Vehiculo>) {
+      const { error } = await supabase.from('vehiculos').update(data).eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['vehiculos', sessionUser?.id] });
+    },
+    async deleteVehiculo(id: string) {
+      const { error } = await supabase.from('vehiculos').delete().eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['vehiculos', sessionUser?.id] });
+    },
+    async addCombustible(data: Partial<RegistroCombustible>) {
+      const { error } = await supabase.from('registro_combustible').insert({ ...data, user_id: sessionUser?.id });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['registro_combustible', sessionUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['vehiculos', sessionUser?.id] });
+    },
+    async deleteCombustible(id: string) {
+      const { error } = await supabase.from('registro_combustible').delete().eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['registro_combustible', sessionUser?.id] });
+    },
+    async addMantenimiento(data: Partial<RegistroMantenimiento>) {
+      const { error } = await supabase.from('registro_mantenimiento').insert({ ...data, user_id: sessionUser?.id });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['registro_mantenimiento', sessionUser?.id] });
+      // If entering maintenance, update vehicle status
+      if (data.vehiculo_id && data.tipo) {
+        await supabase.from('vehiculos').update({ estado: 'mantenimiento' }).eq('id', data.vehiculo_id);
+        queryClient.invalidateQueries({ queryKey: ['vehiculos', sessionUser?.id] });
+      }
+    },
+    async deleteMantenimiento(id: string) {
+      const { error } = await supabase.from('registro_mantenimiento').delete().eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['registro_mantenimiento', sessionUser?.id] });
+    },
+    async addViaje(data: Partial<Viaje>) {
+      const { error } = await supabase.from('viajes').insert({ ...data, user_id: sessionUser?.id });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['viajes', sessionUser?.id] });
+    },
+    async updateViaje(id: string, data: Partial<Viaje>) {
+      const { error } = await supabase.from('viajes').update(data).eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['viajes', sessionUser?.id] });
+    },
+    async deleteViaje(id: string) {
+      const { error } = await supabase.from('viajes').delete().eq('id', id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['viajes', sessionUser?.id] });
     },
     suggestCategory
   };

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   TrendingUp, Wallet,
-  ArrowUpRight, Loader2,
+  ArrowUpRight, ArrowDownLeft, Loader2,
   Activity,
   ShieldCheck, AlertTriangle, Shield, Calendar, Clock
 } from 'lucide-react';
@@ -14,7 +14,7 @@ import { useSupabaseData } from '../hooks/useSupabaseData';
 import SifenInvoiceEmitter from './SifenInvoiceEmitter';
 import SafeToSpendCard from './SafeToSpendCard';
 import {
-  formatGs, formatGsShort,
+  formatGs,
   getGastoLabel, getGastoColor
 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,7 +23,7 @@ import SmartSuggestions from './SmartSuggestions';
 export default function Dashboard() {
   const { 
     proyectos, facturasGastos, ingresos, configSifen, 
-    rentabilidadHoraria, financialIntelligence,
+    financialIntelligence,
     loadingProfile, loadingFacturas, loadingIngresos, loadingSifen,
     profile 
   } = useSupabaseData();
@@ -181,12 +181,11 @@ export default function Dashboard() {
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <StatCard index={0} title="Efectivo en Caja" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Saldo real disponible" icon={<Wallet size={20} />} color="emerald" tooltip="Dinero real disponible tras restar todos los gastos de tus ingresos cobrados." loading={loadingIngresos || loadingFacturas} />
-        <StatCard index={1} title="Cobros Pendientes" value={formatGs(stats.ingresosPendientes)} desc="Facturas por cobrar" icon={<Clock size={20} />} color="indigo" tooltip="Suma de todas las facturas emitidas, enviadas o vencidas que aún no han sido cobradas." loading={loadingIngresos} />
-        <StatCard index={2} title="Caja Proyectada (30d)" value={formatGs(stats.cajaProyectada)} desc="Estimado con cobros" icon={<TrendingUp size={20} />} color="emerald" tooltip="Saldo actual + Cobros pendientes. Refleja tu liquidez potencial al cierre del ciclo." loading={loadingIngresos || loadingFacturas} />
-        <StatCard index={3} title="Rentabilidad Horaria" value={formatGsShort(rentabilidadHoraria)} desc="Ingreso real / hora" icon={<Activity size={20} />} color="indigo" tooltip="Promedio de ganancia por hora trabajada en proyectos cerrados." loading={loadingIngresos || loadingFacturas} />
-        <StatCard index={4} title="Salud Fiscal (SET)" value={formatGs(stats.ivaAPagar)} desc="IVA Neto Estimado" icon={<ShieldCheck size={20} />} color="amber" tooltip="Proyección de IVA a pagar (Débito - Crédito). Es tu obligación fiscal estimada." loading={loadingIngresos || loadingFacturas} />
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <StatCard index={0} title="Ingresos Cobrados" value={formatGs(stats.totalIngresos)} desc="Total efectivamente cobrado" icon={<ArrowUpRight size={20} />} color="emerald" tooltip="Suma de ingresos con estado cobrada. Mide el dinero que ya ingresó a caja." loading={loadingIngresos} />
+        <StatCard index={1} title="Egresos Registrados" value={formatGs(stats.totalGastos)} desc="Total de gastos cargados" icon={<ArrowDownLeft size={20} />} color="amber" tooltip="Suma de egresos documentados en compras y gastos operativos." loading={loadingFacturas} />
+        <StatCard index={2} title="Balance Neto" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Ingresos menos egresos" icon={<Wallet size={20} />} color="indigo" tooltip="Resultado neto actual del negocio. Se calcula como ingresos cobrados menos egresos registrados." loading={loadingIngresos || loadingFacturas} />
+        <StatCard index={3} title="Cuentas por Cobrar" value={formatGs(stats.ingresosPendientes)} desc="Facturas aún no cobradas" icon={<Clock size={20} />} color="emerald" tooltip="Monto pendiente de cobro para convertir ventas emitidas en flujo real de caja." loading={loadingIngresos} />
       </div>
 
       <SmartSuggestions />
@@ -194,6 +193,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-3xl lg:rounded-[2.5rem] border border-gray-100 p-6 lg:p-10 shadow-sm relative overflow-hidden min-w-0">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/50 rounded-bl-full -z-10" />
+          <div className="mb-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Flujo Financiero</p>
+            <h3 className="text-lg font-black text-slate-900">Ingresos vs Egresos</h3>
+          </div>
           <div className="h-[300px] w-full">
             {(loadingIngresos || loadingFacturas) ? (
               <div className="w-full h-full flex items-center justify-center bg-slate-50 rounded-2xl animate-pulse">
