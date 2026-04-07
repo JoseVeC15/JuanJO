@@ -2,7 +2,7 @@ import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar, ArrowRightLeft, CheckCircle2, Package, ClipboardList, Sparkles } from 'lucide-react';
+import { Layout, LogOut, Loader2, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, ClipboardList, Sparkles } from 'lucide-react';
 import { useSupabaseData } from './hooks/useSupabaseData';
 import { resolveServiceProfile } from './config/serviceProfiles';
 import SuspensionGuard from './components/SuspensionGuard';
@@ -17,12 +17,6 @@ const Reportes = lazy(() => import('./components/reportes'));
 const Settings = lazy(() => import('./components/Settings'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const ManualsScreen = lazy(() => import('./screens/ManualsScreen'));
-const CentroCobros = lazy(() => import('./components/CentroCobros'));
-const AgendaFreelancer = lazy(() => import('./components/AgendaFreelancer'));
-const AsistenteSET = lazy(() => import('./components/AsistenteSET'));
-const Disponibilidad = lazy(() => import('./components/Disponibilidad'));
-const ConciliacionBancaria = lazy(() => import('./components/ConciliacionBancaria'));
-const CierreMensualWizard = lazy(() => import('./components/CierreMensualWizard'));
 const Servicios = lazy(() => import('./components/Servicios'));
 
 // Componente para sub-menú en móvil
@@ -210,7 +204,6 @@ function RouterWrapper() {
 
 
   const serviceProfile = resolveServiceProfile(profile);
-  const serviceModules = new Set(serviceProfile.modules);
   const multiempresaLabel = entityScope.isMultiempresa
     ? (entityScope.activeEmpresa && entityScope.activeEmpresa !== 'all' ? entityScope.activeEmpresa : 'Consolidado general')
     : null;
@@ -226,28 +219,6 @@ function RouterWrapper() {
         { key: 'ingresos', path: '/analizador-ia/ingresos', label: 'INGRESOS IA', icon: <ArrowUpRight size={20} /> },
       ]
     },
-    {
-      key: 'gestion-freelancer',
-      label: serviceProfile.labels?.gestion || 'AUTOFACTURA GUIADA',
-      icon: <Briefcase size={20} className="text-blue-400" />,
-      children: [
-        { key: 'catalog', path: '/catalog', label: 'CATÁLOGO', icon: <Package size={20} /> },
-        { key: 'cobros', path: '/centro-cobros', label: 'COBROS', icon: <Wallet size={20} /> },
-        { key: 'agenda', path: '/agenda', label: 'AGENDA', icon: <Calendar size={20} /> },
-        { key: 'planificacion', path: '/planificacion', label: 'DISPONIBILIDAD', icon: <Calendar size={20} /> },
-      ]
-    },
-    {
-      key: 'fiscal-auditoria',
-      label: 'SIFEN & SET',
-      icon: <ShieldCheck size={20} className="text-amber-400" />,
-      children: [
-        { key: 'set', path: '/asistente-set', label: 'ASISTENTE SET', icon: <ShieldCheck size={18} /> },
-        { key: 'conciliacion', path: '/fiscal/conciliacion', label: 'CONCILIACIÓN', icon: <ArrowRightLeft size={18} /> },
-        { key: 'cierre', path: '/fiscal/cierre', label: 'CIERRE MENSUAL', icon: <CheckCircle2 size={18} /> },
-      ]
-    },
-    { key: 'sifen', path: '/sifen', label: 'PERFIL SIFEN', icon: <ShieldCheck size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
     { key: 'servicios', path: '/servicios', label: 'SERVICIOS', icon: <ClipboardList size={20} className="text-teal-400" /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
@@ -262,26 +233,22 @@ function RouterWrapper() {
   const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
 
   const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'servicios', 'inventario', 'catalog', 'reportes', 'settings']
-    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'gestion-freelancer', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'servicios', 'inventario', 'catalog', 'reportes', 'settings'];
+    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'proyectos', 'servicios', 'inventario', 'reportes', 'settings']
+    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'proyectos', 'servicios', 'inventario', 'reportes', 'settings'];
 
   const enabledModules = (() => {
     const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
       ? profile.modulos_habilitados
-      : fallbackModules;
+      : (serviceProfile.modules.length > 0 ? serviceProfile.modules : fallbackModules);
 
-    if (!hasBillingAccess) {
-      return baseModules;
-    }
-
-    return Array.from(new Set([...baseModules, 'sifen', 'clientes']));
+    return baseModules;
   })();
+
+  const allowedModules = new Set(enabledModules);
 
   const canAccess = (moduleKey: string) => {
     if (profile?.nivel_acceso === 1) return true;
-    if (!serviceModules.has(moduleKey as any)) return false;
-    if (!enabledModules.includes(moduleKey)) return false;
-    if (['sifen', 'clientes'].includes(moduleKey) && !hasBillingAccess) return false;
+    if (!allowedModules.has(moduleKey)) return false;
     return true;
   };
 
@@ -298,16 +265,17 @@ function RouterWrapper() {
      return item;
   });
 
-  const defaultRoute = canAccess('sifen')
-    ? '/sifen'
-    : canAccess('gastos')
-      ? '/analizador-ia/gastos'
-      : '/dashboard';
+  const defaultRoute = canAccess('gastos')
+    ? '/analizador-ia/gastos'
+    : '/dashboard';
 
-  const experienceCards = serviceProfile.onboarding.map((card) => ({
-    ...card,
-    enabled: canAccess(card.moduleKey),
-  }));
+  const hiddenModuleKeys = new Set(['catalog', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes']);
+  const experienceCards = serviceProfile.onboarding
+    .filter((card) => !hiddenModuleKeys.has(card.moduleKey))
+    .map((card) => ({
+      ...card,
+      enabled: canAccess(card.moduleKey),
+    }));
 
   return (
       <SuspensionGuard>
@@ -443,13 +411,6 @@ function RouterWrapper() {
                   <Routes location={location} key={location.pathname}>
                   <Route path="/" element={<Navigate to={defaultRoute} replace />} />
                   
-                  {/* Rutas Protegidas de Facturación */}
-                  {!(hasBillingAccess) && (
-                    <>
-                      <Route path="/sifen" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
-                      <Route path="/sifen/clientes" element={<Navigate to={canAccess('dashboard') ? '/dashboard' : '/config'} replace />} />
-                    </>
-                  )}
                   <Route path="/dashboard" element={
                     canAccess('dashboard') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
@@ -470,48 +431,12 @@ function RouterWrapper() {
                       </motion.div>
                     ) : <Navigate to="/config" replace />
                   } />
-                  <Route path="/centro-cobros" element={
-                    canAccess('cobros') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <CentroCobros />
-                      </motion.div>
-                    ) : <Navigate to="/dashboard" replace />
-                  } />
-                  <Route path="/agenda" element={
-                    canAccess('agenda') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <AgendaFreelancer />
-                      </motion.div>
-                    ) : <Navigate to="/dashboard" replace />
-                  } />
-                  <Route path="/planificacion" element={
-                    canAccess('planificacion') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <Disponibilidad />
-                      </motion.div>
-                    ) : <Navigate to="/dashboard" replace />
-                  } />
-                  <Route path="/asistente-set" element={
-                    canAccess('set') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <AsistenteSET />
-                      </motion.div>
-                    ) : <Navigate to="/dashboard" replace />
-                  } />
-                  <Route path="/fiscal/conciliacion" element={
-                    canAccess('conciliacion') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <ConciliacionBancaria />
-                      </motion.div>
-                    ) : <Navigate to="/dashboard" replace />
-                  } />
-                  <Route path="/fiscal/cierre" element={
-                    canAccess('cierre') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <CierreMensualWizard />
-                      </motion.div>
-                    ) : <Navigate to="/dashboard" replace />
-                  } />
+                  <Route path="/centro-cobros" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/agenda" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/planificacion" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/asistente-set" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/fiscal/conciliacion" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/fiscal/cierre" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/analizador-ia/ingresos" element={
                     canAccess('ingresos') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
@@ -519,20 +444,8 @@ function RouterWrapper() {
                       </motion.div>
                     ) : <Navigate to="/config" replace />
                   } />
-                  <Route path="/sifen" element={
-                    canAccess('sifen') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <Facturas initialTab="sifen" />
-                      </motion.div>
-                    ) : <Navigate to="/config" replace />
-                  } />
-                  <Route path="/sifen/clientes" element={
-                    canAccess('clientes') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <Facturas initialTab="clientes" />
-                      </motion.div>
-                    ) : <Navigate to="/config" replace />
-                  } />
+                  <Route path="/sifen" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/sifen/clientes" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/proyectos" element={
                     canAccess('proyectos') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
@@ -554,13 +467,7 @@ function RouterWrapper() {
                       </motion.div>
                     ) : <Navigate to="/config" replace />
                   } />
-                  <Route path="/catalog" element={
-                    canAccess('catalog') ? (
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <Settings initialTab="catalog" />
-                      </motion.div>
-                    ) : <Navigate to="/dashboard" replace />
-                  } />
+                  <Route path="/catalog" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/analisis" element={
                     canAccess('reportes') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
