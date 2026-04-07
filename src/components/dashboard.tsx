@@ -14,7 +14,7 @@ import { useSupabaseData } from '../hooks/useSupabaseData';
 import SifenInvoiceEmitter from './SifenInvoiceEmitter';
 import SafeToSpendCard from './SafeToSpendCard';
 import {
-  formatGs,
+  formatGs, formatGsShort,
   getGastoLabel, getGastoColor
 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
