@@ -6,7 +6,7 @@
 // Cada perfil hereda el núcleo y solo configura sus diferencias.
 //
 // DB: al agregar un ServiceType nuevo, actualizar también:
-//   supabase/migrations/20260407_add_service_type_profiles.sql
+//   supabase/migrations/202604070002_add_service_type_profiles.sql
 //   → constraint profiles_service_type_check
 // ============================================================
 

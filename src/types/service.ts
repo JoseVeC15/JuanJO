@@ -7,7 +7,7 @@
 
 /** Tipos de perfil de servicio (UI + columna profiles.service_type en DB).
  *  Al agregar nuevos valores aquí también actualizar la constraint CHECK
- *  en supabase/migrations/20260407_add_service_type_profiles.sql
+ *  en supabase/migrations/202604070002_add_service_type_profiles.sql
  */
 export type ServiceType =
   | 'audiovisual'
