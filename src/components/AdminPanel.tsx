@@ -33,11 +33,14 @@ const MODULE_OPTIONS = [
 const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
 
 async function invokeEdgeWithAuth(functionName: string, body: any) {
+  // Fuerza sincronización de sesión actual antes de invocar Edge Functions.
+  await supabase.auth.getUser();
   let { data: sessionData } = await supabase.auth.getSession();
   let accessToken = sessionData.session?.access_token;
 
   if (!accessToken) {
     const refresh = await supabase.auth.refreshSession();
+    if (refresh.error) throw refresh.error;
     accessToken = refresh.data.session?.access_token;
   }
 
@@ -45,24 +48,22 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
     throw new Error('Tu sesión expiró. Vuelve a iniciar sesión para ejecutar acciones administrativas.');
   }
 
-  const execute = async (token: string) => {
-    return supabase.functions.invoke(functionName, {
-      body,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+  const execute = async () => {
+    // No enviar headers manuales: el SDK adjunta Authorization + apikey
+    // usando la sesión persistida. Sobrescribir headers puede romper JWT.
+    return supabase.functions.invoke(functionName, { body });
   };
 
-  let response = await execute(accessToken);
+  let response = await execute();
 
   if (response.error && /invalid jwt|jwt/i.test(response.error.message || '')) {
     const refresh = await supabase.auth.refreshSession();
+    if (refresh.error) throw refresh.error;
     const freshToken = refresh.data.session?.access_token;
     if (!freshToken) {
       throw new Error('No se pudo refrescar tu sesión. Cierra sesión e inicia de nuevo.');
     }
-    response = await execute(freshToken);
+    response = await execute();
   }
 
   return response;
