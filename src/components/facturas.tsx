@@ -53,6 +53,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen' | 'clientes' | 'autoimpreso'>(initialTab);
+  const [sifenScreen, setSifenScreen] = useState<'bandeja' | 'emision' | 'config'>('bandeja');
   const [isEmitterOpen, setIsEmitterOpen] = useState(false);
   const [openClientModal, setOpenClientModal] = useState(false);
 
@@ -72,6 +73,10 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'sifen') setSifenScreen('bandeja');
+  }, [activeTab]);
 
   // Polling agresivo post-subida IA
   useEffect(() => {
@@ -219,6 +224,30 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     const iva5 = filteredData.reduce((s, f) => s + Number(f.iva_5 || 0), 0);
     return { total, iva10, iva5 };
   }, [filteredData]);
+
+  const sifenEstadoConfig: Record<string, { label: string; color: string; stage: string }> = {
+    pendiente: { label: 'Pendiente', color: 'bg-amber-50 text-amber-600', stage: 'listo_para_emitir' },
+    aprobado: { label: 'Aprobado', color: 'bg-emerald-50 text-emerald-600', stage: 'confirmado_local' },
+    rechazado: { label: 'Rechazado', color: 'bg-rose-50 text-rose-600', stage: 'error_validacion' },
+    anulado: { label: 'Anulado', color: 'bg-slate-100 text-slate-600', stage: 'anulado' },
+  };
+
+  const filteredSifenDocs = useMemo(() => {
+    return (documentosElectronicos || [])
+      .filter((doc: any) => filterEstado === 'todos' || doc.estado_sifen === filterEstado)
+      .filter((doc: any) => {
+        const text = `${doc.numero_factura || ''} ${doc.cdc || ''} ${doc.receptor_razon_social || ''} ${doc.receptor_ruc || ''}`.toLowerCase();
+        return text.includes(search.toLowerCase());
+      });
+  }, [documentosElectronicos, filterEstado, search]);
+
+  const sifenStats = useMemo(() => {
+    const total = filteredSifenDocs.reduce((s: number, d: any) => s + Number(d.monto_total || 0), 0);
+    const aprobados = filteredSifenDocs.filter((d: any) => d.estado_sifen === 'aprobado').length;
+    const pendientes = filteredSifenDocs.filter((d: any) => d.estado_sifen === 'pendiente').length;
+    const rechazados = filteredSifenDocs.filter((d: any) => d.estado_sifen === 'rechazado').length;
+    return { total, aprobados, pendientes, rechazados };
+  }, [filteredSifenDocs]);
 
   // Función para convertir PDF a Imagen (Primera página)
   // Esto es necesario porque el flujo de n8n con OpenAI Vision solo acepta imágenes
@@ -394,9 +423,15 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             {activeTab === 'gastos' ? 'Gestión de Compras' :
               activeTab === 'ingresos' ? 'Facturación Emitida' :
               activeTab === 'clientes' ? 'Directorio de Clientes' :
-                'Documentos Electrónicos SIFEN'}
+              activeTab === 'sifen' && sifenScreen === 'emision' ? 'Emisión SIFEN (Guiada)' :
+              activeTab === 'sifen' && sifenScreen === 'config' ? 'Configuración Fiscal SIFEN' :
+                'Bandeja SIFEN'}
           </h1>
-          <p className="text-gray-500 font-medium italic">Control avanzado de documentos con respaldo IA.</p>
+          <p className="text-gray-500 font-medium italic">
+            {activeTab === 'sifen'
+              ? 'Estructura base SIFEN: bandeja, emision y configuracion fiscal.'
+              : 'Control avanzado de documentos con respaldo IA.'}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {(activeTab === 'sifen' || activeTab === 'clientes' || activeTab === 'autoimpreso') && (
@@ -426,13 +461,13 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             <Download size={18} /> SET XLSX
           </button>
 
-          {activeTab === 'sifen' && perfilFiscal && configSifen && (
+          {activeTab === 'sifen' && sifenScreen === 'bandeja' && perfilFiscal && configSifen && (
             <button
-              onClick={() => setIsEmitterOpen(true)}
+              onClick={() => setSifenScreen('emision')}
               className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30 shadow-indigo-500/10"
             >
               <Sparkles size={18} className="text-indigo-400" />
-              Emitir F. Electrónica
+              Ir a Emisión Guiada
             </button>
           )}
 
@@ -465,7 +500,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
         </div>
       </div>
 
-      {activeTab !== 'clientes' && (
+      {activeTab !== 'clientes' && activeTab !== 'sifen' && (
         <>
           {/* Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -519,13 +554,96 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
         </>
       )}
 
+      {activeTab === 'sifen' && (
+        <>
+          <div className="bg-white rounded-[2rem] border border-gray-100 p-4 shadow-sm flex flex-wrap gap-3">
+            {[
+              { key: 'bandeja', label: 'Bandeja SIFEN' },
+              { key: 'emision', label: 'Emisión Guiada' },
+              { key: 'config', label: 'Config Fiscal' },
+            ].map((s: any) => (
+              <button
+                key={s.key}
+                onClick={() => setSifenScreen(s.key)}
+                className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sifenScreen === s.key ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-500'}`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          {sifenScreen === 'bandeja' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              <SummaryCard label="Documentos" value={String(filteredSifenDocs.length)} desc="Total en bandeja" color="bg-slate-50 text-slate-700 border-slate-100" />
+              <SummaryCard label="Aprobados" value={String(sifenStats.aprobados)} desc="Estado tributario" color="bg-emerald-50 text-emerald-700 border-emerald-100" />
+              <SummaryCard label="Pendientes" value={String(sifenStats.pendientes)} desc="Listo para emitir" color="bg-amber-50 text-amber-700 border-amber-100" />
+              <SummaryCard label="Monto Total" value={formatGs(sifenStats.total)} desc="Base acumulada" color="bg-indigo-50 text-indigo-700 border-indigo-100" />
+            </div>
+          )}
+
+          {sifenScreen === 'emision' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-3">
+                  <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em]">Emisión Estructurada</p>
+                  <h3 className="text-2xl font-black text-slate-900">Flujo de Emisión SIFEN</h3>
+                  <p className="text-sm text-slate-500">1) Receptor, 2) Ítems, 3) Validación fiscal, 4) Registro y estado de emisión.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <p className="text-[10px] font-black uppercase text-slate-500">Campos Receptor</p>
+                      <p className="text-xs font-bold text-slate-700 mt-1">RUC, Razón social, Dirección, Email, Condición</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                      <p className="text-[10px] font-black uppercase text-slate-500">Campos Documento</p>
+                      <p className="text-xs font-bold text-slate-700 mt-1">Tipo doc, Número, Fecha, Ítems, IVA 10/5/0, Monto</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5 flex flex-col justify-between">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Acción</p>
+                    <p className="text-sm font-bold text-indigo-900 mt-2">Usa el emisor actual sin cambiar lógica base.</p>
+                  </div>
+                  <button
+                    onClick={() => setIsEmitterOpen(true)}
+                    className="mt-4 bg-slate-900 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                  >
+                    Abrir Emisor SIFEN
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {sifenScreen === 'config' && (
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-3">Checklist Fiscal</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <DetailBox label="RUC Emisor" value={perfilFiscal?.ruc || 'No configurado'} />
+                <DetailBox label="Razón Social" value={perfilFiscal?.razon_social || 'No configurado'} />
+                <DetailBox label="Ambiente" value={(perfilFiscal?.ambiente || 'test').toUpperCase()} />
+                <DetailBox label="Timbrado" value={configSifen?.timbrado || 'No configurado'} />
+                <DetailBox label="Establecimiento" value={configSifen?.establecimiento || '001'} />
+                <DetailBox label="Punto Expedición" value={configSifen?.punto_expedicion || '001'} />
+              </div>
+              <button
+                onClick={() => navigate('/config')}
+                className="mt-6 bg-slate-900 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest"
+              >
+                Ir a Configuración
+              </button>
+            </motion.div>
+          )}
+        </>
+      )}
+
       {/* Filters & Actions */}
       <div className="bg-white rounded-[2rem] border border-gray-100 p-5 shadow-sm flex flex-col md:flex-row gap-5">
         <div className="relative flex-1 group">
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors" size={20} />
           <input
             type="text"
-            placeholder={activeTab === 'gastos' ? "Proveedor, N° factura, RUC..." : "Cliente, N° factura, RUC..."}
+            placeholder={activeTab === 'gastos' ? "Proveedor, N° factura, RUC..." : activeTab === 'sifen' ? "Factura, CDC, receptor, RUC..." : "Cliente, N° factura, RUC..."}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-14 pr-6 py-4 bg-gray-50 rounded-[1.25rem] border-none focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none font-bold text-gray-800 placeholder:text-gray-300 shadow-inner"
@@ -538,7 +656,14 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             className="pl-5 pr-12 py-4 bg-gray-50 border-none rounded-[1.25rem] focus:ring-2 focus:ring-emerald-500/20 font-black text-[10px] uppercase tracking-widest text-gray-600 outline-none appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236B7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem_1.25rem] bg-[right_1rem_center] bg-no-repeat shadow-inner min-w-[180px]"
           >
             <option value="todos">Todos los Estados</option>
-            {activeTab === 'gastos' ? (
+            {activeTab === 'sifen' ? (
+              <>
+                <option value="pendiente">Pendiente</option>
+                <option value="aprobado">Aprobado</option>
+                <option value="rechazado">Rechazado</option>
+                <option value="anulado">Anulado</option>
+              </>
+            ) : activeTab === 'gastos' ? (
               <>
                 <option value="pendiente_clasificar">Pendientes</option>
                 <option value="registrada">Registradas</option>
@@ -574,9 +699,9 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {documentosElectronicos.length === 0 ? (
+                {filteredSifenDocs.length === 0 ? (
                   <tr><td colSpan={6} className="p-20 text-center text-gray-400 font-medium italic">No hay facturas electrónicas emitidas aún.</td></tr>
-                ) : documentosElectronicos.map((doc: any) => (
+                ) : filteredSifenDocs.map((doc: any) => (
                   <tr key={doc.id} className="hover:bg-slate-50 transition-all cursor-default">
                     <td className="p-6 text-xs font-bold text-gray-600">{new Date(doc.created_at).toLocaleDateString()}</td>
                     <td className="p-6">
@@ -589,9 +714,10 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                     </td>
                     <td className="p-6 text-sm font-black text-gray-900 text-right">{formatGs(doc.monto_total)}</td>
                     <td className="p-6 text-center">
-                      <span className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest ${doc.estado_sifen === 'aprobado' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                        {doc.estado_sifen}
+                      <span className={`text-[9px] px-3 py-1 rounded-full font-black uppercase tracking-widest ${sifenEstadoConfig[doc.estado_sifen]?.color || 'bg-slate-100 text-slate-500'}`}>
+                        {sifenEstadoConfig[doc.estado_sifen]?.label || doc.estado_sifen}
                       </span>
+                      <p className="text-[9px] text-slate-400 font-black mt-1 uppercase">{sifenEstadoConfig[doc.estado_sifen]?.stage || 'en_cola'}</p>
                     </td>
                     <td className="p-6 text-center">
                       <button
@@ -607,7 +733,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                             cdc: doc.cdc,
                             razonSocialReceptor: doc.receptor_razon_social,
                             rucReceptor: doc.receptor_ruc,
-                            productos: doc.electronic_document_items.map((i: any) => ({
+                            productos: (doc.documentos_items || []).map((i: any) => ({
                               descripcion: i.descripcion,
                               cantidad: i.cantidad,
                               precioUnitario: i.precio_unitario,
@@ -834,7 +960,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
             onSuccess={() => {
               setIsEmitterOpen(false);
               queryClient.invalidateQueries({ queryKey: ['ingresos'] });
-              queryClient.invalidateQueries({ queryKey: ['electronic_documents'] });
+              queryClient.invalidateQueries({ queryKey: ['documentos_electronicos'] });
             }}
           />
         )}

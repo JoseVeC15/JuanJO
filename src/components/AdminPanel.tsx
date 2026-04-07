@@ -7,6 +7,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { Profile } from '../data/sampleData';
+import { SERVICE_CATALOG, SELECTABLE_SERVICE_TYPES } from '../config/serviceCatalog';
+import type { ServiceType } from '../types/service';
 
 const MODULE_OPTIONS = [
   { key: 'dashboard', label: 'Dashboard' },
@@ -70,14 +72,23 @@ export default function AdminPanel() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    nombre_completo: ''
+    nombre_completo: '',
+    service_type: 'freelancer' as ServiceType,
+    empresas_permitidas: '',
   });
 
   const [editData, setEditData] = useState<{ id: string, name: string } | null>(null);
   const [resetData, setResetData] = useState<{ id: string, email: string, newPass?: string } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [suspendData, setSuspendData] = useState<{ id: string, name: string, currentState: 'activo' | 'suspendido' } | null>(null);
-  const [moduleData, setModuleData] = useState<{ id: string; name: string; modules: string[] } | null>(null);
+  const [moduleData, setModuleData] = useState<{
+    id: string;
+    name: string;
+    modules: string[];
+    serviceType: ServiceType;
+    empresasPermitidas: string[];
+    empresaActiva: string;
+  } | null>(null);
 
   const { data: allProfiles = [], isLoading } = useQuery({
     queryKey: ['admin_all_profiles'],
@@ -117,7 +128,16 @@ export default function AdminPanel() {
 
     try {
       const { error } = await supabase.functions.invoke('create-client-user', {
-        body: formData
+        body: {
+          ...formData,
+          empresas_permitidas: formData.empresas_permitidas
+            .split(',')
+            .map((item) => item.trim())
+            .filter(Boolean),
+          empresa_activa: formData.service_type === 'multiempresa'
+            ? (formData.empresas_permitidas.split(',').map((item) => item.trim()).filter(Boolean)[0] || null)
+            : null,
+        }
       });
 
       if (error) {
@@ -136,7 +156,7 @@ export default function AdminPanel() {
       }
 
       setStatus({ type: 'success', msg: '¡Cliente registrado con éxito!' });
-      setFormData({ email: '', password: '', nombre_completo: '' });
+      setFormData({ email: '', password: '', nombre_completo: '', service_type: 'freelancer', empresas_permitidas: '' });
       queryClient.invalidateQueries({ queryKey: ['admin_all_profiles'] });
       setTimeout(() => setShowCreateModal(false), 2000);
     } catch (err: any) {
@@ -247,6 +267,7 @@ export default function AdminPanel() {
             <thead>
               <tr className="bg-gray-50/50 text-gray-400 text-[10px] uppercase font-bold tracking-widest">
                 <th className="px-6 py-4">Usuario</th>
+                <th className="px-6 py-4">Perfil</th>
                 <th className="px-6 py-4">Estado</th>
                 <th className="px-6 py-4">Nivel</th>
                 <th className="px-6 py-4">Fecha Registro</th>
@@ -256,7 +277,7 @@ export default function AdminPanel() {
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center">
+                  <td colSpan={6} className="px-6 py-12 text-center">
                     <Loader2 size={32} className="animate-spin text-indigo-500 mx-auto" />
                   </td>
                 </tr>
@@ -271,6 +292,16 @@ export default function AdminPanel() {
                         <p className="font-bold text-gray-900">{p.nombre_completo}</p>
                         <p className="text-xs text-gray-400">{p.email || 'Sin email registrado'}</p>
                       </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-bold text-gray-900">{SERVICE_CATALOG[(p.service_type || 'freelancer') as ServiceType]?.nombre || p.service_type || 'Freelancer'}</p>
+                      <p className="text-xs text-gray-400">
+                        {p.service_type === 'multiempresa'
+                          ? `${p.empresas_permitidas?.length || 0} entidades`
+                          : 'Perfil operativo'}
+                      </p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -319,6 +350,9 @@ export default function AdminPanel() {
                             id: p.id,
                             name: p.nombre_completo,
                             modules: (p.modulos_habilitados && p.modulos_habilitados.length > 0) ? p.modulos_habilitados : fallback,
+                            serviceType: (p.service_type || 'freelancer') as ServiceType,
+                            empresasPermitidas: p.empresas_permitidas || [],
+                            empresaActiva: p.empresa_activa || (p.empresas_permitidas?.[0] || ''),
                           });
                           setStatus(null);
                         }}
@@ -409,6 +443,32 @@ export default function AdminPanel() {
                     />
                   </div>
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Tipo de Negocio</label>
+                  <select
+                    value={formData.service_type}
+                    onChange={e => setFormData({ ...formData, service_type: e.target.value as ServiceType })}
+                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-semibold"
+                  >
+                    {SELECTABLE_SERVICE_TYPES.map((type) => (
+                      <option key={type} value={type}>{SERVICE_CATALOG[type].nombre}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {formData.service_type === 'multiempresa' && (
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Entidades Permitidas</label>
+                    <textarea
+                      value={formData.empresas_permitidas}
+                      onChange={e => setFormData({ ...formData, empresas_permitidas: e.target.value })}
+                      placeholder="Empresa Centro, Empresa Norte, Unidad Retail"
+                      className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none min-h-[96px]"
+                    />
+                    <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-widest">Separar por coma. La primera entidad se toma como activa inicial.</p>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4">
@@ -529,6 +589,47 @@ export default function AdminPanel() {
             </h3>
             <p className="text-sm text-gray-500">Cliente: <span className="font-semibold text-gray-700">{moduleData.name}</span></p>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Tipo de Negocio</label>
+                <select
+                  value={moduleData.serviceType}
+                  onChange={(e) => setModuleData(prev => prev ? { ...prev, serviceType: e.target.value as ServiceType } : prev)}
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-violet-500 outline-none font-semibold"
+                >
+                  {SELECTABLE_SERVICE_TYPES.map((type) => (
+                    <option key={type} value={type}>{SERVICE_CATALOG[type].nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Entidad Activa</label>
+                <input
+                  type="text"
+                  value={moduleData.empresaActiva}
+                  onChange={(e) => setModuleData(prev => prev ? { ...prev, empresaActiva: e.target.value } : prev)}
+                  placeholder="Empresa Centro"
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-violet-500 outline-none"
+                />
+              </div>
+            </div>
+
+            {moduleData.serviceType === 'multiempresa' && (
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 ml-1">Entidades Permitidas</label>
+                <textarea
+                  value={moduleData.empresasPermitidas.join(', ')}
+                  onChange={(e) => setModuleData(prev => prev ? {
+                    ...prev,
+                    empresasPermitidas: e.target.value.split(',').map(item => item.trim()).filter(Boolean),
+                  } : prev)}
+                  placeholder="Empresa Centro, Empresa Norte, Unidad Retail"
+                  className="w-full px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-violet-500 outline-none min-h-[88px]"
+                />
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
               {MODULE_OPTIONS.map((mod) => (
                 <label key={mod.key} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 cursor-pointer hover:border-violet-200 transition-all">
@@ -573,6 +674,9 @@ export default function AdminPanel() {
                   handleAdminOp('update_user', moduleData.id, {
                     modulos_habilitados: modules,
                     facturacion_habilitada: hasBillingModules,
+                    service_type: moduleData.serviceType,
+                    empresas_permitidas: moduleData.serviceType === 'multiempresa' ? moduleData.empresasPermitidas : [],
+                    empresa_activa: moduleData.serviceType === 'multiempresa' ? (moduleData.empresaActiva || moduleData.empresasPermitidas[0] || null) : null,
                   });
                 }}
                 disabled={isSubmitting || moduleData.modules.length === 0}

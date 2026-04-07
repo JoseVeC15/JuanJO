@@ -7,10 +7,13 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell 
 } from 'recharts';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import { resolveServiceProfile } from '../config/serviceProfiles';
 import { formatGs, formatGsShort, getGastoLabel, getGastoColor } from '../data/sampleData';
 
 export default function Reportes() {
-  const { facturasGastos, ingresos, loading } = useSupabaseData();
+  const { facturasGastos, ingresos, loading, profile } = useSupabaseData();
+  const serviceProfile = resolveServiceProfile(profile);
+  const reportPresetSet = new Set(serviceProfile.reportPresets);
 
   if (loading) {
     return (
@@ -32,16 +35,27 @@ export default function Reportes() {
     color: getGastoColor(name as any)
   })).sort((a, b) => b.value - a.value);
 
-  const totalIngresos = ingresos.filter(i => i.estado === 'pagado').reduce((s, i) => s + Number(i.monto), 0);
+  const totalIngresos = ingresos.filter(i => i.estado === 'cobrada' || i.estado === 'pagado').reduce((s, i) => s + Number(i.monto), 0);
   const totalGastos = facturasGastos.reduce((s, f) => s + Number(f.monto), 0);
+  const cuentasPorCobrar = ingresos.filter(i => i.estado !== 'cobrada' && i.estado !== 'pagado').reduce((s, i) => s + Number(i.monto), 0);
+  const ivaEstimado = Math.max(0,
+    ingresos.reduce((s, i) => s + Number(i.iva_10 || 0) + Number(i.iva_5 || 0), 0) -
+    facturasGastos.reduce((s, f) => s + Number(f.iva_10 || 0) + Number(f.iva_5 || 0), 0)
+  );
   const utilidad = totalIngresos - totalGastos;
+
+  const recomendaciones = [
+    cuentasPorCobrar > 0 ? `Prioriza cobros por ${formatGs(cuentasPorCobrar)} para mejorar caja.` : 'No tienes cobros pendientes relevantes hoy.',
+    totalGastos > totalIngresos ? 'Tus gastos superan ingresos: recorta costos variables esta semana.' : 'Tus gastos están por debajo de ingresos: buen control de costos.',
+    ivaEstimado > 0 ? `Reserva ${formatGs(ivaEstimado)} para impuestos estimados.` : 'No se observa impuesto estimado a pagar en este corte.',
+  ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Análisis y Reportes</h1>
-          <p className="text-gray-500 mt-1">Resumen financiero consolidado</p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Reportes - {serviceProfile.name}</h1>
+          <p className="text-gray-500 mt-1">Vista clara según el tipo de servicio activo.</p>
         </div>
         <button className="flex items-center gap-2 border border-gray-200 bg-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all">
           <Download size={18} />
@@ -49,19 +63,30 @@ export default function Reportes() {
         </button>
       </div>
 
+      {reportPresetSet.has('resumen_simple') && (
+      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Recomendaciones Automáticas</p>
+        <div className="space-y-2">
+          {recomendaciones.map((item, idx) => (
+            <p key={idx} className="text-sm font-medium text-slate-700">• {item}</p>
+          ))}
+        </div>
+      </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Stats */}
         <div className="lg:col-span-2 space-y-6">
            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <ReportCard label="Utilidad Neta" value={formatGs(utilidad)} trend={+5.2} />
-            <ReportCard label="Márgen Bruto" value={totalIngresos > 0 ? ((utilidad/totalIngresos)*100).toFixed(1)+'%' : '0%'} trend={+2.4} />
-            <ReportCard label="Retención IVA" value={formatGsShort(facturasGastos.reduce((s,f) => s + Number(f.iva_10 || 0), 0))} trend={0} />
+            <ReportCard label="Ingresos Cobrados" value={formatGs(totalIngresos)} trend={0} />
+            <ReportCard label="Gastos Totales" value={formatGs(totalGastos)} trend={0} />
+            <ReportCard label="Balance Neto" value={formatGs(utilidad)} trend={0} />
           </div>
 
           <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm min-w-0">
             <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
               <BarChart3 className="text-emerald-500" size={20} />
-              Ingresos vs Gastos
+              Ingresos vs Gastos (corte actual)
             </h3>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={[{ name: 'Actual', ingresos: totalIngresos, gastos: totalGastos }]}>
@@ -80,7 +105,7 @@ export default function Reportes() {
         <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm min-w-0">
            <h3 className="font-bold text-lg mb-6 flex items-center gap-2">
             <PieIcon className="text-emerald-500" size={20} />
-            Estructura de Costos
+            ¿En qué se te va el dinero?
           </h3>
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
@@ -100,6 +125,12 @@ export default function Reportes() {
                 <span className="font-bold text-gray-900">{formatGsShort(item.value)}</span>
               </div>
             ))}
+            <div className="pt-3 mt-3 border-t border-slate-100 text-sm font-bold text-slate-700">
+              Cobros pendientes: {formatGs(cuentasPorCobrar)}
+            </div>
+            {reportPresetSet.has('fiscal_iva') && <div className="text-sm font-bold text-slate-700">
+              Impuesto estimado: {formatGs(ivaEstimado)}
+            </div>}
           </div>
         </div>
       </div>

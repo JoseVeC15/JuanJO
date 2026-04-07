@@ -6,11 +6,11 @@ import {
     Clock
 } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
-import { formatGs, getIVAExpirationDate } from '../data/sampleData';
+import { formatGs } from '../data/sampleData';
 
 interface Suggestion {
     id: string;
-    type: 'collection' | 'profitability' | 'tax' | 'agenda' | 'success';
+    type: 'income' | 'expense' | 'collection' | 'tax' | 'success';
     title: string;
     description: string;
     actionLabel: string;
@@ -21,8 +21,8 @@ interface Suggestion {
 
 export default function SmartSuggestions() {
     const { 
-        ingresos, proyectos, financialIntelligence, 
-        agendaTareas, loading, perfilFiscal 
+        ingresos, facturasGastos, financialIntelligence,
+        loading
     } = useSupabaseData();
 
     const suggestions = useMemo(() => {
@@ -30,104 +30,69 @@ export default function SmartSuggestions() {
 
         const items: Suggestion[] = [];
 
-        // 1. Detección de Cobros Vencidos
-        const vencidos = ingresos.filter(i => i.estado === 'vencida');
-        if (vencidos.length > 0) {
-            const totalVencido = vencidos.reduce((s, i) => s + Number(i.monto), 0);
+        const ingresosCobrados = ingresos.filter(i => i.estado === 'cobrada' || i.estado === 'pagado').reduce((s, i) => s + Number(i.monto), 0);
+        const gastosTotales = facturasGastos.reduce((s, g) => s + Number(g.monto), 0);
+        const cuentasPorCobrar = ingresos.filter(i => i.estado !== 'cobrada' && i.estado !== 'pagado').reduce((s, i) => s + Number(i.monto), 0);
+        const balanceNeto = ingresosCobrados - gastosTotales;
+
+        if (ingresosCobrados > 0) {
             items.push({
-                id: 'overdue-collection',
-                type: 'collection',
-                title: '¡No olvides cobrar!',
-                description: `Tienes ${vencidos.length} facturas vencidas por un total de ${formatGs(totalVencido)}. ¿Le enviamos un recordatorio amable a los clientes?`,
-                actionLabel: 'Ver Cobros',
+                id: 'income-summary',
+                type: 'income',
+                title: 'Ingresos del período',
+                description: `Ya cobraste ${formatGs(ingresosCobrados)}. Mantén este ritmo para cerrar bien el mes.`,
+                actionLabel: 'Ver Ingresos',
                 icon: <Wallet size={20} />,
-                color: 'rose',
-                priority: 1
-            });
-        }
-
-        // 2. Alerta de Rentabilidad (Basada en el margen del cliente/proyecto)
-        const proyectosBajoMargen = proyectos.filter(p => 
-            p.estado === 'en_progreso' && 
-            p.margen_real_porc !== undefined && 
-            p.margen_objetivo !== undefined &&
-            p.margen_real_porc < p.margen_objetivo
-        );
-
-        if (proyectosBajoMargen.length > 0) {
-            const p = proyectosBajoMargen[0];
-            items.push({
-                id: 'low-profit',
-                type: 'profitability',
-                title: 'Ajuste de rentabilidad',
-                description: `He notado que el proyecto "${p.nombre_cliente}" está operando con un margen del ${p.margen_real_porc?.toFixed(1)}%, por debajo de tu objetivo del ${p.margen_objetivo}%. Revisa los gastos asociados.`,
-                actionLabel: 'Analizar Proyecto',
-                icon: <AlertTriangle size={20} />,
-                color: 'amber',
+                color: 'emerald',
                 priority: 2
             });
         }
 
-        // 3. Optimización Fiscal
-        if (financialIntelligence.ivaEstimadoAPagar > 2000000) {
+        if (gastosTotales > 0) {
             items.push({
-                id: 'tax-optimization',
-                type: 'tax',
-                title: 'Oportunidad de ahorro IVA',
-                description: `Tu IVA estimado este mes es de ${formatGs(financialIntelligence.ivaEstimadoAPagar)}. Todavía puedes registrar facturas de gastos para equilibrar tu balance fiscal.`,
-                actionLabel: 'Subir Gastos',
-                icon: <ShieldCheck size={20} />,
-                color: 'indigo',
+                id: 'expense-summary',
+                type: 'expense',
+                title: 'Gastos acumulados',
+                description: `Tus gastos van en ${formatGs(gastosTotales)}. Revisa los rubros altos para proteger margen.`,
+                actionLabel: 'Ver Gastos',
+                icon: <Clock size={20} />,
+                color: 'amber',
                 priority: 3
             });
         }
 
-        // 4. Vencimiento SET (Formulario 120)
-        if (perfilFiscal?.ruc) {
-            const hoyObj = new Date();
-            const lastMonth = hoyObj.getMonth() === 0 ? 12 : hoyObj.getMonth();
-            const lastYear = hoyObj.getMonth() === 0 ? hoyObj.getFullYear() - 1 : hoyObj.getFullYear();
-            
-            const vencimiento = getIVAExpirationDate(perfilFiscal.ruc, lastMonth, lastYear);
-            const daysLeft = Math.ceil((vencimiento.getTime() - hoyObj.getTime()) / (1000 * 60 * 60 * 24));
-
-            if (daysLeft > 0 && daysLeft <= 10) {
-                items.push({
-                    id: 'set-deadline',
-                    type: 'tax',
-                    title: '¡Vencimiento IVA Próximo!',
-                    description: `Tu formulario 120 de ${new Date(lastYear, lastMonth - 1).toLocaleString('es-PY', { month: 'long' })} vence el ${vencimiento.toLocaleDateString('es-PY')}. Tienes ${daysLeft} días para cerrar tu periodo fiscal.`,
-                    actionLabel: 'Iniciar Cierre',
-                    icon: <ShieldCheck size={20} />,
-                    color: 'indigo',
-                    priority: 0 // Máxima prioridad
-                });
-            }
-        }
-
-        // 5. Agenda Próxima
-        const hoy = new Date().toISOString().split('T')[0];
-        const tareasHoy = agendaTareas.filter(t => !t.completada && t.fecha_limite === hoy);
-        if (tareasHoy.length > 0) {
+        if (cuentasPorCobrar > 0) {
             items.push({
-                id: 'agenda-today',
-                type: 'agenda',
-                title: 'Tu día hoy',
-                description: `¡Hola! Tienes ${tareasHoy.length} tareas clave para hoy. Mantén el ritmo para cerrar la semana con éxito.`,
-                actionLabel: 'Ver Agenda',
-                icon: <Clock size={20} />,
-                color: 'emerald',
-                priority: 4
+                id: 'pending-collection',
+                type: 'collection',
+                title: 'Cobros pendientes',
+                description: `Tienes ${formatGs(cuentasPorCobrar)} por cobrar. Prioriza seguimiento hoy para mejorar caja.`,
+                actionLabel: 'Gestionar Cobros',
+                icon: <AlertTriangle size={20} />,
+                color: 'rose',
+                priority: 0
             });
         }
 
-        // 5. Mensaje de Éxito (si no hay urgencias)
+        if (financialIntelligence.ivaEstimadoAPagar > 0) {
+            items.push({
+                id: 'tax-estimation',
+                type: 'tax',
+                title: 'Impuesto estimado',
+                description: `Reserva ${formatGs(financialIntelligence.ivaEstimadoAPagar)} para IVA estimado del período.`,
+                actionLabel: 'Ver Fiscal',
+                icon: <ShieldCheck size={20} />,
+                color: 'indigo',
+                priority: 1
+            });
+        }
+
         if (items.length === 0) {
             items.push({
                 id: 'all-good',
                 type: 'success',
-                title: '¡Todo bajo control!',
-                description: 'Tu flujo de caja y rentabilidad están en niveles óptimos. No detecto urgencias financieras hoy. ¡Sigue así!',
+                title: 'Resumen simple en orden',
+                description: `Balance neto actual: ${formatGs(balanceNeto)}. No hay alertas críticas ahora mismo.`,
                 actionLabel: 'Ver Reportes',
                 icon: <CheckCircle2 size={20} />,
                 color: 'emerald',
@@ -136,7 +101,7 @@ export default function SmartSuggestions() {
         }
 
         return items.sort((a, b) => a.priority - b.priority).slice(0, 3);
-    }, [ingresos, proyectos, financialIntelligence, agendaTareas, loading]);
+    }, [ingresos, facturasGastos, financialIntelligence, loading]);
 
     if (loading || suggestions.length === 0) return null;
 

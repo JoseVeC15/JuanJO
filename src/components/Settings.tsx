@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { motion } from 'framer-motion';
 import { 
@@ -14,11 +15,17 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import { SERVICE_CATALOG } from '../config/serviceCatalog';
+import { SELECTABLE_SERVICE_PROFILES, SERVICE_PROFILES, resolveServiceType } from '../config/serviceProfiles';
+import type { ServiceType } from '../types/service';
 
 export default function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 'branding' | 'categories' | 'currency' | 'backup' | 'billing' | 'catalog' }) {
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { profile, facturasGastos, proyectos, ingresos } = useSupabaseData();
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [serviceType, setServiceType] = useState<ServiceType>('freelancer');
+  const [serviceTypeStatus, setServiceTypeStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   
   const [customCategories, setCustomCategories] = useState<{id: string, label: string, color: string}[]>([]);
   const [newCatLabel, setNewCatLabel] = useState('');
@@ -78,6 +85,7 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
         telefono_contacto: profile.telefono_contacto || '',
         direccion_fisica: profile.direccion_fisica || ''
       });
+      setServiceType(resolveServiceType(profile));
     }
   }, [user, profile]);
 
@@ -316,6 +324,32 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
     }
   };
 
+  const guardarServiceType = async () => {
+    if (!user) return;
+
+    setServiceTypeStatus('saving');
+    localStorage.setItem('service_type_override', serviceType);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ service_type: serviceType })
+        .eq('id', user.id);
+
+      if (error) {
+        console.warn('No se pudo persistir service_type en profiles:', error.message);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
+      setServiceTypeStatus('saved');
+      setTimeout(() => setServiceTypeStatus('idle'), 2500);
+    } catch (e: any) {
+      console.error(e);
+      setServiceTypeStatus('idle');
+      alert(`Se aplicó el perfil en este navegador, pero no se pudo guardar en base: ${e.message}`);
+    }
+  };
+
   const exportAllData = () => {
     const data = {
         meta: {
@@ -369,11 +403,146 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
               <div className="grid grid-cols-1 gap-6">
                 <InputGroup label="Nombre Completo" value={profile?.nombre_completo || 'Freelancer'} disabled />
                 <InputGroup label="Correo Electrónico" value={user?.email || ''} disabled />
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Arquitectura por tipo de negocio</label>
+                    <p className="text-xs text-slate-500 font-medium mt-2">Cada perfil activa una experiencia distinta: módulos, dashboard, lenguaje y flujos operativos según el modelo de negocio.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    {SELECTABLE_SERVICE_PROFILES.map((service) => {
+                      const catalog = SERVICE_CATALOG[service.id];
+                      const isActive = serviceType === service.id;
+
+                      return (
+                        <button
+                          key={service.id}
+                          type="button"
+                          onClick={() => setServiceType(service.id)}
+                          className={`text-left rounded-3xl border p-5 transition-all duration-200 shadow-sm ${
+                            isActive
+                              ? 'border-emerald-500 bg-emerald-50 shadow-emerald-100'
+                              : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4 mb-4">
+                            <div>
+                              <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${
+                                isActive ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {service.id}
+                              </span>
+                              <h4 className="mt-3 text-lg font-black text-slate-900 leading-tight">{service.name}</h4>
+                            </div>
+                            <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-emerald-700' : 'text-slate-400'}`}>
+                              {isActive ? 'Activo' : 'Disponible'}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-4">
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">A quién va dirigido</p>
+                              <p className="text-sm font-medium text-slate-700 leading-6">
+                                {catalog.audiencia_objetivo || catalog.descripcion}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Módulos clave</p>
+                              <div className="flex flex-wrap gap-2">
+                                {(catalog.modulos_clave || service.modules.slice(0, 5)).map((item) => (
+                                  <span
+                                    key={item}
+                                    className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
+                                      isActive ? 'bg-white text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-700'
+                                    }`}
+                                  >
+                                    {item}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Selección rápida</label>
+                    <select
+                      value={serviceType}
+                      onChange={(e) => setServiceType(e.target.value as ServiceType)}
+                      className="w-full px-5 py-4 bg-white rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500/20 outline-none font-bold text-gray-800"
+                    >
+                      {SELECTABLE_SERVICE_PROFILES.map((service) => (
+                        <option key={service.id} value={service.id}>{service.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Preview de módulos y tips para el tipo seleccionado */}
+                {(() => {
+                  const preview = SERVICE_PROFILES[serviceType];
+                  const catalogPreview = SERVICE_CATALOG[serviceType];
+                  return (
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5 space-y-4">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        {preview.name} — Módulos activos
+                      </p>
+                      {(catalogPreview.audiencia_objetivo || catalogPreview.modulos_clave?.length) && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="rounded-xl bg-white border border-slate-200 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">A quién va dirigido</p>
+                            <p className="text-sm text-slate-700 font-medium">{catalogPreview.audiencia_objetivo || catalogPreview.descripcion}</p>
+                          </div>
+                          <div className="rounded-xl bg-white border border-slate-200 p-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Módulos clave</p>
+                            <div className="flex flex-wrap gap-2">
+                              {(catalogPreview.modulos_clave || preview.modules.slice(0, 6)).map((item) => (
+                                <span key={item} className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-lg">
+                                  {item}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        {preview.modules.map((m) => (
+                          <span key={m} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg uppercase tracking-tight">
+                            {m}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="pt-1">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Consejos para este perfil</p>
+                        <ul className="space-y-1.5">
+                          {preview.tips.map((tip, i) => (
+                            <li key={i} className="text-xs font-medium text-slate-700">• {tip}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="pt-4 flex items-center gap-2">
                   <span className="text-[10px] bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-black uppercase tracking-widest leading-none">
                     Acceso: {profile?.nivel_acceso === 1 ? 'Super Admin' : 'Freelancer Standard'}
                   </span>
                   <span className="text-[10px] bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-black uppercase tracking-widest leading-none">Status: Active</span>
+                </div>
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={guardarServiceType}
+                    disabled={serviceTypeStatus === 'saving'}
+                    className={`px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all ${
+                      serviceTypeStatus === 'saved' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
+                    } disabled:opacity-50`}
+                  >
+                    {serviceTypeStatus === 'saving' ? 'Guardando...' : serviceTypeStatus === 'saved' ? 'Perfil Aplicado' : 'Guardar Tipo de Servicio'}
+                  </button>
                 </div>
               </div>
             </motion.div>

@@ -28,6 +28,20 @@ const ALLOWED_MODULES = new Set([
 
 const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
 
+function normalizeTextArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error('El valor debe ser un array');
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .map((item) => String(item).trim())
+        .filter(Boolean)
+    )
+  );
+}
+
 function normalizeModules(value: unknown): string[] {
   if (!Array.isArray(value)) {
     throw new Error('modulos_habilitados debe ser un array');
@@ -93,6 +107,18 @@ Deno.serve(async (req: Request) => {
         updates.facturacion_habilitada = modules.some((m) => BILLING_MODULES.has(m));
       } else if (typeof data.facturacion_habilitada === 'boolean') {
         updates.facturacion_habilitada = data.facturacion_habilitada;
+      }
+
+      if (typeof data.service_type === 'string' && data.service_type.trim().length > 0) {
+        updates.service_type = data.service_type.trim();
+      }
+
+      if (data.empresas_permitidas !== undefined) {
+        updates.empresas_permitidas = normalizeTextArray(data.empresas_permitidas);
+      }
+
+      if (data.empresa_activa !== undefined) {
+        updates.empresa_activa = data.empresa_activa ? String(data.empresa_activa).trim() : null;
       }
 
       if (Object.keys(updates).length === 0) {

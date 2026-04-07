@@ -290,17 +290,28 @@ interface LineItem {
     descripcion: string;
     cantidad: number;
     precio_unitario: number;
-    IVA_tipo: 10 | 5 | 0;
+    iva_tipo: 10 | 5 | 0;
 }
 
 function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: NewDocModalProps) {
-    const queryClient = useQueryClient();
     const { user } = useAuth();
 
-    const [tipoComprobante, setTipoComprobante] = useState<TipoComprobante>('factura_comercial');
+    const [paso, setPaso] = useState<1 | 2 | 3>(1);
+    const [precheckError, setPrecheckError] = useState('');
+
     const [razonSocial, setRazonSocial] = useState('');
     const [ruc, setRuc] = useState('');
     const [condicionOperacion, setCondicionOperacion] = useState<'contado' | 'credito'>('contado');
+    const [respaldoUrl, setRespaldoUrl] = useState('');
+    const [observacion, setObservacion] = useState('');
+
+    const [checklist, setChecklist] = useState({
+        datosReceptor: false,
+        datosOperacion: false,
+        respaldoAdjunto: false,
+        validacionFiscal: false,
+    });
+
     const [items, setItems] = useState<LineItem[]>([
         { id: '1', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }
     ]);
@@ -343,25 +354,62 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
         setItems(items.map(i => i.id === id ? { ...i, [field]: value } : i));
     };
 
+    const esRucValido = (valor: string) => /^\d{5,8}-\d$/.test((valor || '').trim());
+
+    const validarPaso1 = () => {
+        if (!perfilFiscal?.ruc || !perfilFiscal?.razon_social) {
+            return 'Primero completa tu perfil fiscal (RUC y razón social) en Configuración.';
+        }
+        if (!configSifen?.timbrado || !configSifen?.establecimiento || !configSifen?.punto_expedicion) {
+            return 'Falta configuración fiscal: timbrado, establecimiento o punto de expedición.';
+        }
+        if (!/^\d{3}$/.test(configSifen.establecimiento) || !/^\d{3}$/.test(configSifen.punto_expedicion)) {
+            return 'Establecimiento y punto de expedición deben tener formato 3 dígitos (001).';
+        }
+        return '';
+    };
+
+    const validarPaso2 = () => {
+        if (!razonSocial.trim()) return 'La razón social del receptor es obligatoria.';
+        if (!esRucValido(ruc)) return 'El RUC del receptor debe tener formato válido (1234567-8).';
+        if (items.length === 0) return 'Debes cargar al menos un concepto en la autofactura.';
+        if (items.some(i => !i.descripcion.trim() || i.cantidad <= 0 || i.precio_unitario <= 0)) {
+            return 'Todos los ítems deben tener descripción, cantidad y precio válidos.';
+        }
+        if (totales.total <= 0) return 'El total debe ser mayor a cero.';
+        return '';
+    };
+
+    const checklistCompleto = Object.values(checklist).every(Boolean);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!user) return;
-        if (!razonSocial.trim() || !ruc.trim()) {
-            alert("Complete la razon social y RUC del receptor.");
+
+        const errorPaso2 = validarPaso2();
+        if (errorPaso2) {
+            alert(errorPaso2);
             return;
         }
-        if (items.some(i => !i.descripcion.trim())) {
-            alert("Todos los items deben tener una descripcion.");
+
+        if (!respaldoUrl.trim()) {
+            alert('Debes adjuntar un respaldo documental (URL/archivo en repositorio).');
+            return;
+        }
+
+        if (!checklistCompleto) {
+            alert('Debes completar todo el checklist de control antes de emitir.');
             return;
         }
 
         setCargando(true);
         try {
+            // Flujo restringido: se registra como factura_comercial, marcada internamente como AUTOFAC.
             const numeroDocumento = generateNumeroDocumento(configSifen.establecimiento || '001', configSifen.punto_expedicion || '001', '');
 
             const { error } = await supabase.from('facturas_autoimpreso').insert({
                 user_id: user.id,
-                tipo_comprobante: tipoComprobante,
+                tipo_comprobante: 'factura_comercial',
                 numero_documento: numeroDocumento,
                 timbrado: configSifen.timbrado,
                 vencimiento_timbrado: configSifen.vencimiento_timbrado,
@@ -376,7 +424,8 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
                 establecimiento: configSifen.establecimiento || '001',
                 punto_expedicion: configSifen.punto_expedicion || '001',
                 estado: 'emitido',
-                notas: '',
+                imagen_url: respaldoUrl,
+                notas: `AUTOFAC|${observacion || 'Sin observacion'}|CHK:${JSON.stringify(checklist)}`,
             });
 
             if (error) throw error;
@@ -395,36 +444,69 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
             <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[2.5rem] w-full max-w-3xl p-10 shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center relative z-10">
                     <div>
-                        <h3 className="text-2xl font-black text-gray-900">Emitir {TIPO_COMPROBANTE_CONFIG[tipoComprobante].label}</h3>
-                        <p className="text-gray-400 font-medium text-sm">Comprobante autoimpreso DNIT</p>
+                        <h3 className="text-2xl font-black text-gray-900">Autofactura Guiada</h3>
+                        <p className="text-gray-400 font-medium text-sm">Flujo restringido con control previo y respaldo documental.</p>
                     </div>
                     <button onClick={onClose} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-gray-600"><X size={24} /></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-8 mt-8 relative z-10">
-                    {/* Tipo Comprobante */}
-                    <div>
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2 block">Tipo de Comprobante</label>
-                        <div className="grid grid-cols-4 gap-2">
-                            {(Object.entries(TIPO_COMPROBANTE_CONFIG) as [TipoComprobante, typeof TIPO_COMPROBANTE_CONFIG[factura_comercial]]).map(([key, val]) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    onClick={() => setTipoComprobante(key)}
-                                    className={`p-3 rounded-xl border-2 transition-all text-center ${
-                                        tipoComprobante === key
-                                            ? 'border-amber-500 bg-amber-50 shadow-md'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                    }`}
-                                >
-                                    <div className="text-lg mb-1">{val.icon}</div>
-                                    <div className="text-[10px] font-black text-gray-700">{val.sigla}</div>
-                                </button>
-                            ))}
-                        </div>
+                    <div className="grid grid-cols-3 gap-2">
+                        {[1, 2, 3].map((n) => (
+                            <button
+                                key={n}
+                                type="button"
+                                onClick={() => n < paso && setPaso(n as 1 | 2 | 3)}
+                                className={`p-3 rounded-xl font-black text-[10px] uppercase tracking-widest border ${paso === n ? 'bg-slate-900 text-white border-slate-900' : 'bg-slate-50 text-slate-500 border-slate-200'}`}
+                            >
+                                Paso {n}
+                            </button>
+                        ))}
                     </div>
 
-                    {/* Receptor */}
+                    {paso === 1 && (
+                        <div className="space-y-4">
+                            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Prevalidación</p>
+                                <p className="text-sm font-bold text-amber-900 mt-1">Este flujo solo permite AUTOFAC restringida. No es factura general.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <p className="text-[10px] font-black uppercase text-slate-500">Emisor</p>
+                                    <p className="text-xs font-bold mt-1">{perfilFiscal?.razon_social || 'No configurado'}</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <p className="text-[10px] font-black uppercase text-slate-500">RUC</p>
+                                    <p className="text-xs font-bold mt-1">{perfilFiscal?.ruc || 'No configurado'}</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <p className="text-[10px] font-black uppercase text-slate-500">Timbrado</p>
+                                    <p className="text-xs font-bold mt-1">{configSifen?.timbrado || 'No configurado'}</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-100 p-3 bg-slate-50">
+                                    <p className="text-[10px] font-black uppercase text-slate-500">Punto</p>
+                                    <p className="text-xs font-bold mt-1">{configSifen?.establecimiento || '001'}-{configSifen?.punto_expedicion || '001'}</p>
+                                </div>
+                            </div>
+                            {precheckError && (
+                                <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs font-bold text-rose-700">{precheckError}</div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const err = validarPaso1();
+                                    setPrecheckError(err);
+                                    if (!err) setPaso(2);
+                                }}
+                                className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest"
+                            >
+                                Validar y Continuar
+                            </button>
+                        </div>
+                    )}
+
+                    {paso === 2 && (
+                    <>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block">Razon Social (Receptor)</label>
@@ -448,7 +530,6 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
                         </div>
                     </div>
 
-                    {/* Condicion */}
                     <div>
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block">Condicion de Operacion</label>
                         <div className="flex gap-2">
@@ -469,7 +550,6 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
                         </div>
                     </div>
 
-                    {/* Items */}
                     <div>
                         <div className="flex items-center justify-between mb-3">
                             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Items / Conceptos</label>
@@ -511,7 +591,6 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
                         </div>
                     </div>
 
-                    {/* Totales */}
                     <div className="bg-slate-50 p-6 rounded-2xl space-y-2">
                         {totales.iva_10 > 0 && (
                             <div className="flex justify-between text-sm font-bold">
@@ -538,13 +617,76 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
                     </div>
 
                     <button
-                        type="submit"
-                        disabled={cargando}
-                        className="w-full bg-amber-500 text-white py-5 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl hover:bg-amber-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                        type="button"
+                        onClick={() => {
+                            const err = validarPaso2();
+                            if (err) {
+                                alert(err);
+                                return;
+                            }
+                            setPaso(3);
+                        }}
+                        className="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest"
                     >
-                        {cargando ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
-                        {cargando ? 'Emitiendo...' : 'Emitir Comprobante'}
+                        Continuar a Checklist
                     </button>
+                    </>
+                    )}
+
+                    {paso === 3 && (
+                        <div className="space-y-5">
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Checklist de Control</p>
+                                <div className="space-y-2">
+                                    {[
+                                        { key: 'datosReceptor', label: 'Datos del receptor verificados' },
+                                        { key: 'datosOperacion', label: 'Montos e IVA revisados' },
+                                        { key: 'respaldoAdjunto', label: 'Respaldo documental adjuntado' },
+                                        { key: 'validacionFiscal', label: 'Validación fiscal previa completada' },
+                                    ].map((item: any) => (
+                                        <label key={item.key} className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                                            <input
+                                                type="checkbox"
+                                                checked={(checklist as any)[item.key]}
+                                                onChange={(e) => setChecklist({ ...checklist, [item.key]: e.target.checked })}
+                                            />
+                                            {item.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block">Respaldo Documental (URL)</label>
+                                <input
+                                    type="text"
+                                    value={respaldoUrl}
+                                    onChange={(e) => setRespaldoUrl(e.target.value)}
+                                    placeholder="https://... (factura base, contrato, recibo escaneado)"
+                                    className="w-full px-5 py-3 bg-gray-50 rounded-xl border-none font-bold text-gray-800 outline-none focus:ring-2 focus:ring-amber-500/20"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1.5 block">Observación de Soporte</label>
+                                <textarea
+                                    value={observacion}
+                                    onChange={(e) => setObservacion(e.target.value)}
+                                    placeholder="Motivo de la autofactura y referencia interna"
+                                    className="w-full px-5 py-3 bg-gray-50 rounded-xl border-none font-bold text-gray-800 outline-none focus:ring-2 focus:ring-amber-500/20 min-h-[90px]"
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={cargando}
+                                className="w-full bg-amber-500 text-white py-5 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl hover:bg-amber-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {cargando ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
+                                {cargando ? 'Emitiendo...' : 'Emitir Autofactura'}
+                            </button>
+                        </div>
+                    )}
                 </form>
 
                 <div className="absolute top-0 right-0 w-56 h-56 bg-amber-50/30 rounded-bl-full -z-0" />

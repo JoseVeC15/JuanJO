@@ -1,16 +1,17 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  TrendingUp, Wallet,
-  ArrowUpRight, ArrowDownLeft, Loader2,
+  Wallet,
+  ArrowUpRight, ArrowDownLeft,
   Activity,
-  ShieldCheck, AlertTriangle, Shield, Calendar, Clock
+  ShieldCheck, AlertTriangle, Shield, Calendar, Clock, Building2
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer
 } from 'recharts';
 import { useSupabaseData } from '../hooks/useSupabaseData';
+import { resolveServiceProfile } from '../config/serviceProfiles';
 import SifenInvoiceEmitter from './SifenInvoiceEmitter';
 import SafeToSpendCard from './SafeToSpendCard';
 import {
@@ -25,31 +26,14 @@ export default function Dashboard() {
     proyectos, facturasGastos, ingresos, configSifen, 
     financialIntelligence,
     loadingProfile, loadingFacturas, loadingIngresos, loadingSifen,
-    profile 
+    profile,
+    entityScope,
   } = useSupabaseData();
   const { user } = useAuth();
   const [showSifenEmitter, setShowSifenEmitter] = useState(false);
   const [showUpgradeAlert, setShowUpgradeAlert] = useState(false);
-  const [exchangeRate, setExchangeRate] = useState<number>(7550); // Default fallback
-  const [loadingRate, setLoadingRate] = useState(true);
-
-  useEffect(() => {
-    const fetchRate = async () => {
-      try {
-        setLoadingRate(true);
-        const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-        const data = await response.json();
-        if (data && data.rates && data.rates.PYG) {
-          setExchangeRate(data.rates.PYG);
-        }
-      } catch (error) {
-        console.error("Error fetching exchange rate:", error);
-      } finally {
-        setLoadingRate(false);
-      }
-    };
-    fetchRate();
-  }, []);
+  const serviceProfile = resolveServiceProfile(profile);
+  const isMultiempresa = entityScope.isMultiempresa;
   
   // Default to current month YYYY-MM
   const currentMonthStr = new Date().toISOString().substring(0, 7);
@@ -146,19 +130,142 @@ export default function Dashboard() {
     );
   }
 
+  const widgetSet = new Set(serviceProfile.dashboardWidgets);
+  const topCards = [
+    {
+      key: 'ingresos_cobrados',
+      title: 'Ingresos Cobrados',
+      value: formatGs(stats.totalIngresos),
+      desc: 'Total efectivamente cobrado',
+      icon: <ArrowUpRight size={20} />,
+      color: 'emerald' as const,
+      tooltip: 'Suma de ingresos con estado cobrada. Mide el dinero que ya ingresó a caja.',
+      loading: loadingIngresos,
+    },
+    {
+      key: 'egresos_registrados',
+      title: 'Egresos Registrados',
+      value: formatGs(stats.totalGastos),
+      desc: 'Total de gastos cargados',
+      icon: <ArrowDownLeft size={20} />,
+      color: 'amber' as const,
+      tooltip: 'Suma de egresos documentados en compras y gastos operativos.',
+      loading: loadingFacturas,
+    },
+    {
+      key: 'balance_neto',
+      title: 'Balance Neto',
+      value: formatGs(stats.totalIngresos - stats.totalGastos),
+      desc: 'Ingresos menos egresos',
+      icon: <Wallet size={20} />,
+      color: 'indigo' as const,
+      tooltip: 'Resultado neto actual del negocio. Se calcula como ingresos cobrados menos egresos registrados.',
+      loading: loadingIngresos || loadingFacturas,
+    },
+    {
+      key: 'cuentas_por_cobrar',
+      title: 'Cuentas por Cobrar',
+      value: formatGs(stats.ingresosPendientes),
+      desc: 'Facturas aún no cobradas',
+      icon: <Clock size={20} />,
+      color: 'emerald' as const,
+      tooltip: 'Monto pendiente de cobro para convertir ventas emitidas en flujo real de caja.',
+      loading: loadingIngresos,
+    },
+    {
+      key: 'iva_estimado',
+      title: 'IVA Estimado',
+      value: formatGs(stats.ivaAPagar),
+      desc: 'Reserva fiscal del corte',
+      icon: <ShieldCheck size={20} />,
+      color: 'amber' as const,
+      tooltip: 'Estimación simple de impuesto a pagar según débito menos crédito fiscal.',
+      loading: loadingIngresos || loadingFacturas,
+    },
+  ].filter(card => widgetSet.has(card.key as any));
+
+  const multiempresaCards = [
+    {
+      key: 'entidades_activas',
+      title: 'Entidades Habilitadas',
+      value: String(entityScope.availableEmpresas.length || 1),
+      desc: 'Razones sociales con acceso vigente',
+      icon: <Building2 size={20} />,
+      color: 'indigo' as const,
+      tooltip: 'Cantidad de entidades o unidades operativas configuradas en el perfil del cliente.',
+      loading: false,
+    },
+    {
+      key: 'proyectos_grupo',
+      title: 'Operaciones del Grupo',
+      value: String(stats.proyectosActivos),
+      desc: 'Proyectos abiertos en el alcance actual',
+      icon: <Activity size={20} />,
+      color: 'emerald' as const,
+      tooltip: 'Cantidad de operaciones activas dentro de la entidad seleccionada o en consolidado.',
+      loading: false,
+    },
+    {
+      key: 'iva_consolidado',
+      title: 'IVA Consolidado',
+      value: formatGs(stats.ivaAPagar),
+      desc: 'Reserva fiscal del alcance actual',
+      icon: <ShieldCheck size={20} />,
+      color: 'amber' as const,
+      tooltip: 'Saldo fiscal estimado para la entidad activa o el consolidado del grupo.',
+      loading: loadingIngresos || loadingFacturas,
+    },
+    {
+      key: 'cobros_abiertos',
+      title: 'Cobros Abiertos',
+      value: formatGs(stats.ingresosPendientes),
+      desc: 'Pendientes por cobrar en el alcance',
+      icon: <Clock size={20} />,
+      color: 'emerald' as const,
+      tooltip: 'Cuentas por cobrar de la entidad seleccionada o del consolidado multiempresa.',
+      loading: loadingIngresos,
+    },
+  ];
+
+  const visibleCards = isMultiempresa ? multiempresaCards : topCards;
+
   return (
     <div className="space-y-6 lg:space-y-8 pb-12 px-4 lg:px-0">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <div className="flex items-center gap-2 text-indigo-600 font-black text-[10px] uppercase tracking-[0.2em] mb-1">
-            <Activity size={14} /> SaaS PRO Dashboard
+            <Activity size={14} /> {isMultiempresa ? 'Panel Multiempresa' : 'Panel Operativo'}
           </div>
           <h1 className="text-3xl lg:text-4xl font-black text-gray-900 tracking-tight">
             Hola, {user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0]}
           </h1>
-          <p className="text-gray-500 mt-1 font-medium italic">Visión consolidada alineada con DNIT/SET (PY).</p>
+          <p className="text-gray-500 mt-1 font-medium italic">{serviceProfile.name}: menos ruido, más foco en lo importante.</p>
         </motion.div>
+
+        {isMultiempresa && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm min-w-[280px]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Entidad activa</p>
+            <select
+              value={entityScope.activeEmpresa || 'all'}
+              onChange={(e) => entityScope.setActiveEmpresa(e.target.value)}
+              className="w-full px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 outline-none font-bold text-slate-800"
+            >
+              <option value="all">Consolidado general</option>
+              {entityScope.availableEmpresas.map((empresa: string) => (
+                <option key={empresa} value={empresa}>{empresa}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500 font-medium mt-2">El dashboard, cobros y métricas se recalculan usando la entidad seleccionada cuando los registros traen alcance por empresa.</p>
+          </div>
+        )}
       </div>
+
+      {isMultiempresa && !entityScope.hasEntityScopedData && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+          <p className="text-[10px] font-black uppercase tracking-widest text-amber-700 mb-1">Segmentación en preparación</p>
+          <p className="text-sm font-medium text-amber-900">Ya puedes asignar entidades al cliente y cambiar el foco operativo, pero para filtrado total por empresa tus tablas deben guardar campos como `empresa_id`, `empresa_origen` o `unidad_negocio`.</p>
+        </div>
+      )}
 
       <AnimatePresence>
         {showUpgradeAlert && (
@@ -182,13 +289,34 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        <StatCard index={0} title="Ingresos Cobrados" value={formatGs(stats.totalIngresos)} desc="Total efectivamente cobrado" icon={<ArrowUpRight size={20} />} color="emerald" tooltip="Suma de ingresos con estado cobrada. Mide el dinero que ya ingresó a caja." loading={loadingIngresos} />
-        <StatCard index={1} title="Egresos Registrados" value={formatGs(stats.totalGastos)} desc="Total de gastos cargados" icon={<ArrowDownLeft size={20} />} color="amber" tooltip="Suma de egresos documentados en compras y gastos operativos." loading={loadingFacturas} />
-        <StatCard index={2} title="Balance Neto" value={formatGs(stats.totalIngresos - stats.totalGastos)} desc="Ingresos menos egresos" icon={<Wallet size={20} />} color="indigo" tooltip="Resultado neto actual del negocio. Se calcula como ingresos cobrados menos egresos registrados." loading={loadingIngresos || loadingFacturas} />
-        <StatCard index={3} title="Cuentas por Cobrar" value={formatGs(stats.ingresosPendientes)} desc="Facturas aún no cobradas" icon={<Clock size={20} />} color="emerald" tooltip="Monto pendiente de cobro para convertir ventas emitidas en flujo real de caja." loading={loadingIngresos} />
+        {visibleCards.map((card, index) => (
+          <StatCard
+            key={card.key}
+            index={index}
+            title={card.title}
+            value={card.value}
+            desc={card.desc}
+            icon={card.icon}
+            color={card.color}
+            tooltip={card.tooltip}
+            loading={card.loading}
+          />
+        ))}
       </div>
 
-      <SmartSuggestions />
+      <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Resumen Automático</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm font-medium text-slate-700">
+          <p>• Ingresos cobrados: {formatGs(stats.totalIngresos)}</p>
+          <p>• Gastos registrados: {formatGs(stats.totalGastos)}</p>
+          <p>• Cobros pendientes: {formatGs(stats.ingresosPendientes)}</p>
+          <p>• Impuesto estimado: {formatGs(stats.ivaAPagar)}</p>
+          {isMultiempresa && <p>• Entidad activa: {entityScope.activeEmpresa && entityScope.activeEmpresa !== 'all' ? entityScope.activeEmpresa : 'Consolidado general'}</p>}
+          {isMultiempresa && <p>• Entidades configuradas: {entityScope.availableEmpresas.length || 1}</p>}
+        </div>
+      </div>
+
+      {widgetSet.has('sugerencias') && <SmartSuggestions />}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 lg:gap-8">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="xl:col-span-2 bg-white rounded-3xl lg:rounded-[2.5rem] border border-gray-100 p-6 lg:p-10 shadow-sm relative overflow-hidden min-w-0">
@@ -300,27 +428,10 @@ export default function Dashboard() {
               </motion.div>
             )}
 
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }} 
-                animate={{ opacity: 1, scale: 1 }} 
-                transition={{ delay: 0.6 }} 
-                className={`${loadingRate ? 'bg-emerald-600' : 'bg-emerald-500'} rounded-2xl lg:rounded-[2rem] p-6 lg:p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10 transition-colors`}
-            >
-                <div className="flex justify-between items-center mb-5">
-                    <span className="text-[11px] font-black uppercase tracking-widest opacity-80">Monitor PYG/USD</span>
-                    <div className="flex items-center gap-2">
-                        {loadingRate ? <Loader2 size={14} className="animate-spin opacity-40" /> : <ArrowUpRight size={18} className="text-slate-900/40" />}
-                    </div>
-                </div>
-                <div className="flex items-end gap-3">
-                    <h4 className="text-4xl font-black tracking-tighter">
-                        ₲ {exchangeRate.toLocaleString('es-PY')}
-                    </h4>
-                    <span className="text-sm font-black mb-1.5 opacity-60">/ 1$</span>
-                </div>
-                {loadingRate && (
-                    <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[2px] rounded-[inherit] pointer-events-none" />
-                )}
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.6 }} className="bg-emerald-500 rounded-2xl lg:rounded-[2rem] p-6 lg:p-8 text-slate-900 relative shadow-xl shadow-emerald-500/10">
+              <p className="text-[11px] font-black uppercase tracking-widest opacity-80 mb-3">Siguiente Acción Recomendada</p>
+              <h4 className="text-xl font-black tracking-tight">Prioriza cobros pendientes hoy.</h4>
+              <p className="text-sm font-bold opacity-80 mt-2">Cobrar primero mejora tu caja y reduce presión de impuestos al cierre.</p>
             </motion.div>
         </div>
       </div>

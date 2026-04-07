@@ -1,13 +1,39 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { calculateSuggestedVAT10 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
 import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea, EstadoIngreso, RegistroHora, Propuesta, PropuestaItem, FacturaAutoimpreso, Vehiculo, RegistroCombustible, RegistroMantenimiento, Viaje } from '../data/sampleData';
 
+const ENTITY_KEYS = ['empresa_id', 'entidad_id', 'company_id', 'tenant_id', 'empresa_origen', 'unidad_negocio'] as const;
+
+function extractEntityName(record: Record<string, unknown> | null | undefined): string | null {
+  if (!record) return null;
+
+  for (const key of ENTITY_KEYS) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function filterRowsByEntity<T extends Record<string, unknown>>(rows: T[], isMultiempresa: boolean, activeEmpresa: string): T[] {
+  if (!isMultiempresa || !activeEmpresa || activeEmpresa === 'all') return rows;
+
+  return rows.filter((row) => {
+    const entity = extractEntityName(row);
+    if (!entity) return true;
+    return entity === activeEmpresa;
+  });
+}
+
 export function useSupabaseData() {
   const queryClient = useQueryClient();
   const { user: sessionUser } = useAuth();
+  const [activeEmpresa, setActiveEmpresa] = useState<string>('all');
 
   const { data: profile, isLoading: loadingProfile } = useQuery({
     queryKey: ['profile', sessionUser?.id],
@@ -15,7 +41,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, nombre_completo, email, nivel_acceso, estado, facturacion_habilitada, modulos_habilitados, logo_url, color_primario, portfolio_url, telefono_contacto, direccion_fisica, created_at')
+        .select('*')
         .eq('id', sessionUser?.id)
         .single();
       if (error) throw error;
@@ -42,7 +68,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('proyectos')
-        .select('id, nombre_cliente, tipo_servicio, descripcion, fecha_inicio, fecha_entrega, monto_presupuestado, monto_facturado, margen_objetivo, precio_hora, horas_estimadas, unidad_tiempo, estado, created_at')
+        .select('*')
         .order('created_at', { ascending: false })
         .limit(30);
       if (error) throw error;
@@ -56,7 +82,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('facturas_gastos')
-        .select('id, proyecto_id, monto, fecha_factura, proveedor, ruc_proveedor, numero_factura, timbrado, tipo_gasto, iva_10, iva_5, exentas, estado, metodo_pago, created_at')
+        .select('*')
         .order('fecha_factura', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -90,7 +116,7 @@ export function useSupabaseData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ingresos')
-        .select('id, proyecto_id, cliente, ruc_cliente, numero_factura, timbrado, monto, iva_10, iva_5, exentas, fecha_emision, fecha_vencimiento, estado, metodo_pago, created_at')
+        .select('*')
         .order('fecha_emision', { ascending: false })
         .limit(50);
       if (error) throw error;
@@ -470,6 +496,56 @@ export function useSupabaseData() {
     };
   }, [ingresos, facturasGastos, propuestas]);
 
+  const isMultiempresa = profile?.service_type === 'multiempresa';
+
+  useEffect(() => {
+    if (!isMultiempresa) {
+      setActiveEmpresa('all');
+      return;
+    }
+
+    const fallback = profile?.empresa_activa || profile?.empresas_permitidas?.[0] || 'all';
+    setActiveEmpresa((current) => current === 'all' ? fallback : current);
+  }, [isMultiempresa, profile?.empresa_activa, profile?.empresas_permitidas]);
+
+  const availableEmpresas = useMemo(() => {
+    const values = new Set<string>();
+
+    (profile?.empresas_permitidas || []).forEach((empresa) => {
+      if (empresa?.trim()) values.add(empresa.trim());
+    });
+
+    [
+      ...proyectosConRentabilidad,
+      ...facturasGastos,
+      ...ingresos,
+      ...clientesConStats,
+      ...viajes,
+    ].forEach((record: any) => {
+      const entity = extractEntityName(record);
+      if (entity) values.add(entity);
+    });
+
+    return Array.from(values);
+  }, [profile?.empresas_permitidas, proyectosConRentabilidad, facturasGastos, ingresos, clientesConStats, viajes]);
+
+  const hasEntityScopedData = useMemo(() => {
+    return [
+      ...proyectosConRentabilidad,
+      ...facturasGastos,
+      ...ingresos,
+      ...clientesConStats,
+      ...viajes,
+    ].some((record: any) => Boolean(extractEntityName(record)));
+  }, [proyectosConRentabilidad, facturasGastos, ingresos, clientesConStats, viajes]);
+
+  const scopedProyectos = useMemo(() => filterRowsByEntity(proyectosConRentabilidad as any[], isMultiempresa, activeEmpresa), [proyectosConRentabilidad, isMultiempresa, activeEmpresa]);
+  const scopedFacturas = useMemo(() => filterRowsByEntity(facturasGastos as any[], isMultiempresa, activeEmpresa), [facturasGastos, isMultiempresa, activeEmpresa]);
+  const scopedIngresos = useMemo(() => filterRowsByEntity(ingresos as any[], isMultiempresa, activeEmpresa), [ingresos, isMultiempresa, activeEmpresa]);
+  const scopedClientes = useMemo(() => filterRowsByEntity(clientesConStats as any[], isMultiempresa, activeEmpresa), [clientesConStats, isMultiempresa, activeEmpresa]);
+  const scopedVehiculos = useMemo(() => filterRowsByEntity(vehiculos as any[], isMultiempresa, activeEmpresa), [vehiculos, isMultiempresa, activeEmpresa]);
+  const scopedViajes = useMemo(() => filterRowsByEntity(viajes as any[], isMultiempresa, activeEmpresa), [viajes, isMultiempresa, activeEmpresa]);
+
   useEffect(() => {
     if (!sessionUser) return;
 
@@ -525,14 +601,14 @@ export function useSupabaseData() {
   };
 
   return {
-    proyectos: proyectosConRentabilidad,
-    facturasGastos,
+    proyectos: scopedProyectos,
+    facturasGastos: scopedFacturas,
     inventarioEquipo,
     valorTotalInventario,
-    clientes: clientesConStats,
+    clientes: scopedClientes,
     alertas: [] as Alerta[],
     facturasAutoimpreso,
-    ingresos, 
+    ingresos: scopedIngresos,
     ingresosRaw,
     propuestas,
     bloqueos,
@@ -544,11 +620,18 @@ export function useSupabaseData() {
     documentosElectronicos,
     agendaTareas,
     cierresPeriodos,
-    vehiculos,
+    vehiculos: scopedVehiculos,
     registroCombustible,
     registroMantenimiento,
-    viajes,
+    viajes: scopedViajes,
     flotaIntelligence,
+    entityScope: {
+      isMultiempresa,
+      activeEmpresa,
+      availableEmpresas,
+      setActiveEmpresa,
+      hasEntityScopedData,
+    },
     loading: cargandoBase || loadingProfile || cargandoPerfilFiscal || cargandoSifen || cargandoDocsSifen || loadingAgenda || loadingPropuestasQuery || loadingHoras || loadingClientes || loadingCierres, 
     loadingProfile,
     loadingProyectos,

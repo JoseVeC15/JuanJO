@@ -33,7 +33,14 @@ Deno.serve(async (req) => {
       }
     });
 
-    const { email, password, nombre_completo } = await req.json();
+    const {
+      email,
+      password,
+      nombre_completo,
+      service_type = 'freelancer',
+      empresas_permitidas = [],
+      empresa_activa = null,
+    } = await req.json();
 
     if (!email || !password || !nombre_completo) {
       throw new Error('Email, password and name are required');
@@ -64,6 +71,9 @@ Deno.serve(async (req) => {
         email: email,
         nombre_completo: nombre_completo,
         nivel_acceso: 3, // Acceso standard por defecto
+        service_type,
+        empresas_permitidas,
+        empresa_activa,
         modulos_habilitados: ['dashboard', 'config'], // Módulos básicos
         facturacion_habilitada: false
       });

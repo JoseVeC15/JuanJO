@@ -3,6 +3,8 @@
 // SaaS Financiero Freelancer Audiovisual (Paraguay)
 // ============================================
 
+import type { ServiceType } from '../types/service';
+
 export type TipoServicio = 'filmacion' | 'edicion' | 'produccion_completa' | 'fotografia' | 'motion_graphics' | 'drone' | 'live_streaming' | 'otro';
 export type EstadoProyecto = 'cotizacion' | 'en_progreso' | 'entregado' | 'facturado' | 'pagado' | 'cancelado';
 export type TipoGasto = 'equipamiento_compra' | 'alquiler_equipo' | 'transporte' | 'alimentacion' | 'software_licencias' | 'subcontratacion' | 'material_produccion' | 'marketing' | 'oficina' | 'capacitacion' | 'impuestos' | 'otros';
@@ -19,6 +21,10 @@ export interface Profile {
   email?: string;
   nivel_acceso: 1 | 2;
   estado?: 'activo' | 'suspendido';
+  service_type?: ServiceType;
+  tipo_negocio?: string;
+  empresas_permitidas?: string[];
+  empresa_activa?: string | null;
   facturacion_habilitada?: boolean;
   modulos_habilitados?: string[];
   logo_url?: string;
@@ -32,6 +38,9 @@ export interface Profile {
 export interface Proyecto {
   id: string;
   nombre_cliente: string;
+  empresa_id?: string | null;
+  empresa_origen?: string | null;
+  unidad_negocio?: string | null;
   tipo_servicio: TipoServicio;
   descripcion: string;
   fecha_inicio: string;
@@ -59,6 +68,9 @@ export interface RegistroHora {
 export interface FacturaGasto {
   id: string;
   proyecto_id: string | null;
+  empresa_id?: string | null;
+  empresa_origen?: string | null;
+  unidad_negocio?: string | null;
   proyecto_nombre?: string;
   imagen_url: string | null;
   monto: number;
@@ -118,6 +130,9 @@ export type EstadoIngreso = 'emitida' | 'enviada' | 'vista' | 'vencida' | 'cobra
 export interface Ingreso {
   id: string;
   proyecto_id: string | null;
+  empresa_id?: string | null;
+  empresa_origen?: string | null;
+  unidad_negocio?: string | null;
   cliente: string;
   ruc_cliente?: string;
   numero_factura?: string;

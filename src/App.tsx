@@ -1,9 +1,10 @@
 import { useState, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
-import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar, ArrowRightLeft, CheckCircle2, Package, ClipboardList } from 'lucide-react';
+import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, Briefcase, Calendar, ArrowRightLeft, CheckCircle2, Package, ClipboardList, Sparkles } from 'lucide-react';
 import { useSupabaseData } from './hooks/useSupabaseData';
+import { resolveServiceProfile } from './config/serviceProfiles';
 import SuspensionGuard from './components/SuspensionGuard';
 
 const LoginScreen = lazy(() => import('./screens/LoginScreen'));
@@ -164,7 +165,7 @@ function CollapsibleNavItem({ item }: { item: any }) {
 
 function RouterWrapper() {
   const { user, loading: authLoading, mustChangePassword, signOut } = useAuth();
-  const { profile, loadingProfile } = useSupabaseData();
+  const { profile, loadingProfile, entityScope } = useSupabaseData();
   const location = useLocation();
   const routeFallback = (
     <div className="min-h-[40vh] flex items-center justify-center">
@@ -208,20 +209,26 @@ function RouterWrapper() {
   }
 
 
+  const serviceProfile = resolveServiceProfile(profile);
+  const serviceModules = new Set(serviceProfile.modules);
+  const multiempresaLabel = entityScope.isMultiempresa
+    ? (entityScope.activeEmpresa && entityScope.activeEmpresa !== 'all' ? entityScope.activeEmpresa : 'Consolidado general')
+    : null;
+
   const navItems = [
     { key: 'dashboard', path: '/dashboard', label: 'DASHBOARD', icon: <Layout size={20} /> },
     { 
       key: 'analizador-ia', 
-      label: 'ANALIZADOR IA', 
+      label: serviceProfile.labels?.analizador || 'FREELANCER IA', 
       icon: <PieChart size={20} className="text-emerald-400" />,
       children: [
-        { key: 'gastos', path: '/analizador-ia/gastos', label: 'GASTOS', icon: <ArrowDownLeft size={20} /> },
-        { key: 'ingresos', path: '/analizador-ia/ingresos', label: 'INGRESOS', icon: <ArrowUpRight size={20} /> },
+        { key: 'gastos', path: '/analizador-ia/gastos', label: 'EGRESOS IA', icon: <ArrowDownLeft size={20} /> },
+        { key: 'ingresos', path: '/analizador-ia/ingresos', label: 'INGRESOS IA', icon: <ArrowUpRight size={20} /> },
       ]
     },
     {
       key: 'gestion-freelancer',
-      label: 'GESTIÓN',
+      label: serviceProfile.labels?.gestion || 'AUTOFACTURA GUIADA',
       icon: <Briefcase size={20} className="text-blue-400" />,
       children: [
         { key: 'catalog', path: '/catalog', label: 'CATÁLOGO', icon: <Package size={20} /> },
@@ -232,7 +239,7 @@ function RouterWrapper() {
     },
     {
       key: 'fiscal-auditoria',
-      label: 'FISCAL & AUDITORÍA',
+      label: 'SIFEN & SET',
       icon: <ShieldCheck size={20} className="text-amber-400" />,
       children: [
         { key: 'set', path: '/asistente-set', label: 'ASISTENTE SET', icon: <ShieldCheck size={18} /> },
@@ -240,11 +247,11 @@ function RouterWrapper() {
         { key: 'cierre', path: '/fiscal/cierre', label: 'CIERRE MENSUAL', icon: <CheckCircle2 size={18} /> },
       ]
     },
-    { key: 'sifen', path: '/sifen', label: 'FACTURAS SIFEN', icon: <ShieldCheck size={20} /> },
+    { key: 'sifen', path: '/sifen', label: 'PERFIL SIFEN', icon: <ShieldCheck size={20} /> },
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
     { key: 'servicios', path: '/servicios', label: 'SERVICIOS', icon: <ClipboardList size={20} className="text-teal-400" /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
-    { key: 'reportes', path: '/analisis', label: 'ANÁLISIS', icon: <PieChart size={20} /> },
+    { key: 'reportes', path: '/analisis', label: serviceProfile.labels?.reportes || 'ANÁLISIS', icon: <PieChart size={20} /> },
     { key: 'settings', path: '/config', label: 'CONFIG', icon: <SettingsIcon size={20} /> },
   ];
 
@@ -272,6 +279,7 @@ function RouterWrapper() {
 
   const canAccess = (moduleKey: string) => {
     if (profile?.nivel_acceso === 1) return true;
+    if (!serviceModules.has(moduleKey as any)) return false;
     if (!enabledModules.includes(moduleKey)) return false;
     if (['sifen', 'clientes'].includes(moduleKey) && !hasBillingAccess) return false;
     return true;
@@ -289,6 +297,17 @@ function RouterWrapper() {
      }
      return item;
   });
+
+  const defaultRoute = canAccess('sifen')
+    ? '/sifen'
+    : canAccess('gastos')
+      ? '/analizador-ia/gastos'
+      : '/dashboard';
+
+  const experienceCards = serviceProfile.onboarding.map((card) => ({
+    ...card,
+    enabled: canAccess(card.moduleKey),
+  }));
 
   return (
       <SuspensionGuard>
@@ -343,6 +362,13 @@ function RouterWrapper() {
             </nav>
 
             <div className="p-4 border-t border-slate-800">
+              {entityScope.isMultiempresa && (
+                <div className="bg-emerald-500/10 rounded-2xl p-4 mb-4 border border-emerald-500/20">
+                  <p className="text-[10px] font-black text-emerald-400 uppercase mb-1 tracking-widest">Modo Multiempresa</p>
+                  <p className="text-xs text-white font-semibold truncate">{multiempresaLabel}</p>
+                  <p className="text-[10px] text-slate-400 mt-2 uppercase tracking-widest">{entityScope.availableEmpresas.length} entidades habilitadas</p>
+                </div>
+              )}
               <div className="bg-slate-800/40 rounded-2xl p-4 mb-4 border border-slate-700/30">
                 <p className="text-[10px] font-black text-slate-500 uppercase mb-1">Usuario</p>
                 <p className="text-xs text-slate-300 truncate font-semibold">{user.email}</p>
@@ -373,10 +399,49 @@ function RouterWrapper() {
             </header>
 
             <main className="flex-1 p-4 lg:p-10 max-w-[1600px] mx-auto w-full bg-[#fcfdfe]">
+              {location.pathname === '/dashboard' && (
+                <div className="mb-6 lg:mb-8 bg-white border border-slate-100 rounded-3xl p-4 lg:p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles size={14} className="text-emerald-500" />
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Acceso Rápido — {serviceProfile.name}</p>
+                    </div>
+                    <Link to="/config" className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-700 transition-colors">
+                      Cambiar perfil
+                    </Link>
+                  </div>
+                  {entityScope.isMultiempresa && (
+                    <div className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50/60 px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Entidad operativa</p>
+                        <p className="text-sm font-bold text-slate-800">{multiempresaLabel}</p>
+                      </div>
+                      <p className="text-[11px] font-medium text-slate-600">Permisos vigentes en {entityScope.availableEmpresas.length} entidades configuradas para este cliente.</p>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {experienceCards.map((card) => (
+                      <Link
+                        key={card.key}
+                        to={card.enabled ? card.path : '/config'}
+                        className={`rounded-2xl border px-4 py-4 transition-all ${card.enabled
+                          ? 'border-emerald-100 bg-emerald-50/40 hover:bg-emerald-50'
+                          : 'border-slate-100 bg-slate-50 opacity-60 cursor-default'}`}
+                      >
+                        <p className="text-xs font-black text-slate-900 uppercase tracking-tight mb-1">{card.title}</p>
+                        <p className="text-[11px] font-medium text-slate-600">{card.description}</p>
+                        {!card.enabled && (
+                          <p className="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-widest">Habilitar en Config →</p>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
               <AnimatePresence mode="wait">
                 <Suspense fallback={routeFallback}>
                   <Routes location={location} key={location.pathname}>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/" element={<Navigate to={defaultRoute} replace />} />
                   
                   {/* Rutas Protegidas de Facturación */}
                   {!(hasBillingAccess) && (
