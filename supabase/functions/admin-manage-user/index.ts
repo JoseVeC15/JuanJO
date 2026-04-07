@@ -63,11 +63,61 @@ Deno.serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+    if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
+      return new Response(JSON.stringify({ error: 'Configuración incompleta de secretos en Edge Function (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY).' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500,
+      });
+    }
+
+    const authHeader = req.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'No autorizado: falta token Bearer.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
+
+    // Cliente del usuario llamante (JWT del frontend) para autenticar y autorizar.
+    const supabaseCaller = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false },
+    });
+
+    const { data: callerAuth, error: callerError } = await supabaseCaller.auth.getUser();
+    if (callerError || !callerAuth.user) {
+      return new Response(JSON.stringify({ error: `No autorizado: JWT inválido o expirado. ${callerError?.message || ''}`.trim() }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
 
     // Cliente administrativo con SERVICE_ROLE
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
     });
+
+    const { data: callerProfile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('nivel_acceso')
+      .eq('id', callerAuth.user.id)
+      .single();
+
+    if (profileError) {
+      return new Response(JSON.stringify({ error: `No se pudo validar permisos del solicitante: ${profileError.message}` }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
+      });
+    }
+
+    if (callerProfile?.nivel_acceso !== 1) {
+      return new Response(JSON.stringify({ error: 'No autorizado: se requiere nivel_acceso=1 (Super Admin).' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403,
+      });
+    }
 
     const body = await req.json();
     console.log('📦 [Backend] Body recibido:', JSON.stringify(body, null, 2));
