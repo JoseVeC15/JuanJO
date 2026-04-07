@@ -33,8 +33,15 @@ const MODULE_OPTIONS = [
 const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
 
 async function invokeEdgeWithAuth(functionName: string, body: any) {
-  // Fuerza sincronización de sesión actual antes de invocar Edge Functions.
-  await supabase.auth.getUser();
+  // Verifica si el JWT actual es válido en el servidor de Auth.
+  const { error: userError } = await supabase.auth.getUser();
+  if (userError) {
+    const refresh = await supabase.auth.refreshSession();
+    if (refresh.error) {
+      throw new Error('Sesión inválida o expirada. Cierra sesión e inicia nuevamente.');
+    }
+  }
+
   let { data: sessionData } = await supabase.auth.getSession();
   let accessToken = sessionData.session?.access_token;
 
@@ -48,45 +55,9 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
     throw new Error('Tu sesión expiró. Vuelve a iniciar sesión para ejecutar acciones administrativas.');
   }
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_LIVE;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_LIVE;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Faltan variables de entorno VITE_SUPABASE_URL_LIVE / VITE_SUPABASE_ANON_KEY_LIVE.');
-  }
-
   const execute = async () => {
-    const res = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken!}`,
-        apikey: supabaseAnonKey,
-      },
-      body: JSON.stringify(body),
-    });
-
-    let payload: any = null;
-    try {
-      payload = await res.json();
-    } catch {
-      payload = null;
-    }
-
-    if (!res.ok) {
-      return {
-        data: null,
-        error: {
-          message: payload?.error || payload?.message || `Error ${res.status}`,
-          status: res.status,
-          context: {
-            json: async () => payload,
-          },
-        },
-      };
-    }
-
-    return { data: payload, error: null };
+    supabase.functions.setAuth(accessToken!);
+    return supabase.functions.invoke(functionName, { body });
   };
 
   let response = await execute();
