@@ -1,5 +1,7 @@
 import type {
+  FullServiceConfig,
   ServiceProfileConfig,
+  ServiceModuleKey,
   ServiceProfileSource,
   ServiceType,
 } from '../types/service';
@@ -8,12 +10,16 @@ import {
   SERVICE_TYPE_ALIASES,
   SELECTABLE_SERVICE_TYPES,
   deriveProfileConfig,
+  getServiceCatalogConfig,
 } from './serviceCatalog';
 
 // SERVICE_PROFILES se deriva automáticamente del catálogo.
 // Para editar onboarding, tips, módulos, etc. → edita SERVICE_CATALOG en serviceCatalog.ts
 export const SERVICE_PROFILES = Object.fromEntries(
-  Object.entries(SERVICE_CATALOG).map(([key, config]) => [key, deriveProfileConfig(config)])
+  Object.keys(SERVICE_CATALOG).map((type) => {
+    const serviceType = type as ServiceType;
+    return [serviceType, deriveProfileConfig(getServiceCatalogConfig(serviceType))];
+  })
 ) as Record<ServiceType, ServiceProfileConfig>;
 
 export const SELECTABLE_SERVICE_PROFILES = SELECTABLE_SERVICE_TYPES
@@ -49,4 +55,18 @@ export function resolveServiceType(source?: ServiceProfileSource | null): Servic
 export function resolveServiceProfile(source?: ServiceProfileSource | null): ServiceProfileConfig {
   const type = resolveServiceType(source);
   return SERVICE_PROFILES[type];
+}
+
+export function resolveFullServiceProfile(source?: ServiceProfileSource | null): FullServiceConfig {
+  const type = resolveServiceType(source);
+  return getServiceCatalogConfig(type);
+}
+
+export function resolveActiveModules(source?: ServiceProfileSource | null): ServiceModuleKey[] {
+  const overrideModules = source?.modulos_habilitados?.filter(Boolean) as ServiceModuleKey[] | undefined;
+  if (overrideModules && overrideModules.length > 0) {
+    return overrideModules;
+  }
+
+  return resolveServiceProfile(source).modules;
 }

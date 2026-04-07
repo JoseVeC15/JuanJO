@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, NavLink, Navigate, useLocation, Link } fr
 import { useAuth } from './contexts/AuthContext';
 import { Layout, LogOut, Loader2, ShieldCheck, PieChart, Wallet, Settings as SettingsIcon, ArrowUpRight, ArrowDownLeft, ChevronDown, ClipboardList, Sparkles } from 'lucide-react';
 import { useSupabaseData } from './hooks/useSupabaseData';
-import { resolveServiceProfile } from './config/serviceProfiles';
+import { resolveActiveModules, resolveServiceProfile } from './config/serviceProfiles';
 import SuspensionGuard from './components/SuspensionGuard';
 
 const LoginScreen = lazy(() => import('./screens/LoginScreen'));
@@ -230,25 +230,13 @@ function RouterWrapper() {
     (navItems as any).push({ key: 'admin', path: '/admin', label: 'Admin Panel', icon: <ShieldCheck size={20} className="text-indigo-400" /> });
   }
 
-  const hasBillingAccess = profile?.facturacion_habilitada || profile?.nivel_acceso === 1;
-
-  const fallbackModules = hasBillingAccess
-    ? ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'proyectos', 'servicios', 'inventario', 'reportes', 'settings']
-    : ['dashboard', 'analizador-ia', 'gastos', 'ingresos', 'proyectos', 'servicios', 'inventario', 'reportes', 'settings'];
-
-  const enabledModules = (() => {
-    const baseModules = (profile?.modulos_habilitados && profile.modulos_habilitados.length > 0)
-      ? profile.modulos_habilitados
-      : (serviceProfile.modules.length > 0 ? serviceProfile.modules : fallbackModules);
-
-    return baseModules;
-  })();
+  const enabledModules = resolveActiveModules(profile);
 
   const allowedModules = new Set(enabledModules);
 
   const canAccess = (moduleKey: string) => {
     if (profile?.nivel_acceso === 1) return true;
-    if (!allowedModules.has(moduleKey)) return false;
+    if (!allowedModules.has(moduleKey as (typeof enabledModules)[number])) return false;
     return true;
   };
 

@@ -42,7 +42,47 @@ export type ServiceModuleKey =
   | 'catalog'
   | 'reportes'
   | 'settings'
-  | 'admin';
+  | 'admin'
+  | 'horas'
+  | 'propuestas'
+  | 'facturacion-servicio'
+  | 'rentabilidad-cliente'
+  | 'facturacion-electronica'
+  | 'estados-dte'
+  | 'validacion'
+  | 'historial-tributario'
+  | 'vehiculos'
+  | 'rutas'
+  | 'combustible'
+  | 'mantenimiento'
+  | 'alquileres'
+  | 'costo-unidad'
+  | 'ventas'
+  | 'compras'
+  | 'caja-diaria'
+  | 'cuentas-por-cobrar-pagar'
+  | 'consolidado'
+  | 'reportes-entidad'
+  | 'permisos-empresa'
+  | 'impuestos-estimados';
+
+export type ServiceProfileStatus = 'activo' | 'disponible';
+
+export type ServiceLanguageTone =
+  | 'freelancer'
+  | 'corporativo'
+  | 'tributario'
+  | 'asistido'
+  | 'operativo'
+  | 'retail'
+  | 'multiempresa'
+  | 'audiovisual'
+  | 'salud'
+  | 'educacion';
+
+export type ServiceModuleCategory = 'core' | 'finance' | 'fiscal' | 'operations' | 'analytics' | 'crm';
+
+export type ModuleAvailability = 'implemented' | 'planned';
 
 export type DashboardWidgetKey =
   | 'ingresos_cobrados'
@@ -146,19 +186,44 @@ export interface OnboardingCard {
   moduleKey: string;
 }
 
+export interface ServiceModuleDefinition {
+  key: ServiceModuleKey;
+  label: string;
+  description: string;
+  category: ServiceModuleCategory;
+  availability: ModuleAvailability;
+  configurable: boolean;
+  path?: string;
+}
+
+export interface BusinessArchitecturePreset {
+  status: ServiceProfileStatus;
+  audience: string;
+  keyModuleKeys: ServiceModuleKey[];
+  languageTone: ServiceLanguageTone;
+  dashboardExperience: string;
+  operationalFlows: string[];
+}
+
 // --------------- Configuración completa por tipo de servicio ---------------
 
 export interface FullServiceConfig {
   id: ServiceType;
   nombre: string;
   descripcion: string;
+  estado?: ServiceProfileStatus;
   audiencia_objetivo?: string;
   modulos_clave?: string[];
+  modulos_clave_ids?: ServiceModuleKey[];
   visible_en_selector?: boolean;
   modulos_habilitados: ServiceModuleKey[];
+  modulos_editables?: ServiceModuleKey[];
   dashboard_default: DashboardWidgetKey[];
+  dashboard_experience?: string;
   kpis_visibles: KPIConfig[];
   reportes_habilitados: ReportPresetKey[];
+  tono_lenguaje?: ServiceLanguageTone;
+  flujos_operativos?: string[];
   categorias_ingresos: string[];
   categorias_egresos: string[];
   campos_extra_por_formulario: Partial<Record<FormularioTarget, CampoExtra[]>>;
@@ -176,9 +241,17 @@ export interface FullServiceConfig {
 export interface ServiceProfileConfig {
   id: ServiceType;
   name: string;
+  status: ServiceProfileStatus;
+  audience: string;
+  keyModules: string[];
+  keyModuleKeys: ServiceModuleKey[];
   modules: ServiceModuleKey[];
+  editableModules: ServiceModuleKey[];
   dashboardWidgets: DashboardWidgetKey[];
+  dashboardExperience: string;
   reportPresets: ReportPresetKey[];
+  languageTone: ServiceLanguageTone;
+  operationalFlows: string[];
   labels?: Partial<Record<'analizador' | 'gestion' | 'reportes', string>>;
   onboarding: OnboardingCard[];
   tips: string[];
@@ -187,4 +260,5 @@ export interface ServiceProfileConfig {
 export interface ServiceProfileSource {
   service_type?: string | null;
   tipo_negocio?: string | null;
+  modulos_habilitados?: string[] | null;
 }

@@ -15,8 +15,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSupabaseData } from '../hooks/useSupabaseData';
-import { SERVICE_CATALOG } from '../config/serviceCatalog';
-import { SELECTABLE_SERVICE_PROFILES, SERVICE_PROFILES, resolveServiceType } from '../config/serviceProfiles';
+import { getServiceCatalogConfig } from '../config/serviceCatalog';
+import { getModuleLabel } from '../config/moduleCatalog';
+import { SELECTABLE_SERVICE_PROFILES, SERVICE_PROFILES, resolveFullServiceProfile, resolveServiceType } from '../config/serviceProfiles';
 import type { ServiceType } from '../types/service';
 
 export default function Settings({ initialTab = 'profile' }: { initialTab?: 'profile' | 'branding' | 'categories' | 'currency' | 'backup' | 'billing' | 'catalog' }) {
@@ -411,7 +412,7 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
 
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {SELECTABLE_SERVICE_PROFILES.map((service) => {
-                      const catalog = SERVICE_CATALOG[service.id];
+                      const catalog = getServiceCatalogConfig(service.id);
                       const isActive = serviceType === service.id;
 
                       return (
@@ -435,7 +436,7 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                               <h4 className="mt-3 text-lg font-black text-slate-900 leading-tight">{service.name}</h4>
                             </div>
                             <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-emerald-700' : 'text-slate-400'}`}>
-                              {isActive ? 'Activo' : 'Disponible'}
+                              {isActive ? 'Activo' : catalog.estado === 'activo' ? 'Activo' : 'Disponible'}
                             </span>
                           </div>
 
@@ -449,7 +450,7 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                             <div>
                               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Módulos clave</p>
                               <div className="flex flex-wrap gap-2">
-                                {(catalog.modulos_clave || service.modules.slice(0, 5)).map((item) => (
+                                {(catalog.modulos_clave || service.keyModules.slice(0, 5)).map((item) => (
                                   <span
                                     key={item}
                                     className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
@@ -484,12 +485,23 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                 {/* Preview de módulos y tips para el tipo seleccionado */}
                 {(() => {
                   const preview = SERVICE_PROFILES[serviceType];
-                  const catalogPreview = SERVICE_CATALOG[serviceType];
+                  const catalogPreview = resolveFullServiceProfile(profile && serviceType === resolveServiceType(profile)
+                    ? profile
+                    : { service_type: serviceType });
+                  const activeModuleLabels = (profile?.modulos_habilitados && serviceType === resolveServiceType(profile)
+                    ? profile.modulos_habilitados
+                    : preview.modules).map(getModuleLabel);
+
                   return (
                     <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5 space-y-4">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                         {preview.name} — Módulos activos
-                      </p>
+                        </p>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2.5 py-1">
+                          {preview.status}
+                        </span>
+                      </div>
                       {(catalogPreview.audiencia_objetivo || catalogPreview.modulos_clave?.length) && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div className="rounded-xl bg-white border border-slate-200 p-3">
@@ -499,7 +511,7 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                           <div className="rounded-xl bg-white border border-slate-200 p-3">
                             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Módulos clave</p>
                             <div className="flex flex-wrap gap-2">
-                              {(catalogPreview.modulos_clave || preview.modules.slice(0, 6)).map((item) => (
+                              {(catalogPreview.modulos_clave || preview.keyModules.slice(0, 6)).map((item) => (
                                 <span key={item} className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-lg">
                                   {item}
                                 </span>
@@ -508,12 +520,36 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                           </div>
                         </div>
                       )}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="rounded-xl bg-white border border-slate-200 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Dashboard</p>
+                          <p className="text-sm text-slate-700 font-medium">{preview.dashboardExperience}</p>
+                        </div>
+                        <div className="rounded-xl bg-white border border-slate-200 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Lenguaje</p>
+                          <p className="text-sm text-slate-700 font-medium capitalize">{preview.languageTone}</p>
+                        </div>
+                        <div className="rounded-xl bg-white border border-slate-200 p-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Flujos operativos</p>
+                          <p className="text-sm text-slate-700 font-medium">{preview.operationalFlows.length} activos</p>
+                        </div>
+                      </div>
                       <div className="flex flex-wrap gap-2">
-                        {preview.modules.map((m) => (
-                          <span key={m} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg uppercase tracking-tight">
-                            {m}
+                        {activeModuleLabels.map((moduleLabel) => (
+                          <span key={moduleLabel} className="text-[10px] font-bold bg-white border border-slate-200 text-slate-600 px-2 py-1 rounded-lg uppercase tracking-tight">
+                            {moduleLabel}
                           </span>
                         ))}
+                      </div>
+                      <div className="rounded-xl bg-white border border-slate-200 p-3">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Flujos sugeridos</p>
+                        <div className="flex flex-wrap gap-2">
+                          {preview.operationalFlows.map((flow) => (
+                            <span key={flow} className="text-[10px] font-bold bg-slate-100 text-slate-700 px-2 py-1 rounded-lg">
+                              {flow}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                       <div className="pt-1">
                         <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600 mb-2">Consejos para este perfil</p>

@@ -8,29 +8,15 @@ import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { Profile } from '../data/sampleData';
 import { SERVICE_CATALOG, SELECTABLE_SERVICE_TYPES } from '../config/serviceCatalog';
+import { getModuleLabel, RUNTIME_EDITABLE_MODULES } from '../config/moduleCatalog';
+import { resolveFullServiceProfile } from '../config/serviceProfiles';
 import type { ServiceType } from '../types/service';
 
-const MODULE_OPTIONS = [
-  { key: 'dashboard', label: 'Dashboard' },
-  { key: 'gastos', label: 'Gastos' },
-  { key: 'ingresos', label: 'Ingresos' },
-  { key: 'cobros', label: 'Centro de Cobros' },
-  { key: 'agenda', label: 'Agenda Freelancer' },
-  { key: 'planificacion', label: 'Disponibilidad/Offtime' },
-  { key: 'set', label: 'Asistente SET (Fiscal)' },
-  { key: 'conciliacion', label: 'Conciliación Bancaria' },
-  { key: 'cierre', label: 'Cierre Mensual' },
-  { key: 'sifen', label: 'Facturas SIFEN' },
-  { key: 'clientes', label: 'Clientes (SIFEN)' },
-  { key: 'proyectos', label: 'Proyectos' },
-  { key: 'servicios', label: 'Servicios' },
-  { key: 'inventario', label: 'Activos' },
-  { key: 'catalog', label: 'Catálogo de Servicios' },
-  { key: 'reportes', label: 'Análisis' },
-  { key: 'settings', label: 'Configuración' },
-] as const;
-
 const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
+
+function getDefaultModulesForServiceType(serviceType: ServiceType) {
+  return resolveFullServiceProfile({ service_type: serviceType }).modulos_habilitados;
+}
 
 async function invokeEdgeWithAuth(functionName: string, body: any) {
   // Verifica si el JWT actual es válido en el servidor de Auth.
@@ -382,15 +368,14 @@ export default function AdminPanel() {
                       </button>
                       <button
                         onClick={() => {
-                          const fallback = (p.facturacion_habilitada
-                            ? ['dashboard', 'gastos', 'ingresos', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'sifen', 'clientes', 'proyectos', 'inventario', 'reportes', 'settings']
-                            : ['dashboard', 'gastos', 'ingresos', 'cobros', 'agenda', 'planificacion', 'set', 'conciliacion', 'cierre', 'proyectos', 'inventario', 'reportes', 'settings']);
+                          const serviceType = (p.service_type || 'freelancer') as ServiceType;
+                          const fallback = getDefaultModulesForServiceType(serviceType);
 
                           setModuleData({
                             id: p.id,
                             name: p.nombre_completo,
                             modules: (p.modulos_habilitados && p.modulos_habilitados.length > 0) ? p.modulos_habilitados : fallback,
-                            serviceType: (p.service_type || 'freelancer') as ServiceType,
+                            serviceType,
                             empresasPermitidas: p.empresas_permitidas || [],
                             empresaActiva: p.empresa_activa || (p.empresas_permitidas?.[0] || ''),
                           });
@@ -670,8 +655,22 @@ export default function AdminPanel() {
               </div>
             )}
 
+            <div className="rounded-2xl border border-violet-100 bg-violet-50 p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-violet-500 mb-1">Arquitectura editable</p>
+                <p className="text-sm text-violet-900 font-medium">Los modulos pueden sobreescribirse por cliente sin perder el perfil base.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModuleData(prev => prev ? { ...prev, modules: getDefaultModulesForServiceType(prev.serviceType) } : prev)}
+                className="px-4 py-2 rounded-xl bg-white border border-violet-200 text-violet-700 font-bold text-xs uppercase tracking-widest hover:bg-violet-100 transition-all"
+              >
+                Usar modulos sugeridos
+              </button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
-              {MODULE_OPTIONS.map((mod) => (
+              {RUNTIME_EDITABLE_MODULES.map((mod) => (
                 <label key={mod.key} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50 cursor-pointer hover:border-violet-200 transition-all">
                   <input
                     type="checkbox"
@@ -688,9 +687,23 @@ export default function AdminPanel() {
                     }}
                     className="w-4 h-4 accent-violet-600"
                   />
-                  <span className="text-sm font-semibold text-gray-700">{mod.label}</span>
+                  <div>
+                    <span className="block text-sm font-semibold text-gray-700">{mod.label}</span>
+                    <span className="block text-[10px] uppercase tracking-widest text-gray-400">{mod.category}</span>
+                  </div>
                 </label>
               ))}
+            </div>
+
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Resumen seleccionado</p>
+              <div className="flex flex-wrap gap-2">
+                {moduleData.modules.map((moduleKey) => (
+                  <span key={moduleKey} className="px-2 py-1 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-700 uppercase tracking-tight">
+                    {getModuleLabel(moduleKey)}
+                  </span>
+                ))}
+              </div>
             </div>
 
             {status && (

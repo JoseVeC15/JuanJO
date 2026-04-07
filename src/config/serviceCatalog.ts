@@ -11,6 +11,7 @@
 // ============================================================
 
 import type {
+  BusinessArchitecturePreset,
   FullServiceConfig,
   ServiceModuleKey,
   DashboardWidgetKey,
@@ -19,6 +20,8 @@ import type {
   ServiceType,
   ServiceProfileConfig,
 } from '../types/service';
+import { BUSINESS_ARCHITECTURE } from './businessArchitecture';
+import { getModuleLabel } from './moduleCatalog';
 
 // ============================================================
 // NÚCLEO FINANCIERO COMPARTIDO
@@ -735,24 +738,55 @@ export const SERVICE_CATALOG: Record<ServiceType, FullServiceConfig> = {
   },
 };
 
+function getArchitecturePreset(serviceType: ServiceType): BusinessArchitecturePreset {
+  return BUSINESS_ARCHITECTURE[serviceType];
+}
+
+export function getServiceCatalogConfig(serviceType: ServiceType): FullServiceConfig {
+  const config = SERVICE_CATALOG[serviceType];
+  const architecture = getArchitecturePreset(serviceType);
+
+  return {
+    ...config,
+    estado: config.estado ?? architecture.status,
+    audiencia_objetivo: config.audiencia_objetivo ?? architecture.audience,
+    modulos_clave_ids: config.modulos_clave_ids ?? architecture.keyModuleKeys,
+    modulos_clave: config.modulos_clave ?? architecture.keyModuleKeys.map(getModuleLabel),
+    modulos_editables: config.modulos_editables ?? config.modulos_habilitados,
+    dashboard_experience: config.dashboard_experience ?? architecture.dashboardExperience,
+    tono_lenguaje: config.tono_lenguaje ?? architecture.languageTone,
+    flujos_operativos: config.flujos_operativos ?? architecture.operationalFlows,
+  };
+}
+
 // ============================================================
 // ADAPTADOR — SERVICE_CATALOG → ServiceProfileConfig (slim)
 // Convierte la config completa al formato que consume la UI existente.
 // ============================================================
 
 export function deriveProfileConfig(full: FullServiceConfig): ServiceProfileConfig {
+  const resolved = getServiceCatalogConfig(full.id);
+
   return {
-    id: full.id,
-    name: full.nombre,
-    modules: full.modulos_habilitados,
-    dashboardWidgets: full.dashboard_default,
-    reportPresets: full.reportes_habilitados,
+    id: resolved.id,
+    name: resolved.nombre,
+    status: resolved.estado || 'disponible',
+    audience: resolved.audiencia_objetivo || resolved.descripcion,
+    keyModules: resolved.modulos_clave || [],
+    keyModuleKeys: resolved.modulos_clave_ids || [],
+    modules: resolved.modulos_habilitados,
+    editableModules: resolved.modulos_editables || resolved.modulos_habilitados,
+    dashboardWidgets: resolved.dashboard_default,
+    dashboardExperience: resolved.dashboard_experience || '',
+    reportPresets: resolved.reportes_habilitados,
+    languageTone: resolved.tono_lenguaje || 'freelancer',
+    operationalFlows: resolved.flujos_operativos || [],
     labels: {
-      analizador: full.labels_personalizados.analizador,
-      gestion:    full.labels_personalizados.gestion,
-      reportes:   full.labels_personalizados.reportes,
+      analizador: resolved.labels_personalizados.analizador,
+      gestion:    resolved.labels_personalizados.gestion,
+      reportes:   resolved.labels_personalizados.reportes,
     },
-    onboarding: full.onboarding,
-    tips:       full.tips,
+    onboarding: resolved.onboarding,
+    tips:       resolved.tips,
   };
 }
