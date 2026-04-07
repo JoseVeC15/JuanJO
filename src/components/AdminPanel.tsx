@@ -4,7 +4,7 @@ import {
   Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2, Pause, Play, SlidersHorizontal
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { Profile } from '../data/sampleData';
 import { SERVICE_CATALOG, SELECTABLE_SERVICE_TYPES } from '../config/serviceCatalog';
@@ -18,99 +18,49 @@ function getDefaultModulesForServiceType(serviceType: ServiceType) {
   return resolveFullServiceProfile({ service_type: serviceType }).modulos_habilitados;
 }
 
-async function invokeEdgeWithAuth(functionName: string, body: any) {
-  const { error: userError } = await supabase.auth.getUser();
-  if (userError) {
-    const refresh = await supabase.auth.refreshSession();
-    if (refresh.error) {
-      throw new Error('Sesión inválida o expirada. Cierra sesión e inicia nuevamente.');
-    }
-  }
-
-  let { data: sessionData } = await supabase.auth.getSession();
-  let accessToken = sessionData.session?.access_token;
-
-  if (!accessToken) {
-    const refresh = await supabase.auth.refreshSession();
-    if (refresh.error) throw refresh.error;
-    accessToken = refresh.data.session?.access_token;
-  }
-
-  if (!accessToken) {
-    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión para ejecutar acciones administrativas.');
-  }
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('Configuración de Supabase incompleta en frontend.');
-  }
-
-  const execute = async (token: string) => {
-    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
-      method: 'POST',
+async function invokeEdgeWithAuth(functionName: any, body: any) {
+  try {
+    console.log(`📡 [invokeEdgeWithAuth] Invocando ${functionName} via SDK...`);
+    
+    // El SDK de Supabase (v2) inyecta automáticamente el JWT de la sesión activa
+    // y maneja las cabeceras apikey/authorization de forma óptima.
+    const { data, error } = await supabase.functions.invoke(functionName, {
+      body,
       headers: {
-        'Content-Type': 'application/json',
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+        'x-client-info': 'finance-pro-web@2.0.1',
+      }
     });
 
-    const rawText = await response.text();
-    let payload: any = null;
+    if (error) {
+      console.error(`❌ [invokeEdgeWithAuth] Error de SDK en ${functionName}:`, error);
+      
+      // Intentar extraer un mensaje amigable
+      let errorMsg = 'Error en la operación del servidor';
+      if (typeof error === 'string') errorMsg = error;
+      else if (error && 'message' in error) errorMsg = error.message;
 
-    try {
-      payload = rawText ? JSON.parse(rawText) : null;
-    } catch {
-      payload = rawText ? { error: rawText } : null;
-    }
-
-    if (!response.ok) {
       return {
         data: null,
         error: {
-          message: payload?.error || payload?.message || `Error HTTP ${response.status}`,
-          status: response.status,
-          payload,
-        },
+          message: errorMsg,
+          status: (error as any)?.status || 400,
+          payload: error
+        }
       };
     }
 
-    return { data: payload, error: null };
-  };
+    return { data, error: null };
 
-  let response = await execute(accessToken);
-
-  // Si falla por JWT inválido, intentamos refrescar la sesión UNA VEZ
-  if (response.error && /invalid jwt|jwt|token/i.test(response.error.message || '')) {
-    console.warn('🔄 [invokeEdgeWithAuth] JWT inválido detectado, intentando refrescar sesión...');
-    
-    // Forzamos un refresh de la sesión de Supabase
-    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-    
-    if (refreshError) {
-      console.error('❌ [invokeEdgeWithAuth] Error al refrescar sesión:', refreshError);
-      throw new Error('Tu sesión ha expirado y no pudo ser renovada automáticamente. Cierra sesión e inicia de nuevo.');
-    }
-
-    const freshToken = refreshData.session?.access_token;
-    if (!freshToken) {
-      throw new Error('No se pudo obtener un nuevo token de acceso tras el refresco.');
-    }
-
-    console.log('✅ [invokeEdgeWithAuth] Sesión refrescada con éxito. Reintentando operación...');
-    
-    // Pequeño delay opcional para asegurar propagación de estado
-    await new Promise(resolve => setTimeout(resolve, 200));
-    
-    // Reintentamos con el nuevo token
-    response = await execute(freshToken);
-    
-    if (response.error) {
-      console.error('❌ [invokeEdgeWithAuth] Segundo intento fallido:', response.error);
-    }
+  } catch (err: any) {
+    console.error(`💥 [invokeEdgeWithAuth] Error fatal en la llamada:`, err);
+    return {
+      data: null,
+      error: {
+        message: err.message || 'Error de conexión inesperado',
+        status: 500
+      }
+    };
   }
-
-  return response;
 }
 
 export default function AdminPanel() {
