@@ -80,15 +80,34 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
 
   let response = await execute(accessToken);
 
-  if (response.error && /invalid jwt|jwt/i.test(response.error.message || '')) {
-    const refresh = await supabase.auth.refreshSession();
-    if (refresh.error) throw refresh.error;
-    const freshToken = refresh.data.session?.access_token;
-    if (!freshToken) {
-      throw new Error('No se pudo refrescar tu sesión. Cierra sesión e inicia de nuevo.');
+  // Si falla por JWT inválido, intentamos refrescar la sesión UNA VEZ
+  if (response.error && /invalid jwt|jwt|token/i.test(response.error.message || '')) {
+    console.warn('🔄 [invokeEdgeWithAuth] JWT inválido detectado, intentando refrescar sesión...');
+    
+    // Forzamos un refresh de la sesión de Supabase
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+    
+    if (refreshError) {
+      console.error('❌ [invokeEdgeWithAuth] Error al refrescar sesión:', refreshError);
+      throw new Error('Tu sesión ha expirado y no pudo ser renovada automáticamente. Cierra sesión e inicia de nuevo.');
     }
-    accessToken = freshToken;
-    response = await execute(accessToken);
+
+    const freshToken = refreshData.session?.access_token;
+    if (!freshToken) {
+      throw new Error('No se pudo obtener un nuevo token de acceso tras el refresco.');
+    }
+
+    console.log('✅ [invokeEdgeWithAuth] Sesión refrescada con éxito. Reintentando operación...');
+    
+    // Pequeño delay opcional para asegurar propagación de estado
+    await new Promise(resolve => setTimeout(resolve, 200));
+    
+    // Reintentamos con el nuevo token
+    response = await execute(freshToken);
+    
+    if (response.error) {
+      console.error('❌ [invokeEdgeWithAuth] Segundo intento fallido:', response.error);
+    }
   }
 
   return response;

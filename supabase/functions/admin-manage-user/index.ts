@@ -8,8 +8,10 @@ const corsHeaders = {
 
 const ALLOWED_MODULES = new Set([
   'dashboard',
+  'analizador-ia',
   'gastos',
   'ingresos',
+  'gestion-freelancer',
   'cobros',
   'agenda',
   'planificacion',
@@ -19,7 +21,7 @@ const ALLOWED_MODULES = new Set([
   'sifen',
   'clientes',
   'proyectos',
-  'fichas',
+  'servicios',
   'inventario',
   'catalog',
   'reportes',
@@ -90,12 +92,27 @@ Deno.serve(async (req: Request) => {
     // Cliente del usuario llamante (JWT del frontend) para autenticar y autorizar.
     const supabaseCaller = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
-      auth: { persistSession: false },
+      auth: { 
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      },
     });
 
-    const { data: callerAuth, error: callerError } = await supabaseCaller.auth.getUser(accessToken);
+    // Validar el usuario usando el token del header global
+    const { data: callerAuth, error: callerError } = await supabaseCaller.auth.getUser();
+    
     if (callerError || !callerAuth.user) {
-      return new Response(JSON.stringify({ error: `No autorizado: JWT inválido o expirado. ${callerError?.message || ''}`.trim() }), {
+      console.error('❌ Error de validación de JWT en Edge Function:', {
+        message: callerError?.message,
+        status: callerError?.status,
+        hasToken: !!accessToken
+      });
+      
+      return new Response(JSON.stringify({ 
+        error: `Invalid JWT: ${callerError?.message || 'Token no válido o expirado'}`,
+        details: callerError
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 401,
       });
