@@ -8,3 +8,5 @@ dist/
 .vscode/
 .idea/
 _legacy_backup/
+.claude/
+tmp-screenshot.mjs

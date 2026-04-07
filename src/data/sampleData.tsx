@@ -846,6 +846,38 @@ export const getStatusColor = (estado: EstadoProyecto): string => {
   return colors[estado] || '#6B7280';
 };
 
+export type TipoComprobante = 'factura_comercial' | 'nota_credito' | 'nota_debito' | 'recibo';
+
+export interface FacturaAutoimpreso {
+  id: string;
+  user_id: string;
+  tipo_comprobante: TipoComprobante;
+  numero_documento: string; // XXX-XXX-XXXXXXX
+  timbrado: string;
+  vencimiento_timbrado?: string;
+  fecha_emision: string;
+  razon_social: string;
+  ruc: string;
+  condicion_operacion: 'contado' | 'credito';
+  monto_total: number;
+  iva_10: number;
+  iva_5: number;
+  exentas: number;
+  establecimiento: string;
+  punto_expedicion: string;
+  estado: 'emitido' | 'anulado';
+  imagen_url: string | null;
+  notas: string;
+  created_at: string;
+}
+
+export const TIPO_COMPROBANTE_CONFIG: Record<TipoComprobante, { label: string; sigla: string; icon: string; color: string }> = {
+  factura_comercial: { label: 'Factura Comercial', sigla: 'FC', icon: '📄', color: '#10B981' },
+  nota_credito: { label: 'Nota de Crédito', sigla: 'NC', icon: '🔙', color: '#F59E0B' },
+  nota_debito: { label: 'Nota de Débito', sigla: 'ND', icon: '➕', color: '#EF4444' },
+  recibo: { label: 'Recibo', sigla: 'REC', icon: '🧾', color: '#3B82F6' },
+};
+
 export const getStatusLabel = (estado: EstadoProyecto): string => {
   const labels: Record<EstadoProyecto, string> = {
     cotizacion: 'Cotización',

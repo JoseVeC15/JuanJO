@@ -36,27 +36,25 @@ const estadoConfig: Record<string, { label: string; color: string; icon: React.R
   pagado: { label: 'Cobrado', color: '#10B981', icon: <CheckCircle size={14} /> },
 };
 
+import AutoimpresoTab from './AutoimpresoTab';
+
 interface FacturasProps {
-  initialTab?: 'gastos' | 'ingresos' | 'sifen' | 'clientes';
+  initialTab?: 'gastos' | 'ingresos' | 'sifen' | 'clientes' | 'autoimpreso';
 }
 
 export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { 
-    facturasGastos, ingresos, loading: dataLoading, 
-    perfilFiscal, configSifen, documentosElectronicos,
+  const {
+    facturasGastos, ingresos, loading: dataLoading,
+    perfilFiscal, configSifen, documentosElectronicos, facturasAutoimpreso,
     isPeriodoBloqueado
   } = useSupabaseData();
   const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen' | 'clientes'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'gastos' | 'ingresos' | 'sifen' | 'clientes' | 'autoimpreso'>(initialTab);
   const [isEmitterOpen, setIsEmitterOpen] = useState(false);
   const [openClientModal, setOpenClientModal] = useState(false);
-
-  useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
 
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('todos');
@@ -67,8 +65,35 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const [editingItem, setEditingItem] = useState<any | null>(null);
 
   const [uploading, setUploading] = useState(false);
+  const [isAIPolling, setIsAIPolling] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  // Polling agresivo post-subida IA
+  useEffect(() => {
+    let interval: any;
+    if (isAIPolling) {
+      // Forzar refresco cada 3 segundos durante 30 segs
+      interval = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
+      }, 3000);
+
+      // Parar polling después de 30 segundos
+      const timeout = setTimeout(() => {
+        setIsAIPolling(false);
+        setUploadStatus('idle'); // Limpiar estado visual
+      }, 30000);
+
+      return () => {
+        clearInterval(interval);
+        clearTimeout(timeout);
+      };
+    }
+  }, [isAIPolling, activeTab, queryClient]);
 
   const deleteMutation = useMutation({
     mutationFn: async ({ id, type }: { id: string, type: 'gastos' | 'ingresos' }) => {
@@ -281,6 +306,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
 
       if (response.ok) {
         setUploadStatus('success');
+        setIsAIPolling(true); // Iniciar polling automático
       } else {
         setUploadStatus('error');
       }
@@ -373,9 +399,9 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           <p className="text-gray-500 font-medium italic">Control avanzado de documentos con respaldo IA.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {(activeTab === 'sifen' || activeTab === 'clientes') && (
+          {(activeTab === 'sifen' || activeTab === 'clientes' || activeTab === 'autoimpreso') && (
             <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
-              {['sifen', 'clientes'].map((tab: any) => (
+              {['sifen', 'autoimpreso', 'clientes'].map((tab: any) => (
                 <button
                   key={tab}
                   onClick={() => {
@@ -384,7 +410,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                   }}
                   className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 >
-                  {tab === 'sifen' ? 'E-DOCS' : tab}
+                  {tab === 'sifen' ? 'E-DOCS' : tab === 'autoimpreso' ? 'AUTOIMPRESO' : tab.toUpperCase()}
                 </button>
               ))}
             </div>
@@ -432,8 +458,8 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
               }}
               className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
             >
-              {uploading ? <Loader2 className="animate-spin" size={18} /> : <Scan size={18} />}
-              {uploading ? 'Segundos...' : 'Subir SET (IA)'}
+              {(uploading || isAIPolling) ? <Loader2 className="animate-spin" size={18} /> : <Scan size={18} />}
+              {uploading ? 'Segundos...' : isAIPolling ? 'IA Procesando...' : 'Subir SET (IA)'}
             </button>
           )}
         </div>

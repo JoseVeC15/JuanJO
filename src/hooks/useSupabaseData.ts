@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { calculateSuggestedVAT10 } from '../data/sampleData';
 import { useAuth } from '../contexts/AuthContext';
-import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea, EstadoIngreso, RegistroHora, Propuesta, PropuestaItem } from '../data/sampleData';
+import type { Proyecto, FacturaGasto, Equipo, Alerta, Ingreso, Profile, AgendaTarea, EstadoIngreso, RegistroHora, Propuesta, PropuestaItem, FacturaAutoimpreso } from '../data/sampleData';
 
 export function useSupabaseData() {
   const queryClient = useQueryClient();
@@ -128,6 +128,20 @@ export function useSupabaseData() {
         .single();
       if (error && error.code !== 'PGRST116') throw error;
       return data;
+    }
+  });
+
+  const { data: facturasAutoimpreso = [], isLoading: loadingAutoimpreso } = useQuery({
+    queryKey: ['facturas_autoimpreso', sessionUser?.id],
+    enabled: !!sessionUser,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('facturas_autoimpreso')
+        .select('*')
+        .order('fecha_emision', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data as FacturaAutoimpreso[];
     }
   });
 
@@ -337,7 +351,8 @@ export function useSupabaseData() {
       { nombre: 'public:agenda_tareas', clave: 'agenda_tareas', tabla: 'agenda_tareas' },
       { nombre: 'public:propuestas', clave: 'propuestas', tabla: 'propuestas' },
       { nombre: 'public:calendario_bloqueos', clave: 'calendario_bloqueos', tabla: 'calendario_bloqueos' },
-      { nombre: 'public:cierres_periodos', clave: 'cierres_periodos', tabla: 'cierres_periodos' }
+      { nombre: 'public:cierres_periodos', clave: 'cierres_periodos', tabla: 'cierres_periodos' },
+      { nombre: 'public:facturas_autoimpreso', clave: 'facturas_autoimpreso', tabla: 'facturas_autoimpreso' }
     ].map(({ nombre, clave, tabla }) => 
       supabase.channel(nombre)
         .on('postgres_changes', { 
@@ -346,7 +361,11 @@ export function useSupabaseData() {
             table: tabla
         }, () => {
           queryClient.invalidateQueries({ queryKey: [clave, sessionUser.id] });
-        }).subscribe()
+        }).subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log(`✅ Suscripción activa para ${tabla}`);
+          }
+        })
     );
 
     return () => {
@@ -354,7 +373,7 @@ export function useSupabaseData() {
     };
   }, [sessionUser, queryClient]);
 
-  const cargandoBase = loadingProyectos || loadingFacturas || loadingIngresos || loadingBloqueos;
+  const cargandoBase = loadingProyectos || loadingFacturas || loadingIngresos || loadingBloqueos || loadingAutoimpreso;
 
   const suggestCategory = (desc: string): string => {
     const d = desc.toLowerCase();
@@ -367,13 +386,14 @@ export function useSupabaseData() {
     return 'Otros';
   };
 
-  return { 
-    proyectos: proyectosConRentabilidad, 
-    facturasGastos, 
-    inventarioEquipo, 
+  return {
+    proyectos: proyectosConRentabilidad,
+    facturasGastos,
+    inventarioEquipo,
     valorTotalInventario,
     clientes: clientesConStats,
-    alertas: [] as Alerta[], 
+    alertas: [] as Alerta[],
+    facturasAutoimpreso,
     ingresos, 
     ingresosRaw,
     propuestas,
