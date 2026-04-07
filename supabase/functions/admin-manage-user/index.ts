@@ -79,6 +79,13 @@ Deno.serve(async (req: Request) => {
         status: 401,
       });
     }
+    const accessToken = authHeader.replace('Bearer ', '').trim();
+    if (!accessToken) {
+      return new Response(JSON.stringify({ error: 'No autorizado: token vacío.' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 401,
+      });
+    }
 
     // Cliente del usuario llamante (JWT del frontend) para autenticar y autorizar.
     const supabaseCaller = createClient(supabaseUrl, supabaseAnonKey, {
@@ -86,7 +93,7 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false },
     });
 
-    const { data: callerAuth, error: callerError } = await supabaseCaller.auth.getUser();
+    const { data: callerAuth, error: callerError } = await supabaseCaller.auth.getUser(accessToken);
     if (callerError || !callerAuth.user) {
       return new Response(JSON.stringify({ error: `No autorizado: JWT inválido o expirado. ${callerError?.message || ''}`.trim() }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
