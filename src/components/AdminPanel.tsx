@@ -32,24 +32,27 @@ async function invokeEdgeWithAuth(functionName: any, body: any) {
     });
 
     if (error) {
+      // Error de red o del Gateway de Supabase (401, 500, etc.)
       console.error(`❌ [invokeEdgeWithAuth] Error de SDK en ${functionName}:`, error);
       
-      // El SDK a veces envuelve el error real. Intentamos extraerlo.
       let errorMsg = 'Error en la operación del servidor';
-      
-      if (error instanceof Error) {
-        errorMsg = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        // @ts-ignore - Intentar leer error.context o similares si existen
+      if (error instanceof Error) errorMsg = error.message;
+      else if (typeof error === 'object' && error !== null) {
         errorMsg = (error as any).message || JSON.stringify(error);
       }
 
+      return { data: null, error: { message: errorMsg, status: (error as any)?.status || 400, payload: error } };
+    }
+
+    // Si data.success es false, es un error lógico devuelto por nosotros con 200 OK
+    if (data && data.success === false) {
+      console.error(`⚠️ [invokeEdgeWithAuth] Error lógico en ${functionName}:`, data.error);
       return {
         data: null,
         error: {
-          message: errorMsg,
-          status: (error as any)?.status || 400,
-          payload: error
+          message: data.error || 'Error lógico no especificado',
+          status: data.code || 400,
+          payload: data
         }
       };
     }

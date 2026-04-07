@@ -274,15 +274,18 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : 'Error desconocido';
     const status = (error as any)?.status || 400;
     
-    console.error(`🚨 Error fatal [${status}]:`, message);
+    console.error(`🚨 Error fatal detectado [Interno: ${status}]:`, message);
     
+    // Devolvemos 200 para que el SDK de Supabase no oculte el cuerpo del error,
+    // pero incluimos success: false para que el frontend sepa que falló.
     return new Response(JSON.stringify({ 
+      success: false,
       error: message,
-      status: status,
+      code: status,
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: status,
+      status: 200, // Forzamos 200 para ver el cuerpo
     });
   }
 });
