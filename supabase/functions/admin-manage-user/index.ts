@@ -148,11 +148,13 @@ Deno.serve(async (req: Request) => {
     const { action, userId, data = {} } = body;
 
     if (!action || !userId) {
-      throw new Error('Faltan action o userId');
+      console.error('❌ Faltan campos requeridos:', { action, userId });
+      throw new Error('Faltan action o userId en la petición');
     }
 
     // --- ACCIÓN: ELIMINAR USUARIO ---
     if (action === 'delete_user') {
+      console.log(`🗑️ Eliminando usuario: ${userId}`);
       const { error: authError } = await supabaseClient.auth.admin.deleteUser(userId);
       if (authError) throw authError;
 
@@ -167,6 +169,7 @@ Deno.serve(async (req: Request) => {
 
     // --- ACCIÓN: ACTUALIZAR PERFIL ---
     if (action === 'update_user') {
+      console.log(`📝 Actualizando perfil para: ${userId}`);
       const updates: Record<string, unknown> = {};
 
       if (typeof data.nombre_completo === 'string' && data.nombre_completo.trim().length >= 2) {
@@ -174,8 +177,14 @@ Deno.serve(async (req: Request) => {
       }
 
       if (data.modulos_habilitados !== undefined) {
+        console.log('🔍 Validando módulos:', data.modulos_habilitados);
         const modules = normalizeModules(data.modulos_habilitados);
-        if (modules.length === 0) throw new Error('Debes habilitar al menos un módulo válido');
+        console.log('✅ Módulos normalizados:', modules);
+        
+        if (modules.length === 0) {
+          console.error('❌ No se encontraron módulos válidos en:', data.modulos_habilitados);
+          throw new Error(`Ninguno de los módulos seleccionados es válido o está permitido. Enviados: ${JSON.stringify(data.modulos_habilitados)}`);
+        }
 
         updates.modulos_habilitados = modules;
         updates.facturacion_habilitada = modules.some((m) => BILLING_MODULES.has(m));
@@ -196,15 +205,20 @@ Deno.serve(async (req: Request) => {
       }
 
       if (Object.keys(updates).length === 0) {
-        throw new Error('No hay campos válidos para actualizar');
+        console.error('⚠️ No se detectaron cambios válidos en el body');
+        throw new Error('No se enviaron campos válidos para actualizar (nombre, módulos, etc.)');
       }
 
+      console.log('💾 Aplicando actualizaciones en DB:', updates);
       const { error: dbError } = await supabaseClient
         .from('profiles')
         .update(updates)
         .eq('id', userId);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('❌ Error de base de datos:', dbError);
+        throw dbError;
+      }
 
       return new Response(JSON.stringify({ message: 'Perfil actualizado con éxito', updates }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -214,6 +228,7 @@ Deno.serve(async (req: Request) => {
 
     // --- ACCIÓN: RESETEAR CONTRASEÑA ---
     if (action === 'reset_password') {
+      console.log(`🔐 Reseteando contraseña para: ${userId}`);
       if (!data.new_password || String(data.new_password).length < 8) {
         throw new Error('La nueva contraseña debe tener al menos 8 caracteres');
       }
@@ -232,6 +247,7 @@ Deno.serve(async (req: Request) => {
 
     // --- ACCIÓN: SUSPENDER / ACTIVAR ---
     if (action === 'toggle_suspension') {
+      console.log(`🚫 Cambiando estado de suspensión para: ${userId} a ${data.estado}`);
       if (!['activo', 'suspendido'].includes(String(data.estado))) {
         throw new Error('Estado inválido');
       }
@@ -243,7 +259,6 @@ Deno.serve(async (req: Request) => {
 
       if (dbError) throw dbError;
 
-      // Sincronizar en metadata de Auth para capas extra de seguridad
       await supabaseClient.auth.admin.updateUserById(userId, {
         user_metadata: { estado: data.estado },
       });
@@ -257,10 +272,17 @@ Deno.serve(async (req: Request) => {
     throw new Error('Acción administrativa no válida');
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('error fatal en admin-manage-user:', message);
-    return new Response(JSON.stringify({ error: message }), {
+    const status = (error as any)?.status || 400;
+    
+    console.error(`🚨 Error fatal [${status}]:`, message);
+    
+    return new Response(JSON.stringify({ 
+      error: message,
+      status: status,
+      timestamp: new Date().toISOString()
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: status,
     });
   }
 });

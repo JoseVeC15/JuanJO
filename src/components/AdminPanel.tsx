@@ -34,10 +34,15 @@ async function invokeEdgeWithAuth(functionName: any, body: any) {
     if (error) {
       console.error(`❌ [invokeEdgeWithAuth] Error de SDK en ${functionName}:`, error);
       
-      // Intentar extraer un mensaje amigable
+      // El SDK a veces envuelve el error real. Intentamos extraerlo.
       let errorMsg = 'Error en la operación del servidor';
-      if (typeof error === 'string') errorMsg = error;
-      else if (error && 'message' in error) errorMsg = error.message;
+      
+      if (error instanceof Error) {
+        errorMsg = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // @ts-ignore - Intentar leer error.context o similares si existen
+        errorMsg = (error as any).message || JSON.stringify(error);
+      }
 
       return {
         data: null,
