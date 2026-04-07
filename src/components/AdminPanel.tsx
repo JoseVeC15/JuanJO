@@ -4,7 +4,7 @@ import {
   Loader2, CheckCircle2, AlertCircle, X, Lock, Edit2, Key, Trash2, Pause, Play, SlidersHorizontal
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseAnonKey, supabaseUrl } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { Profile } from '../data/sampleData';
 import { SERVICE_CATALOG, SELECTABLE_SERVICE_TYPES } from '../config/serviceCatalog';
@@ -19,7 +19,6 @@ function getDefaultModulesForServiceType(serviceType: ServiceType) {
 }
 
 async function invokeEdgeWithAuth(functionName: string, body: any) {
-  // Verifica si el JWT actual es válido en el servidor de Auth.
   const { error: userError } = await supabase.auth.getUser();
   if (userError) {
     const refresh = await supabase.auth.refreshSession();
@@ -41,12 +40,45 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
     throw new Error('Tu sesión expiró. Vuelve a iniciar sesión para ejecutar acciones administrativas.');
   }
 
-  const execute = async () => {
-    supabase.functions.setAuth(accessToken!);
-    return supabase.functions.invoke(functionName, { body });
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Configuración de Supabase incompleta en frontend.');
+  }
+
+  const execute = async (token: string) => {
+    const response = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const rawText = await response.text();
+    let payload: any = null;
+
+    try {
+      payload = rawText ? JSON.parse(rawText) : null;
+    } catch {
+      payload = rawText ? { error: rawText } : null;
+    }
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: {
+          message: payload?.error || payload?.message || `Error HTTP ${response.status}`,
+          status: response.status,
+          payload,
+        },
+      };
+    }
+
+    return { data: payload, error: null };
   };
 
-  let response = await execute();
+  let response = await execute(accessToken);
 
   if (response.error && /invalid jwt|jwt/i.test(response.error.message || '')) {
     const refresh = await supabase.auth.refreshSession();
@@ -56,7 +88,7 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
       throw new Error('No se pudo refrescar tu sesión. Cierra sesión e inicia de nuevo.');
     }
     accessToken = freshToken;
-    response = await execute();
+    response = await execute(accessToken);
   }
 
   return response;
@@ -170,12 +202,7 @@ export default function AdminPanel() {
 
       if (error) {
         let errorMsg = 'Error al registrar cliente';
-        try {
-          const body = await error.context?.json();
-          errorMsg = body?.error || body?.message || error.message;
-        } catch {
-          errorMsg = error.message || 'Error desconocido en la función';
-        }
+        errorMsg = error.payload?.error || error.payload?.message || error.message || 'Error desconocido en la función';
 
         // Mapeo amistoso de errores comunes de Auth
         if (errorMsg.includes('User already registered')) errorMsg = 'Este correo electrónico ya está registrado en el sistema.';
@@ -207,12 +234,7 @@ export default function AdminPanel() {
       if (error) {
         console.error('❌ [AdminOp] Error detectado:', error);
         let errorMsg = 'Fallo en la operación administrativa';
-        try {
-          const body = await error.context?.json();
-          errorMsg = body?.error || body?.message || error.message;
-        } catch {
-          errorMsg = error.message || 'Error desconocido';
-        }
+        errorMsg = error.payload?.error || error.payload?.message || error.message || 'Error desconocido';
         throw new Error(`${errorMsg} (Status: ${error.status || '???'})`);
       }
 

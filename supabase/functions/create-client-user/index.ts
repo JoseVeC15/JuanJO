@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
         service_type,
         empresas_permitidas,
         empresa_activa,
-        modulos_habilitados: ['dashboard', 'config'], // Módulos básicos
+        modulos_habilitados: ['dashboard', 'settings'], // Módulos básicos válidos
         facturacion_habilitada: false
       });
 

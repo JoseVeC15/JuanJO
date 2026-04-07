@@ -2,8 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Usamos las variables de entorno _LIVE para producción seguras
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_LIVE;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_LIVE;
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_LIVE;
+export const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_LIVE;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   // En desarrollo esto ayuda a detectar qué falta
