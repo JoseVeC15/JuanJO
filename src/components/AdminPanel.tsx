@@ -32,6 +32,42 @@ const MODULE_OPTIONS = [
 
 const BILLING_MODULES = new Set(['ingresos', 'sifen', 'clientes']);
 
+async function invokeEdgeWithAuth(functionName: string, body: any) {
+  let { data: sessionData } = await supabase.auth.getSession();
+  let accessToken = sessionData.session?.access_token;
+
+  if (!accessToken) {
+    const refresh = await supabase.auth.refreshSession();
+    accessToken = refresh.data.session?.access_token;
+  }
+
+  if (!accessToken) {
+    throw new Error('Tu sesión expiró. Vuelve a iniciar sesión para ejecutar acciones administrativas.');
+  }
+
+  const execute = async (token: string) => {
+    return supabase.functions.invoke(functionName, {
+      body,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  };
+
+  let response = await execute(accessToken);
+
+  if (response.error && /invalid jwt|jwt/i.test(response.error.message || '')) {
+    const refresh = await supabase.auth.refreshSession();
+    const freshToken = refresh.data.session?.access_token;
+    if (!freshToken) {
+      throw new Error('No se pudo refrescar tu sesión. Cierra sesión e inicia de nuevo.');
+    }
+    response = await execute(freshToken);
+  }
+
+  return response;
+}
+
 export default function AdminPanel() {
   const queryClient = useQueryClient();
   const { profile: adminProfile, loading } = useSupabaseData();
@@ -127,17 +163,15 @@ export default function AdminPanel() {
     setStatus(null);
 
     try {
-      const { error } = await supabase.functions.invoke('create-client-user', {
-        body: {
-          ...formData,
-          empresas_permitidas: formData.empresas_permitidas
-            .split(',')
-            .map((item) => item.trim())
-            .filter(Boolean),
-          empresa_activa: formData.service_type === 'multiempresa'
-            ? (formData.empresas_permitidas.split(',').map((item) => item.trim()).filter(Boolean)[0] || null)
-            : null,
-        }
+      const { error } = await invokeEdgeWithAuth('create-client-user', {
+        ...formData,
+        empresas_permitidas: formData.empresas_permitidas
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        empresa_activa: formData.service_type === 'multiempresa'
+          ? (formData.empresas_permitidas.split(',').map((item) => item.trim()).filter(Boolean)[0] || null)
+          : null,
       });
 
       if (error) {
@@ -171,9 +205,7 @@ export default function AdminPanel() {
     setStatus(null);
     try {
       console.log('📡 [AdminOp] Iniciando:', { action, userId, dataObj });
-      const response = await supabase.functions.invoke('admin-manage-user', {
-        body: { action, userId, data: dataObj }
-      });
+      const response = await invokeEdgeWithAuth('admin-manage-user', { action, userId, data: dataObj });
       
       console.log('🏁 [AdminOp] Respuesta:', response);
       const { data, error } = response;
