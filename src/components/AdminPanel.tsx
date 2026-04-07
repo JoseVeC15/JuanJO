@@ -48,11 +48,45 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
     throw new Error('Tu sesión expiró. Vuelve a iniciar sesión para ejecutar acciones administrativas.');
   }
 
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL_LIVE;
+  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY_LIVE;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('Faltan variables de entorno VITE_SUPABASE_URL_LIVE / VITE_SUPABASE_ANON_KEY_LIVE.');
+  }
+
   const execute = async () => {
-    supabase.functions.setAuth(accessToken!);
-    // No enviar headers manuales: el SDK adjunta Authorization + apikey
-    // usando la sesión persistida. Sobrescribir headers puede romper JWT.
-    return supabase.functions.invoke(functionName, { body });
+    const res = await fetch(`${supabaseUrl}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken!}`,
+        apikey: supabaseAnonKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    let payload: any = null;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = null;
+    }
+
+    if (!res.ok) {
+      return {
+        data: null,
+        error: {
+          message: payload?.error || payload?.message || `Error ${res.status}`,
+          status: res.status,
+          context: {
+            json: async () => payload,
+          },
+        },
+      };
+    }
+
+    return { data: payload, error: null };
   };
 
   let response = await execute();
