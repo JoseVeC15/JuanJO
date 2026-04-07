@@ -49,6 +49,7 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
   }
 
   const execute = async () => {
+    supabase.functions.setAuth(accessToken!);
     // No enviar headers manuales: el SDK adjunta Authorization + apikey
     // usando la sesión persistida. Sobrescribir headers puede romper JWT.
     return supabase.functions.invoke(functionName, { body });
@@ -63,6 +64,7 @@ async function invokeEdgeWithAuth(functionName: string, body: any) {
     if (!freshToken) {
       throw new Error('No se pudo refrescar tu sesión. Cierra sesión e inicia de nuevo.');
     }
+    accessToken = freshToken;
     response = await execute();
   }
 

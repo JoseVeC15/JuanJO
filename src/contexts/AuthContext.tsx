@@ -20,9 +20,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Escuchar cambios de estado (incluyendo el retorno de OAuth)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
+        supabase.functions.setAuth(session.access_token);
         setUser(session.user);
         setMustChangePassword(!!session.user.user_metadata?.must_change_password);
       } else {
+        supabase.functions.setAuth('');
         setUser(null);
         setMustChangePassword(false);
       }
@@ -35,10 +37,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Verificación inicial de sesión
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUser(user);
-        setMustChangePassword(!!user.user_metadata?.must_change_password);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        supabase.functions.setAuth(session.access_token);
+        setUser(session.user);
+        setMustChangePassword(!!session.user.user_metadata?.must_change_password);
+      } else {
+        supabase.functions.setAuth('');
       }
       setLoading(false);
     });
