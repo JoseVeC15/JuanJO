@@ -287,7 +287,8 @@ export default function AdminPanel() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 text-gray-400 text-[10px] uppercase font-bold tracking-widest">
@@ -310,12 +311,12 @@ export default function AdminPanel() {
                 <tr key={p.id} className="hover:bg-gray-50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm ${p.nivel_acceso === 1 ? 'bg-indigo-500' : 'bg-slate-400'}`}>
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm flex-shrink-0 ${p.nivel_acceso === 1 ? 'bg-indigo-500' : 'bg-slate-400'}`}>
                         {p.nombre_completo[0].toUpperCase()}
                       </div>
-                      <div>
-                        <p className="font-bold text-gray-900">{p.nombre_completo}</p>
-                        <p className="text-xs text-gray-400">{p.email || 'Sin email registrado'}</p>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 truncate">{p.nombre_completo}</p>
+                        <p className="text-xs text-gray-400 truncate">{p.email || 'Sin email registrado'}</p>
                       </div>
                     </div>
                   </td>
@@ -398,6 +399,98 @@ export default function AdminPanel() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y divide-gray-50">
+          {isLoading ? (
+            <div className="px-6 py-12 text-center">
+              <Loader2 size={32} className="animate-spin text-indigo-500 mx-auto" />
+            </div>
+          ) : filtered.map(p => (
+            <div key={p.id} className="p-4 space-y-4 hover:bg-gray-50 transition-colors">
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white shadow-sm flex-shrink-0 ${p.nivel_acceso === 1 ? 'bg-indigo-500' : 'bg-slate-400'}`}>
+                    {p.nombre_completo[0].toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-900 truncate">{p.nombre_completo}</p>
+                    <p className="text-[10px] text-gray-400 truncate">{p.email || 'Sin email registrado'}</p>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${p.estado === 'suspendido' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                    {p.estado === 'suspendido' ? 'Suspendido' : 'Activo'}
+                  </span>
+                  <span className={`text-[8px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-tighter ${p.nivel_acceso === 1 ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                    {p.nivel_acceso === 1 ? 'Admin' : 'Cliente'}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between text-[11px]">
+                <div>
+                  <p className="text-gray-400 uppercase font-bold tracking-tighter">Perfil</p>
+                  <p className="font-bold text-gray-700">{SERVICE_CATALOG[(p.service_type || 'freelancer') as ServiceType]?.nombre || p.service_type || 'Freelancer'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-gray-400 uppercase font-bold tracking-tighter">Registrado</p>
+                  <p className="font-medium text-gray-700">{new Date(p.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-around p-2 bg-gray-50 rounded-xl">
+                <button
+                  onClick={() => { setEditData({ id: p.id, name: p.nombre_completo }); setStatus(null); }}
+                  className="flex flex-col items-center gap-1 text-gray-400 hover:text-indigo-600"
+                >
+                  <Edit2 size={16} />
+                  <span className="text-[8px] font-bold uppercase tracking-tighter">Nombre</span>
+                </button>
+                <button
+                  onClick={() => { setResetData({ id: p.id, email: p.email || '' }); setStatus(null); }}
+                  className="flex flex-col items-center gap-1 text-gray-400 hover:text-amber-600"
+                >
+                  <Key size={16} />
+                  <span className="text-[8px] font-bold uppercase tracking-tighter">Clave</span>
+                </button>
+                <button
+                  onClick={() => { setSuspendData({ id: p.id, name: p.nombre_completo, currentState: p.estado || 'activo' }); setStatus(null); }}
+                  className={`flex flex-col items-center gap-1 ${p.estado === 'suspendido' ? 'text-emerald-500' : 'text-amber-500'}`}
+                >
+                  {p.estado === 'suspendido' ? <Play size={16} /> : <Pause size={16} />}
+                  <span className="text-[8px] font-bold uppercase tracking-tighter">{p.estado === 'suspendido' ? 'Activar' : 'Pausar'}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const serviceType = (p.service_type || 'freelancer') as ServiceType;
+                    const fallback = getDefaultModulesForServiceType(serviceType);
+                    setModuleData({
+                      id: p.id,
+                      name: p.nombre_completo,
+                      modules: (p.modulos_habilitados && p.modulos_habilitados.length > 0) ? p.modulos_habilitados : fallback,
+                      serviceType,
+                      empresasPermitidas: p.empresas_permitidas || [],
+                      empresaActiva: p.empresa_activa || (p.empresas_permitidas?.[0] || ''),
+                    });
+                    setStatus(null);
+                  }}
+                  className="flex flex-col items-center gap-1 text-gray-400 hover:text-violet-600"
+                >
+                  <SlidersHorizontal size={16} />
+                  <span className="text-[8px] font-bold uppercase tracking-tighter">Módulos</span>
+                </button>
+                <button
+                  onClick={() => { setDeleteId(p.id); setStatus(null); }}
+                  className="flex flex-col items-center gap-1 text-gray-400 hover:text-red-600"
+                >
+                  <Trash2 size={16} />
+                  <span className="text-[8px] font-bold uppercase tracking-tighter">Eliminar</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

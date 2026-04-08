@@ -36,8 +36,6 @@ const estadoConfig: Record<string, { label: string; color: string; icon: React.R
   pagado: { label: 'Cobrado', color: '#10B981', icon: <CheckCircle size={14} /> },
 };
 
-import AutoimpresoTab from './AutoimpresoTab';
-
 interface FacturasProps {
   initialTab?: 'gastos' | 'ingresos' | 'sifen' | 'clientes' | 'autoimpreso';
 }
@@ -47,7 +45,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const navigate = useNavigate();
   const {
     facturasGastos, ingresos, loading: dataLoading,
-    perfilFiscal, configSifen, documentosElectronicos, facturasAutoimpreso,
+    perfilFiscal, configSifen, documentosElectronicos,
     isPeriodoBloqueado
   } = useSupabaseData();
   const { user } = useAuth();
@@ -433,9 +431,9 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
               : 'Control avanzado de documentos con respaldo IA.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
           {(activeTab === 'sifen' || activeTab === 'clientes' || activeTab === 'autoimpreso') && (
-            <div className="flex bg-gray-100 p-1.5 rounded-2xl border border-gray-200">
+            <div className="flex bg-gray-100 p-1 rounded-xl lg:p-1.5 lg:rounded-2xl border border-gray-200">
               {['sifen', 'autoimpreso', 'clientes'].map((tab: any) => (
                 <button
                   key={tab}
@@ -443,7 +441,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                     setActiveTab(tab);
                     navigate(tab === 'clientes' ? '/sifen/clientes' : '/sifen');
                   }}
-                  className={`px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`px-3 py-2 lg:px-6 lg:py-2.5 rounded-lg lg:rounded-xl font-black text-[8px] lg:text-[10px] uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                 >
                   {tab === 'sifen' ? 'E-DOCS' : tab === 'autoimpreso' ? 'AUTOIMPRESO' : tab.toUpperCase()}
                 </button>
@@ -453,31 +451,31 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
           
           <div className="w-px h-8 bg-gray-200 mx-2 hidden lg:block" />
           
-          <div className="bg-white border border-gray-100 p-1.5 rounded-2xl flex shadow-sm">
-            <button onClick={() => setViewMode('cards')} className={`p-2 rounded-xl transition-all ${viewMode === 'cards' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><LayoutGrid size={20} /></button>
-            <button onClick={() => setViewMode('table')} className={`p-2 rounded-xl transition-all ${viewMode === 'table' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><TableIcon size={20} /></button>
+          <div className="bg-white border border-gray-100 p-1 rounded-xl lg:p-1.5 lg:rounded-2xl flex shadow-sm">
+            <button onClick={() => setViewMode('cards')} className={`p-1.5 lg:p-2 rounded-lg lg:rounded-xl transition-all ${viewMode === 'cards' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><LayoutGrid size={18} /></button>
+            <button onClick={() => setViewMode('table')} className={`p-1.5 lg:p-2 rounded-lg lg:rounded-xl transition-all ${viewMode === 'table' ? 'bg-slate-900 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'}`}><TableIcon size={18} /></button>
           </div>
-          <button onClick={exportToExcel} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-5 py-3 rounded-2xl font-bold shadow-sm hover:border-emerald-200 hover:text-emerald-600 transition-all">
-            <Download size={18} /> SET XLSX
+          <button onClick={exportToExcel} className="flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 lg:px-5 lg:py-3 rounded-xl lg:rounded-2xl font-bold shadow-sm hover:border-emerald-200 hover:text-emerald-600 transition-all text-xs lg:text-base">
+            <Download size={16} /> <span className="hidden sm:inline text-[11px] lg:text-sm">SET XLSX</span> <span className="sm:hidden">XLSX</span>
           </button>
 
           {activeTab === 'sifen' && sifenScreen === 'bandeja' && perfilFiscal && configSifen && (
             <button
               onClick={() => setSifenScreen('emision')}
-              className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30 shadow-indigo-500/10"
+              className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30 shadow-indigo-500/10"
             >
-              <Sparkles size={18} className="text-indigo-400" />
-              Ir a Emisión Guiada
+              <Sparkles size={16} className="text-indigo-400" />
+              <span className="hidden sm:inline">Emisión Guiada</span> <span className="sm:hidden">Emitir</span>
             </button>
           )}
 
           {activeTab === 'clientes' && (
             <button
               onClick={() => setOpenClientModal(true)}
-              className="flex items-center gap-2 bg-slate-900 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30"
+              className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 border border-indigo-500/30"
             >
-              <UserPlus size={18} />
-              Nuevo Cliente
+              <UserPlus size={16} />
+              <span className="hidden sm:inline">Nuevo Cliente</span> <span className="sm:hidden">Nuevo</span>
             </button>
           )}
 
@@ -491,10 +489,11 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                 setShowOCR(!showOCR); 
                 setUploadStatus('idle'); 
               }}
-              className={`flex items-center gap-2 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
+              className={`flex items-center gap-2 text-white px-4 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
             >
-              {(uploading || isAIPolling) ? <Loader2 className="animate-spin" size={18} /> : <Scan size={18} />}
-              {uploading ? 'Segundos...' : isAIPolling ? 'IA Procesando...' : 'Subir SET (IA)'}
+              {(uploading || isAIPolling) ? <Loader2 className="animate-spin" size={16} /> : <Scan size={16} />}
+              <span className="hidden sm:inline">{uploading ? 'Segundos...' : isAIPolling ? 'IA Procesando...' : 'Subir SET (IA)'}</span>
+              <span className="sm:hidden">{uploading ? '...' : isAIPolling ? 'IA...' : 'Subir'}</span>
             </button>
           )}
         </div>
@@ -871,6 +870,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       confirm(`¿Cambiar este documento a la sección de ${activeTab === 'gastos' ? 'INGRESOS' : 'GASTOS'}?`) &&
+                                        (activeTab === 'gastos' || activeTab === 'ingresos') &&
                                         moveMutation.mutate({ item: f, fromType: activeTab });
                                     }}
                                     className="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
@@ -885,7 +885,9 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                                         alert("🛑 No se puede anular un documento en un periodo CERRADO legalmente.");
                                         return;
                                       }
-                                      confirm('¿Anular este documento fiscal?') && deleteMutation.mutate({ id: f.id, type: activeTab }); 
+                                      confirm('¿Anular este documento fiscal?') && 
+                                        (activeTab === 'gastos' || activeTab === 'ingresos') &&
+                                        deleteMutation.mutate({ id: f.id, type: activeTab }); 
                                     }} 
                                     className="w-12 h-12 flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white rounded-xl transition-all"
                                   >
@@ -996,9 +998,9 @@ function ItemCard({ item, type, isExpanded, onToggle, onDelete, onEdit, onMove, 
         <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform ${isExpanded ? 'rotate-3' : ''} ${isGasto ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'}`}>
           {isGasto ? <ArrowDownLeft size={24} /> : <ArrowUpRight size={24} />}
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 pr-2">
           <div className="flex items-center gap-2 mb-1.5">
-            <h4 className="font-black text-gray-900 truncate leading-none text-lg">
+            <h4 className="font-black text-gray-900 leading-tight text-base lg:text-lg break-words line-clamp-2">
               {isGasto ? data.proveedor : data.cliente}
             </h4>
             {data.processed_by_n8n && (
@@ -1205,7 +1207,7 @@ function EditInvoiceModal({ item, onClose, onSave, onMove, isSaving }: any) {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-white rounded-[2.5rem] w-full max-w-4xl p-8 lg:p-12 shadow-2xl relative my-auto"
+        className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] w-full max-w-4xl p-5 lg:p-12 shadow-2xl relative my-auto mx-2 overflow-y-auto max-h-[95vh]"
       >
         <div className="flex justify-between items-center mb-10">
           <div>

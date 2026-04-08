@@ -3,40 +3,65 @@
 ## Objetivo
 Convertir Finance Pro en un sistema de facturacion con cumplimiento operativo para Paraguay, incluyendo emision, trazabilidad, auditoria y cierre fiscal.
 
+## Marco Legal
+- **Ley 6380/2019** — Modernización y Simplificación del Sistema Tributario Nacional
+- **SET** (Subsecretaría de Estado de Tributación) — Autoridad reguladora
+- **SIFEN** — Sistema Integrado de Facturación Electrónica Nacional (DNIT)
+- **Referencia técnica completa**: Ver `09_GUIA_FISCAL_PARAGUAY.md`
+
+## Documentos Electrónicos Soportados
+| Código | Tipo | Estado en Finance Pro |
+|--------|------|-----------------------|
+| 1 | Factura Electrónica (FE) | ✅ Implementado |
+| 4 | Autofactura Electrónica | 🔶 Parcial |
+| 5 | Nota de Débito Electrónica | ⬜ Pendiente |
+| 6 | Nota de Crédito Electrónica | ⬜ Pendiente |
+| 7 | Nota de Remisión Electrónica | ⬜ Pendiente |
+
 ## Estado actual (base implementada)
-- Emision de documentos electronicos con motor SIFEN.
-- Generacion de CDC y XML base.
+- Emision de Factura Electrónica con motor SIFEN (Edge Function).
+- Generacion de CDC (44 dígitos) con algoritmo Verhoeven.
+- Generación de KuDE (PDF) con QR oficial.
 - Registro de logs de emision y metricas.
 - Seguridad multi-tenant con RLS.
-- Validacion base en frontend y edge function.
+- Validacion con constantes normativas (IVA 0/5/10, RUC, condición venta).
+- Numeración secuencial fiscal por usuario + tipo + establecimiento + punto.
+- Asistente de Cierre Mensual (Formulario 120 v4 proforma).
+- Prorrateo de IVA Crédito Indiviso.
+- Arrastre de saldo a favor entre periodos.
 
-## Cambios aplicados en esta iteracion
-- Numeracion secuencial fiscal por usuario + tipo + establecimiento + punto.
-- Validacion de payload fiscal en frontend (RUC, email, items, IVA, condicion).
-- Constraints SQL minimos para tipo_documento, condicion_operacion e iva_tipo.
+## IVA — Tasas Vigentes
+| Tasa | Aplicación | Divisor (monto bruto) |
+|------|-----------|----------------------|
+| 10% | General (servicios, importaciones) | monto / 11 |
+| 5% | Diferencial (alimentos, medicamentos) | monto / 21 |
+| 0% | Exento (educación, exportaciones) | N/A |
 
 ## Brechas para cumplimiento total
 1. Firma digital real XAdES-EPES con certificado valido (no mock).
-2. Integracion completa con endpoints UAT/PROD de SIFEN (recepcion de respuesta oficial y eventos).
-3. Gestion documental completa por tipo: FE, NC, ND y anulacion/eventos.
-4. Talonarios y vigencia de timbrado con alertas de vencimiento.
-5. Reglas de contingencia, reintentos y reconciliacion automatica.
-6. KuDE homologado (contenido minimo legal + QR oficial + representacion por tipo documental).
-7. Libro IVA compras/ventas y reportes para declaraciones.
-8. Suite de pruebas de regresion fiscal (unitarias + e2e + fixtures reales).
+2. Integracion completa con endpoints UAT/PROD de SIFEN.
+3. Gestion documental completa: NC, ND, anulación y eventos.
+4. Alertas de vencimiento de timbrado.
+5. Reglas de contingencia y reconciliación.
+6. KuDE homologado por tipo documental.
+7. Libro IVA compras/ventas completo.
+8. Suite de pruebas de regresión fiscal.
 
-## Plan de ejecucion recomendado
-1. Fase 1 (1-2 semanas): firma digital real + transmision UAT + validacion de respuestas.
-2. Fase 2 (1-2 semanas): NC/ND, anulaciones y eventos SIFEN.
-3. Fase 3 (1 semana): libro IVA + cierre mensual + auditoria.
-4. Fase 4 (1 semana): endurecimiento QA fiscal y despliegue controlado.
+## Obligaciones Periódicas Integradas
+| Obligación | Soporte Finance Pro |
+|------------|-------------------|
+| Formulario 120 (IVA mensual) | ✅ Proforma automática |
+| Libro IVA Compras/Ventas | 🔶 Parcial (datos disponibles) |
+| Retenciones (F530) | ⬜ Pendiente |
+| Declaración IRE anual (F500) | ⬜ Pendiente |
 
-## Criterio de salida
-Se considera "cumplimiento operativo" cuando:
-- Todo documento emitido queda trazable con estado oficial de SIFEN.
-- No existen saltos de numeracion por punto de expedicion.
-- Todo comprobante tiene KuDE valido y QR consultable.
-- Existe evidencia de auditoria (logs, metricas y pruebas) para inspeccion.
+## Sanciones de Referencia
+| Infracción | Sanción |
+|------------|---------|
+| No emitir comprobante | 50%~100% del valor |
+| Datos falsos | Multa + clausura |
+| Omisión IVA | 50% impuesto + intereses |
 
 ## Nota
 Este manual es tecnico y no sustituye asesoria legal o tributaria profesional.
+El usuario es responsable de la validez de los datos fiscales ingresados.

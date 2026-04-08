@@ -327,6 +327,10 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
 
   const guardarServiceType = async () => {
     if (!user) return;
+    if (profile?.nivel_acceso !== 1) {
+      alert('Solo un administrador puede cambiar el tipo de servicio / plan.');
+      return;
+    }
 
     setServiceTypeStatus('saving');
     localStorage.setItem('service_type_override', serviceType);
@@ -419,12 +423,16 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                         <button
                           key={service.id}
                           type="button"
-                          onClick={() => setServiceType(service.id)}
+                          onClick={() => {
+                            if (profile?.nivel_acceso === 1) {
+                              setServiceType(service.id);
+                            }
+                          }}
                           className={`text-left rounded-3xl border p-5 transition-all duration-200 shadow-sm ${
                             isActive
                               ? 'border-emerald-500 bg-emerald-50 shadow-emerald-100'
                               : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
-                          }`}
+                          } ${profile?.nivel_acceso !== 1 ? 'cursor-default opacity-80' : 'cursor-pointer'}`}
                         >
                           <div className="flex items-start justify-between gap-4 mb-4">
                             <div>
@@ -570,15 +578,21 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                   <span className="text-[10px] bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-black uppercase tracking-widest leading-none">Status: Active</span>
                 </div>
                 <div className="pt-2 flex justify-end">
-                  <button
-                    onClick={guardarServiceType}
-                    disabled={serviceTypeStatus === 'saving'}
-                    className={`px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all ${
-                      serviceTypeStatus === 'saved' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
-                    } disabled:opacity-50`}
-                  >
-                    {serviceTypeStatus === 'saving' ? 'Guardando...' : serviceTypeStatus === 'saved' ? 'Perfil Aplicado' : 'Guardar Tipo de Servicio'}
-                  </button>
+                  {profile?.nivel_acceso === 1 ? (
+                    <button
+                      onClick={guardarServiceType}
+                      disabled={serviceTypeStatus === 'saving'}
+                      className={`px-6 py-3 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl transition-all ${
+                        serviceTypeStatus === 'saved' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-white hover:bg-slate-800'
+                      } disabled:opacity-50`}
+                    >
+                      {serviceTypeStatus === 'saving' ? 'Guardando...' : serviceTypeStatus === 'saved' ? 'Perfil Aplicado' : 'Guardar Tipo de Servicio'}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 px-4 py-2 rounded-xl">
+                      <ShieldCheck size={14} /> Tu plan es gestionado por el administrador
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -792,6 +806,20 @@ export default function Settings({ initialTab = 'profile' }: { initialTab?: 'pro
                         >
                             Ambiente: {perfilFiscal.ambiente.toUpperCase()}
                         </button>
+                    </div>
+                  </div>
+
+                  {/* Facturación Disclaimer */}
+                  <div className="p-5 bg-rose-50 border border-rose-100 rounded-[2rem] flex items-start gap-4">
+                    <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-rose-500/20">
+                      <AlertIcon size={20} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-rose-900 uppercase tracking-widest mb-1">Descargo de Responsabilidad Fiscal</h4>
+                      <p className="text-[11px] text-rose-800 font-bold leading-relaxed">
+                        Al completar estos datos, declaras que toda la información ingresada (RUC, Timbrado, Certificados y CSC) es verídica y legalmente válida. 
+                        Finance Pro actúa únicamente como una herramienta de gestión y no se hace responsable por inconsistencias legales resultantes de la carga incorrecta de datos por parte del usuario.
+                      </p>
                     </div>
                   </div>
 

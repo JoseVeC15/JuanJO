@@ -64,107 +64,56 @@ Deno.serve(async (req: Request) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseServiceKey = Deno.env.get('SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY') || '';
 
     if (!supabaseUrl || !supabaseServiceKey || !supabaseAnonKey) {
-      return new Response(JSON.stringify({ error: 'Configuración incompleta de secretos en Edge Function (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY|SUPABASE_PUBLISHABLE_KEY).' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500,
-      });
+      throw new Error('Configuración incompleta: faltan secretos (SUPABASE_URL, SERVICE_ROLE_KEY).');
     }
 
-    const authHeader = req.headers.get('Authorization') || '';
-    if (!authHeader.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'No autorizado: falta token Bearer.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
-      });
-    }
-    const accessToken = authHeader.replace('Bearer ', '').trim();
-    if (!accessToken) {
-      return new Response(JSON.stringify({ error: 'No autorizado: token vacío.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
-      });
-    }
-
-    // Cliente del usuario llamante (JWT del frontend) para autenticar y autorizar.
-    const supabaseCaller = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-      auth: { 
-        persistSession: false,
-        autoRefreshToken: false,
-        detectSessionInUrl: false
-      },
-    });
-
-    // Validar el usuario usando el token del header global
-    const { data: callerAuth, error: callerError } = await supabaseCaller.auth.getUser();
-    
-    if (callerError || !callerAuth.user) {
-      console.error('❌ Error de validación de JWT en Edge Function:', {
-        message: callerError?.message,
-        status: callerError?.status,
-        hasToken: !!accessToken
-      });
-      
-      return new Response(JSON.stringify({ 
-        error: `Invalid JWT: ${callerError?.message || 'Token no válido o expirado'}`,
-        details: callerError
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 401,
-      });
-    }
-
-    // Cliente administrativo con SERVICE_ROLE
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
+    // Cliente administrativo con SERVICE_ROLE para validaciones y DB
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { persistSession: false },
     });
 
-    const { data: callerProfile, error: profileError } = await supabaseClient
+    // --- VALIDACIÓN DE USUARIO (Robustez mejorada contra Gateway 401) ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new Error('No autorizado: falta token de sesión');
+    }
+
+    const token = authHeader.replace('Bearer ', '').trim();
+    
+    // Validamos el usuario directamente decodificando el JWT con el servicio de Auth de Supabase
+    // usando la clave de servicio. Esto es infalible si el token es válido internamente.
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+      console.error('❌ Error validando usuario con Token:', userError?.message);
+      throw new Error(`Acceso denegado: Sesión inválida (${userError?.message || 'Token expirado'}). Vuelve a iniciar sesión.`);
+    }
+
+    // Verificamos nivel de acceso en el perfil (debe ser Superadmin = 1)
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('nivel_acceso')
-      .eq('id', callerAuth.user.id)
+      .eq('id', user.id)
       .single();
 
-    if (profileError) {
-      return new Response(JSON.stringify({ error: `No se pudo validar permisos del solicitante: ${profileError.message}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 403,
-      });
+    if (profileError || !profile || profile.nivel_acceso !== 1) {
+      console.error('❌ Intento de acceso no autorizado:', { userId: user.id, profile });
+      throw new Error('No tienes permisos de administrador para realizar esta operación.');
     }
 
-    if (callerProfile?.nivel_acceso !== 1) {
-      return new Response(JSON.stringify({ error: 'No autorizado: se requiere nivel_acceso=1 (Super Admin).' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 403,
-      });
-    }
+    console.log(`✅ Acceso concedido para admin: ${user.email}`);
 
+    // --- PROCESAMIENTO DE ACCIONES ---
     const body = await req.json();
     console.log('📦 [Backend] Body recibido:', JSON.stringify(body, null, 2));
     const { action, userId, data = {} } = body;
 
     if (!action || !userId) {
-      console.error('❌ Faltan campos requeridos:', { action, userId });
       throw new Error('Faltan action o userId en la petición');
-    }
-
-    // --- ACCIÓN: ELIMINAR USUARIO ---
-    if (action === 'delete_user') {
-      console.log(`🗑️ Eliminando usuario: ${userId}`);
-      const { error: authError } = await supabaseClient.auth.admin.deleteUser(userId);
-      if (authError) throw authError;
-
-      const { error: dbError } = await supabaseClient.from('profiles').delete().eq('id', userId);
-      if (dbError) throw dbError;
-
-      return new Response(JSON.stringify({ message: 'Usuario eliminado con éxito' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      });
     }
 
     // --- ACCIÓN: ACTUALIZAR PERFIL ---
@@ -177,22 +126,15 @@ Deno.serve(async (req: Request) => {
       }
 
       if (data.modulos_habilitados !== undefined) {
-        console.log('🔍 Validando módulos:', data.modulos_habilitados);
         const modules = normalizeModules(data.modulos_habilitados);
-        console.log('✅ Módulos normalizados:', modules);
-        
         if (modules.length === 0) {
-          console.error('❌ No se encontraron módulos válidos en:', data.modulos_habilitados);
-          throw new Error(`Ninguno de los módulos seleccionados es válido o está permitido. Enviados: ${JSON.stringify(data.modulos_habilitados)}`);
+          throw new Error('Debes habilitar al menos un módulo válido.');
         }
-
         updates.modulos_habilitados = modules;
         updates.facturacion_habilitada = modules.some((m) => BILLING_MODULES.has(m));
-      } else if (typeof data.facturacion_habilitada === 'boolean') {
-        updates.facturacion_habilitada = data.facturacion_habilitada;
       }
 
-      if (typeof data.service_type === 'string' && data.service_type.trim().length > 0) {
+      if (typeof data.service_type === 'string') {
         updates.service_type = data.service_type.trim();
       }
 
@@ -205,22 +147,22 @@ Deno.serve(async (req: Request) => {
       }
 
       if (Object.keys(updates).length === 0) {
-        console.error('⚠️ No se detectaron cambios válidos en el body');
-        throw new Error('No se enviaron campos válidos para actualizar (nombre, módulos, etc.)');
+        throw new Error('No se enviaron campos válidos para actualizar.');
       }
 
-      console.log('💾 Aplicando actualizaciones en DB:', updates);
-      const { error: dbError } = await supabaseClient
+      console.log('💾 Aplicando cambios en DB:', updates);
+      const { error: dbError } = await supabaseAdmin
         .from('profiles')
         .update(updates)
         .eq('id', userId);
 
-      if (dbError) {
-        console.error('❌ Error de base de datos:', dbError);
-        throw dbError;
-      }
+      if (dbError) throw dbError;
 
-      return new Response(JSON.stringify({ message: 'Perfil actualizado con éxito', updates }), {
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: 'Perfil actualizado con éxito', 
+        updates 
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
@@ -228,42 +170,31 @@ Deno.serve(async (req: Request) => {
 
     // --- ACCIÓN: RESETEAR CONTRASEÑA ---
     if (action === 'reset_password') {
-      console.log(`🔐 Reseteando contraseña para: ${userId}`);
       if (!data.new_password || String(data.new_password).length < 8) {
-        throw new Error('La nueva contraseña debe tener al menos 8 caracteres');
+        throw new Error('La nueva contraseña debe tener al menos 8 caracteres.');
       }
 
-      const { error: authError } = await supabaseClient.auth.admin.updateUserById(userId, {
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         password: data.new_password,
         user_metadata: { must_change_password: true },
       });
       if (authError) throw authError;
 
-      return new Response(JSON.stringify({ message: 'Contraseña reseteada con éxito' }), {
+      return new Response(JSON.stringify({ success: true, message: 'Contraseña reseteada con éxito' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
     }
 
-    // --- ACCIÓN: SUSPENDER / ACTIVAR ---
-    if (action === 'toggle_suspension') {
-      console.log(`🚫 Cambiando estado de suspensión para: ${userId} a ${data.estado}`);
-      if (!['activo', 'suspendido'].includes(String(data.estado))) {
-        throw new Error('Estado inválido');
-      }
+    // --- ACCIÓN: ELIMINAR USUARIO ---
+    if (action === 'delete_user') {
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+      if (authError) throw authError;
 
-      const { error: dbError } = await supabaseClient
-        .from('profiles')
-        .update({ estado: data.estado })
-        .eq('id', userId);
-
+      const { error: dbError } = await supabaseAdmin.from('profiles').delete().eq('id', userId);
       if (dbError) throw dbError;
 
-      await supabaseClient.auth.admin.updateUserById(userId, {
-        user_metadata: { estado: data.estado },
-      });
-
-      return new Response(JSON.stringify({ message: `Estado cambiado a: ${data.estado}` }), {
+      return new Response(JSON.stringify({ success: true, message: 'Usuario eliminado con éxito' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       });
@@ -274,10 +205,8 @@ Deno.serve(async (req: Request) => {
     const message = error instanceof Error ? error.message : 'Error desconocido';
     const status = (error as any)?.status || 400;
     
-    console.error(`🚨 Error fatal detectado [Interno: ${status}]:`, message);
+    console.error(`🚨 Error en Edge Function [${status}]:`, message);
     
-    // Devolvemos 200 para que el SDK de Supabase no oculte el cuerpo del error,
-    // pero incluimos success: false para que el frontend sepa que falló.
     return new Response(JSON.stringify({ 
       success: false,
       error: message,
@@ -285,7 +214,7 @@ Deno.serve(async (req: Request) => {
       timestamp: new Date().toISOString()
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200, // Forzamos 200 para ver el cuerpo
+      status: 200, // Devolvemos 200 para que el frontend pueda leer el JSON de error
     });
   }
 });

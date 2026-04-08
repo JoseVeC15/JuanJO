@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Wallet, Loader2, ArrowUpRight } from 'lucide-react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGsShort, getServiceIcon, getStatusLabel, getStatusColor } from '../data/sampleData';
@@ -25,16 +25,16 @@ export default function Projects() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Gestión de Proyectos</h1>
-          <p className="text-gray-500 mt-1">{proyectos.length} proyectos registrados</p>
+          <h1 className="text-2xl lg:text-3xl font-black text-gray-900 tracking-tight">Gestión de Proyectos</h1>
+          <p className="text-gray-500 font-medium text-sm mt-1">{proyectos.length} proyectos registrados</p>
         </div>
         <button 
           onClick={() => setIsCreateOpen(true)}
-          className="flex items-center gap-2 bg-slate-900 text-white px-5 py-3 rounded-xl font-semibold hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-slate-900/20"
+          className="flex items-center justify-center gap-2 bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-800 transition-all hover:scale-105 active:scale-95 shadow-xl shadow-slate-900/10 border border-slate-700/50"
         >
-          <Plus size={20} />
+          <Plus size={18} />
           Nuevo Proyecto
         </button>
       </div>
@@ -151,8 +151,8 @@ export default function Projects() {
 
 function ProjectStat({ label, count, bg, text }: { label: string; count: number; bg: string; text: string }) {
   return (
-    <div className={`${bg} rounded-2xl p-5 flex items-center justify-between`}>
-      <span className={`font-bold ${text}`}>{label}</span>
+    <div className={`${bg} rounded-2xl p-4 lg:p-5 flex items-center justify-between border border-current/5`}>
+      <span className={`font-black uppercase text-[10px] tracking-widest opacity-70 ${text}`}>{label}</span>
       <span className={`text-2xl font-black ${text}`}>{count}</span>
     </div>
   );

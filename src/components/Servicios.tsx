@@ -272,19 +272,20 @@ export default function Servicios() {
   return (
     <div className="space-y-6">
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-2xl lg:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <ClipboardList size={28} className="text-emerald-500" />
             Gestión de Servicios
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">Órdenes de trabajo y registros de servicio</p>
+          <p className="text-slate-500 font-medium text-sm mt-0.5">Órdenes de trabajo y registros de servicio</p>
         </div>
         <button
           onClick={openNew}
-          className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition-all shadow-lg shadow-emerald-500/20"
+          className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-black px-6 py-3.5 rounded-2xl text-xs uppercase tracking-widest transition-all shadow-xl shadow-emerald-500/20 border border-emerald-400/50"
         >
-          <Plus size={18} /> Nuevo Servicio
+          <Plus size={18} />
+          <span className="sm:hidden">Nuevo</span> <span className="hidden sm:inline">Nuevo Servicio</span>
         </button>
       </div>
 
@@ -305,29 +306,31 @@ export default function Servicios() {
       </div>
 
       {/* ── Toolbar ────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por número, cliente, servicio…"
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            className="w-full pl-11 pr-4 py-3 text-sm border border-slate-200 rounded-2xl bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 font-medium"
           />
         </div>
-        <select
-          value={filterEstado}
-          onChange={e => setFilterEstado(e.target.value)}
-          className="text-sm border border-slate-200 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-400"
-        >
-          <option value="todos">Todos los estados</option>
-          {Object.entries(ESTADO_CONFIG).map(([k, v]) => (
-            <option key={k} value={k}>{v.label}</option>
-          ))}
-        </select>
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-          <button onClick={() => setViewMode('cards')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'cards' ? 'bg-white shadow text-emerald-600' : 'text-slate-400'}`}><LayoutGrid size={16} /></button>
-          <button onClick={() => setViewMode('table')} className={`p-1.5 rounded-lg transition-all ${viewMode === 'table' ? 'bg-white shadow text-emerald-600' : 'text-slate-400'}`}><TableIcon size={16} /></button>
+        <div className="flex gap-2">
+          <select
+            value={filterEstado}
+            onChange={e => setFilterEstado(e.target.value)}
+            className="flex-1 md:flex-none text-xs font-black uppercase tracking-widest border border-slate-200 rounded-2xl px-4 py-3 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236B7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22M6%208l4%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1rem_1rem] bg-[right_1rem_center] bg-no-repeat pr-10"
+          >
+            <option value="todos">Todos los estados</option>
+            {Object.entries(ESTADO_CONFIG).map(([k, v]) => (
+              <option key={k} value={k}>{v.label}</option>
+            ))}
+          </select>
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200">
+            <button onClick={() => setViewMode('cards')} className={`p-2 rounded-xl transition-all ${viewMode === 'cards' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}><LayoutGrid size={18} /></button>
+            <button onClick={() => setViewMode('table')} className={`p-2 rounded-xl transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400'}`}><TableIcon size={18} /></button>
+          </div>
         </div>
       </div>
 

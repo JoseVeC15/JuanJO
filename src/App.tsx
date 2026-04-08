@@ -484,45 +484,86 @@ function RouterWrapper() {
             </main>
 
             {/* Mobile Nav Bottom */}
-            <nav className="lg:hidden bg-white/80 backdrop-blur-md border-t border-slate-200 px-2 py-2 flex items-center justify-around sticky bottom-0 z-50">
-              {filteredNavItems.filter(item => item.key !== 'settings').map((item) => {
-                if (item.children) {
-                   return <MobileSubMenu key={item.key} item={item} />;
-                }
-                return (
-                  <NavLink
-                     key={item.key}
-                     to={item.path!}
-                     className={({ isActive }) => `flex flex-col items-center gap-1 p-2 min-w-[64px] relative ${
-                       isActive ? 'text-emerald-600' : 'text-slate-400'
-                     }`}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        {isActive && (
-                          <motion.div 
-                            layoutId="activeNavMobile"
-                            className="absolute top-0 w-8 h-1 bg-emerald-500 rounded-b-full"
-                          />
+            <nav className="lg:hidden bg-white/90 backdrop-blur-md border-t border-slate-200 px-1 py-1 flex items-center justify-around sticky bottom-0 z-50">
+              {(() => {
+                const MAX_ITEMS = 5;
+                const itemsToDisplay = filteredNavItems;
+                
+                if (itemsToDisplay.length <= MAX_ITEMS) {
+                  return itemsToDisplay.map((item) => {
+                    if (item.children) {
+                       return <MobileSubMenu key={item.key} item={item} />;
+                    }
+                    return (
+                      <NavLink
+                         key={item.key}
+                         to={item.path!}
+                         className={({ isActive }) => `flex flex-col items-center gap-1 p-2 min-w-[60px] relative transition-colors ${
+                           isActive ? 'text-emerald-600' : 'text-slate-400'
+                         }`}
+                      >
+                        {({ isActive }) => (
+                          <>
+                            {isActive && (
+                              <motion.div 
+                                layoutId="activeNavMobile"
+                                className="absolute top-0 w-8 h-1 bg-emerald-500 rounded-b-full"
+                              />
+                            )}
+                            <div className="text-xl leading-none">
+                              {item.icon}
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-tighter text-center leading-tight max-w-[56px] truncate">{item.label}</span>
+                          </>
                         )}
-                        <div className="text-xl leading-none">
-                          {item.icon}
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-tighter">{item.label}</span>
-                      </>
-                    )}
-                  </NavLink>
-                );
-              })}
-              <NavLink
-                to="/config"
-                className={({ isActive }) => `flex flex-col items-center gap-1 p-2 min-w-[64px] relative ${
-                  isActive ? 'text-emerald-600' : 'text-slate-400'
-                }`}
-              >
-                <SettingsIcon size={20} />
-                <span className="text-[10px] font-black uppercase tracking-tighter">Config</span>
-              </NavLink>
+                      </NavLink>
+                    );
+                  });
+                } else {
+                  // Agrupar excedentes en un menú "Más"
+                  const visible = itemsToDisplay.slice(0, MAX_ITEMS - 1);
+                  const more = itemsToDisplay.slice(MAX_ITEMS - 1);
+                  
+                  return (
+                    <>
+                      {visible.map((item) => (
+                        item.children ? (
+                          <MobileSubMenu key={item.key} item={item} />
+                        ) : (
+                          <NavLink
+                            key={item.key}
+                            to={item.path!}
+                            className={({ isActive }) => `flex flex-col items-center gap-1 p-2 min-w-[60px] relative transition-colors ${
+                              isActive ? 'text-emerald-600' : 'text-slate-400'
+                            }`}
+                          >
+                            {({ isActive }) => (
+                              <>
+                                {isActive && (
+                                  <motion.div 
+                                    layoutId="activeNavMobile"
+                                    className="absolute top-0 w-8 h-1 bg-emerald-500 rounded-b-full"
+                                  />
+                                )}
+                                <div className="text-xl leading-none">{item.icon}</div>
+                                <span className="text-[9px] font-black uppercase tracking-tighter text-center leading-tight max-w-[56px] truncate">{item.label}</span>
+                              </>
+                            )}
+                          </NavLink>
+                        )
+                      ))}
+                      <MobileSubMenu 
+                        item={{ 
+                          key: 'more', 
+                          label: 'MÁS', 
+                          icon: <ChevronDown size={20} />, 
+                          children: more 
+                        }} 
+                      />
+                    </>
+                  );
+                }
+              })()}
             </nav>
           </div>
         </div>

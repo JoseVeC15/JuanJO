@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Send, X, Plus, Trash2, ShieldCheck, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { validarFacturaElectronicaPayload } from '../lib/sifen/paraguayCompliance';
+import {
+    validarFacturaElectronicaPayload,
+    TIPO_DOCUMENTO_SIFEN,
+    TIPO_DOCUMENTO_LABELS,
+    TASAS_IVA,
+    CONDICIONES_VENTA,
+    type CondicionVenta,
+} from '../lib/sifen/paraguayCompliance';
 
 interface PropiedadesEmisorSifen {
     onClose: () => void;
@@ -16,6 +23,8 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
     const [estadoEmision, setEstadoEmision] = useState<'pendiente' | 'exito' | 'error'>('pendiente');
     const [errorDetalle, setErrorDetalle] = useState('');
 
+    const [tipoDocumento, setTipoDocumento] = useState<string>(TIPO_DOCUMENTO_SIFEN.FACTURA_ELECTRONICA);
+
     const [cliente, setCliente] = useState({
         id: '',
         razon_social: '',
@@ -26,7 +35,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
 
     const [buscandoCliente, setBuscandoCliente] = useState(false);
 
-    const [condicionOperacion, setCondicionOperacion] = useState<'contado' | 'credito'>('contado');
+    const [condicionOperacion, setCondicionOperacion] = useState<CondicionVenta>('contado');
 
     const [clientesSugeridos, setClientesSugeridos] = useState<any[]>([]);
 
@@ -51,14 +60,14 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
         setBuscandoCliente(false);
     };
 
-    const [productos, setProductos] = useState([
-        { id: '1', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }
+    const [productos, setProductos] = useState<{ id: string; descripcion: string; cantidad: number; precio_unitario: number; iva_tipo: number }[]>([
+        { id: '1', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: TASAS_IVA.GENERAL }
     ]);
 
     const [itemsSugeridos, setItemsSugeridos] = useState<{ [key: string]: any[] }>({});
 
     const agregarProducto = () => {
-        setProductos([...productos, { id: Date.now().toString(), descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }]);
+        setProductos([...productos, { id: Date.now().toString(), descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: TASAS_IVA.GENERAL }]);
     };
 
     const eliminarProducto = (id: string) => {
@@ -85,8 +94,8 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
     const calcularTotalesPorIva = () => {
         return productos.reduce((acc, p) => {
             const monto = p.cantidad * p.precio_unitario;
-            if (p.iva_tipo === 10) acc.iva10 += Math.round(monto / 11);
-            if (p.iva_tipo === 5) acc.iva5 += Math.round(monto / 21);
+            if (p.iva_tipo === TASAS_IVA.GENERAL) acc.iva10 += Math.round(monto / 11);
+            if (p.iva_tipo === TASAS_IVA.DIFERENCIAL) acc.iva5 += Math.round(monto / 21);
             acc.total += monto;
             return acc;
         }, { iva10: 0, iva5: 0, total: 0 });
@@ -143,6 +152,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
             receptor_direccion: cliente.direccion,
             receptor_email: cliente.email,
             condicion_operacion: condicionOperacion,
+            tipo_documento: tipoDocumento,
             items: productos,
         });
 
@@ -166,7 +176,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
             const establecimiento = configSifen.establecimiento || '001';
             const puntoExpedicion = configSifen.punto_expedicion || '001';
             const { data: numeroFactura, error: errorNumero } = await supabase.rpc('obtener_siguiente_numero_factura', {
-                p_tipo_documento: '1',
+                p_tipo_documento: tipoDocumento,
                 p_establecimiento: establecimiento,
                 p_punto_expedicion: puntoExpedicion,
             });
@@ -180,7 +190,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                 .from('documentos_electronicos')
                 .insert({
                     user_id: user.id,
-                    tipo_documento: '1',
+                    tipo_documento: tipoDocumento,
                     numero_factura: numeroFactura,
                     fecha_emision: new Date().toISOString().split('T')[0],
                     monto_total: calcularTotal(),
@@ -254,6 +264,28 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                     <AnimatePresence mode="wait">
                         {paso === 'formulario' ? (
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
+                                <section>
+                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <ShieldCheck size={14} className="text-violet-500" /> Tipo de Documento Electrónico
+                                    </h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.entries(TIPO_DOCUMENTO_LABELS).map(([code, label]) => (
+                                            <button
+                                                key={code}
+                                                type="button"
+                                                onClick={() => setTipoDocumento(code)}
+                                                className={`px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                                                    tipoDocumento === code
+                                                        ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
+                                                        : 'bg-slate-50 text-slate-500 border-slate-100 hover:border-slate-300'
+                                                }`}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </section>
+
                                 <section>
                                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
                                         <ShieldCheck size={14} className="text-indigo-500" /> Datos del Receptor
@@ -340,11 +372,12 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                                             />
                                             <select 
                                                 value={condicionOperacion}
-                                                onChange={e => setCondicionOperacion(e.target.value as any)}
+                                                onChange={e => setCondicionOperacion(e.target.value as CondicionVenta)}
                                                 className="px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl font-black text-xs uppercase outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
                                             >
-                                                <option value="contado">CONTADO</option>
-                                                <option value="credito">CRÉDITO</option>
+                                                {CONDICIONES_VENTA.map(c => (
+                                                    <option key={c} value={c}>{c.toUpperCase()}</option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>

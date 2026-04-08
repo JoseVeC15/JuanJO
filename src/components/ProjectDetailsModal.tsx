@@ -39,35 +39,35 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-2 lg:p-4">
+      <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] w-full max-w-4xl max-h-[95vh] lg:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl relative">
         {/* Header */}
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-sm" style={{ backgroundColor: getStatusColor(project.estado) + '20' }}>
+        <div className="p-4 lg:p-8 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-50/50">
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl flex items-center justify-center text-2xl lg:text-4xl shadow-sm bg-white border border-gray-100">
               🎬
             </div>
-            <div>
-              <h2 className="text-2xl font-black text-slate-900">{project.nombre_cliente}</h2>
-              <span className="text-[10px] px-3 py-1 rounded-full font-bold uppercase tracking-wider" style={{ backgroundColor: getStatusColor(project.estado) + '20', color: getStatusColor(project.estado) }}>
+            <div className="min-w-0">
+              <h2 className="text-lg lg:text-2xl font-black text-slate-900 truncate">{project.nombre_cliente}</h2>
+              <span className="text-[8px] lg:text-[10px] px-2 py-0.5 lg:px-3 lg:py-1 rounded-full font-black uppercase tracking-wider" style={{ backgroundColor: getStatusColor(project.estado) + '20', color: getStatusColor(project.estado) }}>
                 {getStatusLabel(project.estado)}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
              <button 
               onClick={() => setShowProposalCreator(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 border border-gray-200 rounded-2xl font-black uppercase tracking-widest text-xs shadow-sm hover:shadow-md transition-all active:scale-95"
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 lg:px-6 lg:py-3 bg-white text-slate-900 border border-gray-200 rounded-xl lg:rounded-2xl font-black uppercase tracking-widest text-[10px] lg:text-xs shadow-sm hover:shadow-md transition-all active:scale-95"
             >
-              <FileText size={18} className="text-indigo-600" /> Presupuesto PDF
+              <FileText size={16} className="text-indigo-600" /> <span className="hidden xs:inline">Presupuesto</span> PDF
             </button>
-            <button onClick={onClose} className="p-3 hover:bg-white rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-100">
-              <X size={24} className="text-gray-400" />
+            <button onClick={onClose} className="p-2.5 lg:p-3 hover:bg-white rounded-xl lg:rounded-2xl transition-all shadow-sm border border-transparent hover:border-gray-100">
+              <X size={20} className="text-gray-400" />
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 pt-6 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 pt-4 lg:pt-6 custom-scrollbar">
           {/* Dashboard de Rentabilidad */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <MetricCard 
@@ -221,13 +221,13 @@ export default function ProjectDetailsModal({ project, onClose }: ProjectDetails
 
 function MetricCard({ label, value, icon, color, subtext }: { label: string; value: string; icon: React.ReactNode; color: string; subtext?: string }) {
   return (
-    <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</span>
+    <div className="bg-white border border-gray-100 rounded-2xl lg:rounded-3xl p-4 lg:p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-1 lg:mb-2">
+        <span className="text-[9px] lg:text-[10px] font-black text-gray-400 uppercase tracking-widest">{label}</span>
         {icon}
       </div>
-      <p className={`text-2xl font-black ${color}`}>{value}</p>
-      {subtext && <p className="text-[10px] text-gray-400 mt-2 font-medium">{subtext}</p>}
+      <p className={`text-xl lg:text-2xl font-black ${color}`}>{value}</p>
+      {subtext && <p className="text-[9px] lg:text-[10px] text-gray-400 mt-1.5 lg:mt-2 font-medium leading-tight">{subtext}</p>}
     </div>
   );
 }
