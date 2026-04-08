@@ -39,10 +39,8 @@ const coerceServiceType = (raw?: string | null): ServiceType | null => {
 };
 
 export function resolveServiceType(source?: ServiceProfileSource | null): ServiceType {
-  const localOverride = typeof window !== 'undefined' ? window.localStorage.getItem('service_type_override') : null;
-  const fromOverride = coerceServiceType(localOverride);
-  if (fromOverride) return fromOverride;
-
+  // El tipo de servicio se determina SOLO desde el perfil de DB (asignado por Super Admin).
+  // No se permite override por localStorage para proteger el modelo de negocio.
   const fromServiceType = coerceServiceType(source?.service_type);
   if (fromServiceType) return fromServiceType;
 
