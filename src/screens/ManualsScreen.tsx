@@ -28,7 +28,9 @@ const MANUALS = [
   { id: '04_CONTROL_ACTIVOS.md', title: 'Activos', icon: <Shield size={18} />, description: 'Inventario y depreciación' },
   { id: '05_REPORTES_Y_AUDITORIA.md', title: 'Reportes', icon: <PieChart size={18} />, description: 'Análisis profundo de datos' },
   { id: '06_GESTION_FREELANCER.md', title: 'Freelancer', icon: <Briefcase size={18} />, description: 'Agenda, Catálogo y Planificación' },
-  { id: '07_ASISTENTE_FISCAL_SET.md', title: 'Asistente SET', icon: <ShieldCheck size={18} />, description: 'Cumplimiento y Fiscalidad' },
+  { id: '07_ASISTENTE_FISCAL_SET.md', title: 'Asistente SET', icon: <ShieldCheck size={18} />, description: 'Compliance y Fiscalidad' },
+  { id: '08_CUMPLIMIENTO_DNIT_SIFEN.md', title: 'Sifen / DNIT', icon: <ShieldCheck size={18} />, description: 'Facturación Electrónica' },
+  { id: '09_GUIA_FISCAL_PARAGUAY.md', title: 'Guia Fiscal PY', icon: <FileText size={18} />, description: 'Normativa SET Completa' },
 ];
 
 export default function ManualsScreen() {
