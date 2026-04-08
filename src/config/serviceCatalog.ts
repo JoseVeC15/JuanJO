@@ -103,19 +103,17 @@ export const SERVICE_TYPE_ALIASES: Record<string, ServiceType> = {
   comercio: 'comercio_minorista',
   sifen: 'sifen_empresarial',
   logistica: 'distribucion_flota',
+  autofactura: 'facturacion_autoimpresor',
 };
 
 export const SELECTABLE_SERVICE_TYPES: ServiceType[] = [
   'freelancer',
   'servicios_profesionales',
   'sifen_empresarial',
-  'autofactura_guiada',
+  'facturacion_autoimpresor',
   'distribucion_flota',
   'comercio_minorista',
   'multiempresa',
-  'audiovisual',
-  'salud',
-  'educacion',
 ];
 
 // ============================================================
@@ -198,8 +196,8 @@ export const SERVICE_CATALOG: Record<ServiceType, FullServiceConfig> = {
   // 2 ─── FREELANCER ─────────────────────────────────────────
   freelancer: {
     id: 'freelancer',
-    nombre: 'Freelancer Servicios',
-    descripcion: 'Profesionales independientes con control financiero simple y orientado a cobros e impuestos.',
+    nombre: 'Freelancer',
+    descripcion: 'Profesionales independientes con control financiero simple y análisis IA.',
     audiencia_objetivo: 'Independientes y profesionales.',
     modulos_clave: ['ingresos', 'gastos', 'cobros pendientes', 'IA', 'impuestos estimados'],
     visible_en_selector: true,
@@ -261,7 +259,7 @@ export const SERVICE_CATALOG: Record<ServiceType, FullServiceConfig> = {
   sifen_empresarial: {
     id: 'sifen_empresarial',
     nombre: 'SIFEN Empresarial',
-    descripcion: 'Empresas cuyo eje es la emisión de documentos electrónicos DNIT con gestión fiscal completa.',
+    descripcion: 'Empresas que emiten documentos electrónicos DNIT con gestión fiscal completa.',
     audiencia_objetivo: 'Empresas que emiten electrónicamente en Paraguay.',
     modulos_clave: ['facturación electrónica', 'estados DTE', 'validación', 'historial tributario'],
     visible_en_selector: true,
@@ -323,11 +321,14 @@ export const SERVICE_CATALOG: Record<ServiceType, FullServiceConfig> = {
     ],
   },
 
-  // 4 ─── AUTOFACTURA GUIADA ─────────────────────────────────
-  autofactura_guiada: {
-    id: 'autofactura_guiada',
-    nombre: 'Autofactura Guiada',
-    descripcion: 'Flujo restringido y asistido para emitir autofacturas con validación previa y respaldo documental obligatorio.',
+  // 4 ─── FACTURACIÓN AUTOIMPRESOR ─────────────────────────
+  facturacion_autoimpresor: {
+    id: 'facturacion_autoimpresor',
+    nombre: 'Facturacion Autoimpresor',
+    descripcion: 'Negocios autorizados a imprimir sus propios comprobantes con control de timbrado y rangos.',
+    audiencia_objetivo: 'Negocios que necesitan documentar operaciones puntuales con autoimpresor.',
+    modulos_clave: ['flujo guiado', 'checklist', 'respaldo documental', 'control de casos'],
+    visible_en_selector: true,
     modulos_habilitados: withModulos(['analizador-ia', 'gestion-freelancer', 'agenda']),
     dashboard_default: [...CORE_DASHBOARD, 'iva_estimado'],
     kpis_visibles: withKPIs(
@@ -385,7 +386,7 @@ export const SERVICE_CATALOG: Record<ServiceType, FullServiceConfig> = {
     id: 'servicios_profesionales',
     nombre: 'Servicios Profesionales',
     descripcion: 'Consultoras, estudios contables, agencias y freelancers que facturan por proyectos o tiempo.',
-    audiencia_objetivo: 'Agencias, estudios, productoras y consultores.',
+    audiencia_objetivo: 'Agencias, estudios, productoras, consultores.',
     modulos_clave: ['proyectos', 'horas', 'propuestas', 'facturación por servicio', 'rentabilidad por cliente'],
     visible_en_selector: true,
     modulos_habilitados: withModulos(['analizador-ia', 'gestion-freelancer', 'agenda', 'clientes', 'proyectos', 'catalog', 'sifen', 'set', 'conciliacion', 'cierre']),
@@ -458,7 +459,7 @@ export const SERVICE_CATALOG: Record<ServiceType, FullServiceConfig> = {
   comercio_minorista: {
     id: 'comercio_minorista',
     nombre: 'Comercio Minorista',
-    descripcion: 'Negocios de venta de productos al por menor o mayor, con control de IVA y facturación electrónica.',
+    descripcion: 'Negocios de venta de productos al por menor o mayor con control de inventario.',
     audiencia_objetivo: 'Tiendas y pequeños comercios.',
     modulos_clave: ['ventas', 'compras', 'inventario', 'caja diaria', 'cuentas por cobrar/pagar'],
     visible_en_selector: true,
@@ -521,7 +522,7 @@ export const SERVICE_CATALOG: Record<ServiceType, FullServiceConfig> = {
   multiempresa: {
     id: 'multiempresa',
     nombre: 'Multiempresa',
-    descripcion: 'Grupos con varias razones sociales o unidades operativas que necesitan una base única con vistas consolidadas.',
+    descripcion: 'Grupos con varias razones sociales o unidades operativas que necesitan una base única consolidada.',
     audiencia_objetivo: 'Grupos con varias razones sociales o unidades.',
     modulos_clave: ['consolidado', 'reportes por entidad', 'permisos por empresa'],
     visible_en_selector: true,

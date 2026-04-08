@@ -17,7 +17,7 @@ export type ServiceType =
   | 'freelancer'
   | 'distribucion_flota'
   | 'sifen_empresarial'
-  | 'autofactura_guiada'
+  | 'facturacion_autoimpresor'
   | 'servicios_profesionales'
   | 'comercio_minorista'
   | 'multiempresa';
