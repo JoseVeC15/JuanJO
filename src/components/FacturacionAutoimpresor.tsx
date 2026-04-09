@@ -47,7 +47,7 @@ export default function FacturacionAutoimpresor() {
   });
 
   const [items, setItems] = useState([
-    { id: Date.now().toString(), descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }
+    { id: Date.now().toString(), codigo: '', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }
   ]);
 
   const { data: facturas, isLoading } = useQuery({
@@ -100,6 +100,7 @@ export default function FacturacionAutoimpresor() {
 
       const itemsPayload = payload.items.map((i: any) => ({
         factura_id: facturaRow.id,
+        codigo: i.codigo || null,
         descripcion: i.descripcion,
         cantidad: i.cantidad,
         precio_unitario: i.precio_unitario,
@@ -143,7 +144,7 @@ export default function FacturacionAutoimpresor() {
       asociado_fecha: '',
       motivo_modificacion: ''
     });
-    setItems([{ id: Date.now().toString(), descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }]);
+    setItems([{ id: Date.now().toString(), codigo: '', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10 }]);
   };
 
   const calcularTotales = () => {
@@ -361,12 +362,13 @@ export default function FacturacionAutoimpresor() {
                   <div className="space-y-4">
                      <div className="flex justify-between items-center bg-slate-900 rounded-2xl p-4">
                         <h3 className="text-xs font-black text-white uppercase tracking-widest ml-1">Conceptos a Facturar</h3>
-                        <button onClick={() => setItems([...items, {id: Date.now().toString(), descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10}])} className="text-indigo-400 hover:text-indigo-300 px-3 py-1 bg-white/10 rounded-xl font-bold text-xs transition-colors flex items-center gap-1"><Plus size={14}/> Fila</button>
+                        <button onClick={() => setItems([...items, {id: Date.now().toString(), codigo: '', descripcion: '', cantidad: 1, precio_unitario: 0, iva_tipo: 10}])} className="text-indigo-400 hover:text-indigo-300 px-3 py-1 bg-white/10 rounded-xl font-bold text-xs transition-colors flex items-center gap-1"><Plus size={14}/> Fila</button>
                      </div>
                      <div className="space-y-2">
                         {items.map((it, idx) => (
-                           <div key={it.id} className="grid grid-cols-12 gap-2 lg:gap-4 p-3 bg-slate-50 rounded-2xl border border-slate-100 relative">
-                              <input type="text" placeholder="Descripción" value={it.descripcion} onChange={e => { const ni = [...items]; ni[idx].descripcion = e.target.value; setItems(ni); }} className="col-span-12 md:col-span-5 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none w-full" />
+                           <div key={it.id} className="grid grid-cols-12 gap-2 lg:gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 relative">
+                              <input type="text" placeholder="Cód." value={it.codigo} onChange={e => { const ni = [...items]; ni[idx].codigo = e.target.value; setItems(ni); }} className="col-span-3 md:col-span-2 bg-white border border-slate-200 px-3 py-3 rounded-xl font-bold text-sm outline-none" />
+                              <input type="text" placeholder="Descripción" value={it.descripcion} onChange={e => { const ni = [...items]; ni[idx].descripcion = e.target.value; setItems(ni); }} className="col-span-9 md:col-span-3 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none w-full" />
                               <input type="number" placeholder="Cant" value={it.cantidad} onChange={e => { const ni = [...items]; ni[idx].cantidad = Number(e.target.value); setItems(ni); }} className="col-span-4 md:col-span-2 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none text-center" />
                               <input type="number" placeholder="Precio U." value={it.precio_unitario} onChange={e => { const ni = [...items]; ni[idx].precio_unitario = Number(e.target.value); setItems(ni); }} className="col-span-8 md:col-span-3 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none text-right" />
                               <select value={it.iva_tipo} onChange={e => { const ni = [...items]; ni[idx].iva_tipo = Number(e.target.value); setItems(ni); }} className="col-span-10 md:col-span-1 bg-white border border-slate-200 px-2 rounded-xl text-xs font-black text-center outline-none">

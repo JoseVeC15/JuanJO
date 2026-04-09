@@ -133,8 +133,8 @@ export const generarPdfAutoimpreso = (factura: any) => {
     const isCredito = factura.condicion_venta?.toLowerCase() === 'credito';
 
     // Preparar Items para la tabla principal
-    const itemsRows = factura.facturas_virtuales_items?.map((item: any, i: number) => [
-        { text: `${i + 1}`, style: 'td' }, // Código provisional
+    const itemsRows = factura.facturas_virtuales_items?.map((item: any) => [
+        { text: item.codigo || '', style: 'td', alignment: 'center' }, // Código 
         { text: item.descripcion, style: 'td' },
         { text: formatPy(item.precio_unitario), style: 'td', alignment: 'right' },
         { text: item.cantidad, style: 'td', alignment: 'center' },

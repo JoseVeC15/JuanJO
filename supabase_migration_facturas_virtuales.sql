@@ -39,6 +39,7 @@ CREATE TABLE public.facturas_virtuales (
 CREATE TABLE public.facturas_virtuales_items (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     factura_id uuid REFERENCES public.facturas_virtuales(id) ON DELETE CASCADE NOT NULL,
+    codigo text,
     descripcion text NOT NULL,
     cantidad numeric NOT NULL,
     precio_unitario numeric NOT NULL,
