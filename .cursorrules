@@ -1,0 +1,10 @@
+# Reglas del Proyecto (Finance Pro)
+
+1. **Idiomas y Commits**: 
+   - TODOS los commits obligatoriamente deben escribirse en **Español**.
+   - El tono debe ser **personal**, **amigable** y **nada técnico** (como si se lo contaras a un amigo).
+   - Los mensajes deben ser **cortos y concisos** (no muy largos), capturando la esencia de lo que se arregló o agregó para el equipo de gestión. Ej: "Arreglé el diseño del botón verde para que se vea bien en celulares".
+
+2. **Backend**:
+   - Todo se aloja y despliega en Vercel. Nada de local.
+   - Frontend React, Supabase en backend.
