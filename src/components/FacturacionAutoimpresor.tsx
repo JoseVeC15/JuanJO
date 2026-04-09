@@ -426,7 +426,26 @@ export default function FacturacionAutoimpresor() {
                      <div className="space-y-2">
                         {items.map((it, idx) => (
                            <div key={it.id} className="grid grid-cols-12 gap-2 lg:gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 relative">
-                              <input type="text" placeholder="Cód." value={it.codigo} onChange={e => { const ni = [...items]; ni[idx].codigo = e.target.value; setItems(ni); }} className="col-span-3 md:col-span-2 bg-white border border-slate-200 px-3 py-3 rounded-xl font-bold text-sm outline-none" />
+                              <input 
+                                 type="text" 
+                                 placeholder="Cód." 
+                                 value={it.codigo} 
+                                 onChange={e => { 
+                                    const val = e.target.value;
+                                    const ni = [...items]; 
+                                    ni[idx].codigo = val; 
+                                    
+                                    // Auto-estirar producto por código exacto
+                                    const prod = productosCatalogo?.find((p: any) => p.codigo.toLowerCase() === val.trim().toLowerCase());
+                                    if (prod) {
+                                       ni[idx].descripcion = prod.descripcion;
+                                       ni[idx].precio_unitario = prod.precio_unitario;
+                                       ni[idx].iva_tipo = prod.iva_tipo;
+                                    }
+                                    setItems(ni); 
+                                 }} 
+                                 className="col-span-3 md:col-span-2 bg-white border border-slate-200 px-3 py-3 rounded-xl font-bold text-sm outline-none" 
+                              />
                               <ProductAutocomplete item={it} index={idx} items={items} setItems={setItems} productos={productosCatalogo} />
                               <input type="number" placeholder="Cant" value={it.cantidad} onChange={e => { const ni = [...items]; ni[idx].cantidad = Number(e.target.value); setItems(ni); }} className="col-span-4 md:col-span-2 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none text-center" />
                               <input type="number" placeholder="Precio U." value={it.precio_unitario} onChange={e => { const ni = [...items]; ni[idx].precio_unitario = Number(e.target.value); setItems(ni); }} className="col-span-8 md:col-span-3 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none text-right" />
