@@ -344,7 +344,7 @@ export default function CierreMensualWizard() {
 
                 {showReopenModal && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                        <div className="bg-white rounded-[2rem] p-8 max-w-md w-full space-y-6 shadow-2xl">
+                        <div className="bg-white rounded-[1.5rem] lg:rounded-[2rem] p-6 lg:p-8 max-w-md w-full space-y-6 shadow-2xl overflow-y-auto max-h-[90vh]">
                             <div className="flex items-center gap-3 text-rose-600">
                                 <AlertTriangle size={24} />
                                 <h3 className="text-xl font-black uppercase tracking-tight">Reapertura de Periodo</h3>
@@ -378,18 +378,18 @@ export default function CierreMensualWizard() {
     }
 
     return (
-        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden max-w-4xl mx-auto">
-            <div className="bg-slate-900 p-8 text-white">
-                <div className="flex items-center justify-between mb-8">
+        <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] border border-slate-100 shadow-xl overflow-hidden max-w-4xl mx-auto">
+            <div className="bg-slate-900 p-6 lg:p-8 text-white">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                     <div>
-                        <h2 className="text-2xl font-black tracking-tight">Asistente de Cierre Mensual SET</h2>
-                        <p className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cumplimiento DNIT / Formulario 120</p>
+                        <h2 className="text-xl lg:text-2xl font-black tracking-tight">Cierre Mensual SET</h2>
+                        <p className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">Cumplimiento DNIT / F120</p>
                     </div>
                     <div className="flex gap-2">
-                        <button onClick={() => setView('history')} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-xs font-bold transition-all flex items-center gap-2">
+                        <button onClick={() => setView('history')} className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 text-[10px] sm:text-xs font-bold transition-all flex items-center gap-2">
                             <History size={14} /> Historial
                         </button>
-                        <div className="px-4 py-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-xs font-bold text-emerald-400">
+                        <div className="px-4 py-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-[10px] sm:text-xs font-bold text-emerald-400">
                             Mes: {currentMonth.toString().padStart(2, '0')}/{currentYear}
                         </div>
                     </div>
@@ -411,7 +411,7 @@ export default function CierreMensualWizard() {
                 </div>
             </div>
 
-            <div className="p-10 min-h-[400px]">
+            <div className="p-5 lg:p-10 min-h-[400px]">
                 <AnimatePresence mode="wait">
                     <motion.div 
                         key={currentStep}
@@ -610,7 +610,7 @@ export default function CierreMensualWizard() {
                 </AnimatePresence>
             </div>
 
-            <div className="p-8 border-t border-slate-50 flex justify-between items-center bg-slate-50/50">
+            <div className="p-5 lg:p-8 border-t border-slate-50 flex justify-between items-center bg-slate-50/50">
                 <button 
                     disabled={currentStep === 0}
                     onClick={handleBack}

@@ -497,7 +497,7 @@ export default function AdminPanel() {
       {/* Create Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+          <div className="bg-white rounded-[1.5rem] lg:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300 max-h-[95vh] flex flex-col">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <UserPlus className="text-indigo-600" size={24} />
@@ -508,7 +508,7 @@ export default function AdminPanel() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="p-6 space-y-4">
+            <form onSubmit={handleCreateUser} className="p-5 lg:p-6 space-y-4 overflow-y-auto flex-1">
               {status && (
                 <div className={`p-4 rounded-xl flex items-start gap-3 ${status.type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
                   {status.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
@@ -608,7 +608,7 @@ export default function AdminPanel() {
       {/* Edit Name Modal */}
       {editData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 text-left">
+          <div className="bg-white rounded-[1.5rem] lg:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-5 lg:p-6 space-y-4 text-left max-h-[95vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <Edit2 className="text-indigo-600" size={24} />
               Editar Nombre
@@ -650,7 +650,7 @@ export default function AdminPanel() {
       {/* Reset Password Modal */}
       {resetData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4 text-left">
+          <div className="bg-white rounded-[1.5rem] lg:rounded-3xl w-full max-w-md shadow-2xl overflow-hidden p-5 lg:p-6 space-y-4 text-left max-h-[95vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 text-amber-600">
               <Key size={24} />
               Resetear Contraseña
@@ -699,7 +699,7 @@ export default function AdminPanel() {
       {/* Modules Modal */}
       {moduleData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden p-6 space-y-4 text-left">
+          <div className="bg-white rounded-[1.5rem] lg:rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden p-5 lg:p-6 space-y-4 text-left max-h-[95vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2 text-violet-600">
               <SlidersHorizontal size={22} />
               Modulos Habilitados
@@ -838,7 +838,7 @@ export default function AdminPanel() {
       {/* Delete Modal */}
       {deleteId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 text-center space-y-6">
+          <div className="bg-white rounded-[1.5rem] lg:rounded-3xl w-full max-w-sm shadow-2xl p-6 lg:p-8 text-center space-y-6 max-h-[95vh] overflow-y-auto">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto">
               <Trash2 size={40} className="text-red-600" />
             </div>
@@ -871,7 +871,7 @@ export default function AdminPanel() {
       {/* Suspend Modal */}
       {suspendData && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 text-center space-y-6 overflow-hidden relative">
+          <div className="bg-white rounded-[1.5rem] lg:rounded-3xl w-full max-w-sm shadow-2xl p-6 lg:p-8 text-center space-y-6 overflow-hidden relative max-h-[95vh] overflow-y-auto">
             <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto ${suspendData.currentState === 'activo' ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-600'}`}>
               {suspendData.currentState === 'activo' ? <Pause size={40} /> : <Play size={40} />}
             </div>

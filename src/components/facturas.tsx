@@ -911,7 +911,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
       {/* Manual Modal Simplified UI */}
       {showAddManual && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[2.5rem] w-full max-w-2xl p-10 space-y-8 shadow-2xl relative overflow-hidden">
+          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] w-full max-w-2xl p-5 lg:p-10 space-y-6 lg:space-y-8 shadow-2xl relative overflow-hidden max-h-[95vh] overflow-y-auto">
             <div className="flex justify-between items-center relative z-10">
               <div>
                 <h3 className="text-3xl font-black text-gray-900">Emisión de Factura</h3>

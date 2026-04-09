@@ -78,9 +78,9 @@ export default function ProjectFormModal({ project, onClose }: ProjectFormModalP
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-2xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
-        <div className="p-8 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-2xl font-black text-slate-900">
+      <div className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] w-full max-w-2xl max-h-[95vh] lg:max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="p-5 lg:p-8 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="text-xl lg:text-2xl font-black text-slate-900">
             {project ? 'Editar Proyecto' : 'Nuevo Proyecto'}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-xl transition-colors">
@@ -88,7 +88,7 @@ export default function ProjectFormModal({ project, onClose }: ProjectFormModalP
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 lg:p-8 space-y-6 custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="col-span-2">
               <label className="text-[10px] font-black text-gray-400 uppercase mb-2 block ml-1">Cliente / Nombre del Proyecto</label>
@@ -213,7 +213,7 @@ export default function ProjectFormModal({ project, onClose }: ProjectFormModalP
           </div>
         </form>
 
-        <div className="p-8 border-t border-gray-100 bg-gray-50/50 flex gap-4">
+        <div className="p-5 lg:p-8 border-t border-gray-100 bg-gray-50/50 flex gap-4">
           <button 
             onClick={onClose}
             className="flex-1 px-6 py-4 bg-white text-gray-500 font-bold rounded-2xl border border-gray-200 hover:bg-gray-100 transition-all"

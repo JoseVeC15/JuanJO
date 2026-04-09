@@ -441,7 +441,7 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[2.5rem] w-full max-w-3xl p-10 shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] w-full max-w-3xl p-5 lg:p-10 shadow-2xl relative overflow-hidden max-h-[95vh] lg:max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center relative z-10">
                     <div>
                         <h3 className="text-2xl font-black text-gray-900">Autofactura Guiada</h3>

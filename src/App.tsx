@@ -18,6 +18,7 @@ const Settings = lazy(() => import('./components/Settings'));
 const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const ManualsScreen = lazy(() => import('./screens/ManualsScreen'));
 const Servicios = lazy(() => import('./components/Servicios'));
+const FacturacionAutoimpresor = lazy(() => import('./components/FacturacionAutoimpresor'));
 
 // Componente para sub-menú en móvil
 function MobileSubMenu({ item }: { item: any }) {
@@ -65,7 +66,7 @@ function MobileSubMenu({ item }: { item: any }) {
               initial={{ opacity: 0, y: 20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              className="absolute bottom-full mb-4 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 min-w-[160px] z-50 overflow-hidden"
+              className="fixed bottom-[64px] left-2 right-2 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 overflow-hidden max-h-[60vh] overflow-y-auto"
             >
               <div className="flex flex-col gap-1">
                 {item.children.map((child: any) => (
@@ -222,6 +223,7 @@ function RouterWrapper() {
     { key: 'proyectos', path: '/proyectos', label: 'PROYECTOS', icon: <Layout size={20} /> },
     { key: 'servicios', path: '/servicios', label: 'SERVICIOS', icon: <ClipboardList size={20} className="text-teal-400" /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
+    { key: 'facturas_virtuales', path: '/facturacion-virtual', label: 'FACT. VIRTUAL', icon: <PieChart size={20} className="text-indigo-400" /> },
     { key: 'reportes', path: '/analisis', label: serviceProfile.labels?.reportes || 'ANÁLISIS', icon: <PieChart size={20} /> },
     { key: 'settings', path: '/config', label: 'CONFIG', icon: <SettingsIcon size={20} /> },
   ];

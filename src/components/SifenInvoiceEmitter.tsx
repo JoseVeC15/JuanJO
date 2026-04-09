@@ -247,9 +247,9 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
             <motion.div 
                 initial={{ scale: 0.9, opacity: 0 }} 
                 animate={{ scale: 1, opacity: 1 }}
-                className="bg-white rounded-[2.5rem] w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+                className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh] lg:max-h-[90vh]"
             >
-                <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div className="p-4 lg:p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                     <div>
                         <div className="flex items-center gap-2 mb-1">
                             <span className="px-2 py-1 bg-emerald-100 text-emerald-600 text-[9px] font-black uppercase rounded-lg">SIFEN V1.5</span>
@@ -260,7 +260,7 @@ export default function SifenInvoiceEmitter({ onClose: alCerrar, onSuccess: alEx
                     <button onClick={alCerrar} className="p-2 hover:bg-slate-200 rounded-full transition-all text-slate-400"><X size={24} /></button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                <div className="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 lg:space-y-8">
                     <AnimatePresence mode="wait">
                         {paso === 'formulario' ? (
                             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">

@@ -29,7 +29,7 @@ import { getModuleLabel } from './moduleCatalog';
 // ============================================================
 
 const CORE_MODULOS: ServiceModuleKey[] = [
-  'dashboard', 'gastos', 'ingresos', 'cobros', 'reportes', 'settings',
+  'dashboard', 'gastos', 'ingresos', 'cobros', 'reportes', 'settings', 'facturas_virtuales'
 ];
 
 const CORE_DASHBOARD: DashboardWidgetKey[] = [

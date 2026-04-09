@@ -101,7 +101,7 @@ export default function ProposalCreator({ proyecto, onClose }: ProposalCreatorPr
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-5xl bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="relative w-full max-w-5xl bg-white rounded-[1.5rem] lg:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[95vh] lg:max-h-[90vh]"
       >
         {/* Header */}
         <div className="p-8 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">

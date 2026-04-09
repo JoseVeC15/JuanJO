@@ -291,7 +291,7 @@ export default function Clientes({ hideHeader = false, forceOpenAddModal = false
                             initial={{ scale: 0.9, opacity: 0 }} 
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-white rounded-[2.5rem] w-full max-w-xl p-10 space-y-8 shadow-2xl relative overflow-hidden"
+                            className="bg-white rounded-[1.5rem] lg:rounded-[2.5rem] w-full max-w-xl p-5 lg:p-10 space-y-6 lg:space-y-8 shadow-2xl relative overflow-hidden max-h-[95vh] overflow-y-auto flex flex-col"
                         >
                             <div className="flex justify-between items-center relative z-10">
                                 <div>
