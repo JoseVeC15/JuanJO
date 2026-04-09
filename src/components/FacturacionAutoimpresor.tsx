@@ -172,7 +172,14 @@ export default function FacturacionAutoimpresor() {
 
       return facturaRow;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      // Guardar configuracion de Timbrado para la próxima factura
+      localStorage.setItem('sifen_auto_config', JSON.stringify({
+         prefijo: variables.numero_prefijo,
+         punto: variables.numero_punto,
+         timbrado: variables.timbrado
+      }));
+
       queryClient.invalidateQueries({ queryKey: ['facturas_virtuales'] });
       setMostrarModal(false);
       resetForm();
@@ -185,12 +192,34 @@ export default function FacturacionAutoimpresor() {
   });
 
   const resetForm = () => {
+    // Recuperar ultima configuración guardada
+    let conf = { prefijo: '001', punto: '001', timbrado: '' };
+    const saved = localStorage.getItem('sifen_auto_config');
+    if (saved) {
+       try { conf = JSON.parse(saved); } catch (e) {}
+    }
+
+    // Auto-calcular secuencia siguiente basado en las facturas previas
+    let nextSeq = '';
+    if (facturas && facturas.length > 0) {
+       const lastFactura = facturas[0]; // siempre es el recien emitido (desc)
+       if (lastFactura.numero_documento) {
+          const parts = lastFactura.numero_documento.split('-');
+          if (parts.length === 3) {
+             const lastNum = parseInt(parts[2], 10);
+             if (!isNaN(lastNum)) {
+                nextSeq = String(lastNum + 1).padStart(7, '0');
+             }
+          }
+       }
+    }
+
     setFormData({
       tipo_documento: 1,
-      numero_prefijo: '001',
-      numero_punto: '001',
-      numero_secuencia: '',
-      timbrado: '',
+      numero_prefijo: conf.prefijo,
+      numero_punto: conf.punto,
+      numero_secuencia: nextSeq,
+      timbrado: conf.timbrado,
       fecha_emision: new Date().toISOString().split('T')[0],
       condicion_venta: 'contado',
       cliente_razon_social: '',

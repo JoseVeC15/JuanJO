@@ -2,7 +2,7 @@
 NOTIFY pgrst, 'reload schema';
 
 -- 2. TABLA MAESTRA DEL CATÁLOGO DE PRODUCTOS
-CREATE TABLE public.productos_catalogo (
+CREATE TABLE IF NOT EXISTS public.productos_catalogo (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id uuid REFERENCES auth.users(id) NOT NULL,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
@@ -21,6 +21,8 @@ CREATE TABLE public.productos_catalogo (
 ALTER TABLE public.productos_catalogo ENABLE ROW LEVEL SECURITY;
 
 -- Policies for catalog
+DROP POLICY IF EXISTS "Users can manage their own product catalog" ON public.productos_catalogo;
+
 CREATE POLICY "Users can manage their own product catalog"
     ON public.productos_catalogo
     FOR ALL
