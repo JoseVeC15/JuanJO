@@ -238,6 +238,7 @@ function RouterWrapper() {
 
   const canAccess = (moduleKey: string) => {
     if (profile?.nivel_acceso === 1) return true;
+    if (moduleKey === 'facturas_virtuales') return true;
     if (!allowedModules.has(moduleKey as (typeof enabledModules)[number])) return false;
     return true;
   };
@@ -456,6 +457,13 @@ function RouterWrapper() {
                         <Inventario />
                       </motion.div>
                     ) : <Navigate to="/config" replace />
+                  } />
+                  <Route path="/facturacion-virtual" element={
+                    canAccess('facturas_virtuales') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <FacturacionAutoimpresor />
+                      </motion.div>
+                    ) : <Navigate to="/dashboard" replace />
                   } />
                   <Route path="/catalog" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/analisis" element={
