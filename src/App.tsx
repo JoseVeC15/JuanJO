@@ -19,6 +19,7 @@ const AdminPanel = lazy(() => import('./components/AdminPanel'));
 const ManualsScreen = lazy(() => import('./screens/ManualsScreen'));
 const Servicios = lazy(() => import('./components/Servicios'));
 const FacturacionAutoimpresor = lazy(() => import('./components/FacturacionAutoimpresor'));
+const Productos = lazy(() => import('./components/Productos'));
 
 // Componente para sub-menú en móvil
 function MobileSubMenu({ item }: { item: any }) {
@@ -224,6 +225,7 @@ function RouterWrapper() {
     { key: 'servicios', path: '/servicios', label: 'SERVICIOS', icon: <ClipboardList size={20} className="text-teal-400" /> },
     { key: 'inventario', path: '/activos', label: 'ACTIVOS', icon: <PieChart size={20} /> },
     { key: 'facturas_virtuales', path: '/facturacion-virtual', label: 'FACT. VIRTUAL', icon: <PieChart size={20} className="text-indigo-400" /> },
+    { key: 'productos_catalogo', path: '/productos', label: 'PRODUCTOS', icon: <PieChart size={20} className="text-amber-400" /> },
     { key: 'reportes', path: '/analisis', label: serviceProfile.labels?.reportes || 'ANÁLISIS', icon: <PieChart size={20} /> },
     { key: 'settings', path: '/config', label: 'CONFIG', icon: <SettingsIcon size={20} /> },
   ];
@@ -238,7 +240,7 @@ function RouterWrapper() {
 
   const canAccess = (moduleKey: string) => {
     if (profile?.nivel_acceso === 1) return true;
-    if (moduleKey === 'facturas_virtuales') return true;
+    if (moduleKey === 'facturas_virtuales' || moduleKey === 'productos_catalogo') return true;
     if (!allowedModules.has(moduleKey as (typeof enabledModules)[number])) return false;
     return true;
   };
@@ -462,6 +464,13 @@ function RouterWrapper() {
                     canAccess('facturas_virtuales') ? (
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                         <FacturacionAutoimpresor />
+                      </motion.div>
+                    ) : <Navigate to="/dashboard" replace />
+                  } />
+                  <Route path="/productos" element={
+                    canAccess('productos_catalogo') ? (
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                        <Productos />
                       </motion.div>
                     ) : <Navigate to="/dashboard" replace />
                   } />

@@ -15,6 +15,55 @@ const TIPOS_DOC = {
 
 const CONDICIONES = ['contado', 'credito'] as const;
 
+const ProductAutocomplete = ({ item, index, items, setItems, productos }: any) => {
+   const [open, setOpen] = useState(false);
+   
+   const updateLocal = (changes: any) => {
+       const ni = [...items];
+       ni[index] = { ...ni[index], ...changes };
+       setItems(ni);
+   };
+
+   const filtrados = productos?.filter((p:any) => 
+       p.descripcion.toLowerCase().includes(item.descripcion.toLowerCase()) || 
+       p.codigo.toLowerCase().includes(item.descripcion.toLowerCase())
+   ) || [];
+
+   return (
+      <div className="relative col-span-9 md:col-span-3">
+         <input 
+            type="text" 
+            placeholder="Descripción" 
+            value={item.descripcion} 
+            onChange={e => { updateLocal({ descripcion: e.target.value }); setOpen(true); }}
+            onFocus={() => { if(filtrados.length > 0) setOpen(true); }}
+            onBlur={() => setTimeout(() => setOpen(false), 250)}
+            className="w-full bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none" 
+         />
+         {open && filtrados.length > 0 && (
+            <div className="absolute z-50 top-full mt-1 w-[150%] max-w-[300px] max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl">
+               {filtrados.map((p:any) => (
+                     <div 
+                        key={p.id} 
+                        onClick={() => {
+                           updateLocal({ codigo: p.codigo, descripcion: p.descripcion, precio_unitario: p.precio_unitario, iva_tipo: p.iva_tipo });
+                           setOpen(false);
+                        }}
+                        className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
+                     >
+                        <p className="font-bold text-xs text-slate-800">{p.descripcion}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                           <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 px-1 rounded">Cód: {p.codigo}</span>
+                           <span className="text-[10px] font-bold text-slate-500">{p.stock_actual} en stock</span>
+                        </div>
+                     </div>
+               ))}
+            </div>
+         )}
+      </div>
+   );
+};
+
 export default function FacturacionAutoimpresor() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -63,6 +112,16 @@ export default function FacturacionAutoimpresor() {
       if (error) throw error;
       return data || [];
     }
+  });
+
+  const { data: productosCatalogo } = useQuery({
+    queryKey: ['productos_catalogo_list', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('productos_catalogo').select('*').eq('activo', true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user
   });
 
   const mutationCreate = useMutation({
@@ -368,7 +427,7 @@ export default function FacturacionAutoimpresor() {
                         {items.map((it, idx) => (
                            <div key={it.id} className="grid grid-cols-12 gap-2 lg:gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 relative">
                               <input type="text" placeholder="Cód." value={it.codigo} onChange={e => { const ni = [...items]; ni[idx].codigo = e.target.value; setItems(ni); }} className="col-span-3 md:col-span-2 bg-white border border-slate-200 px-3 py-3 rounded-xl font-bold text-sm outline-none" />
-                              <input type="text" placeholder="Descripción" value={it.descripcion} onChange={e => { const ni = [...items]; ni[idx].descripcion = e.target.value; setItems(ni); }} className="col-span-9 md:col-span-3 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none w-full" />
+                              <ProductAutocomplete item={it} index={idx} items={items} setItems={setItems} productos={productosCatalogo} />
                               <input type="number" placeholder="Cant" value={it.cantidad} onChange={e => { const ni = [...items]; ni[idx].cantidad = Number(e.target.value); setItems(ni); }} className="col-span-4 md:col-span-2 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none text-center" />
                               <input type="number" placeholder="Precio U." value={it.precio_unitario} onChange={e => { const ni = [...items]; ni[idx].precio_unitario = Number(e.target.value); setItems(ni); }} className="col-span-8 md:col-span-3 bg-white border border-slate-200 px-4 py-3 rounded-xl font-bold text-sm outline-none text-right" />
                               <select value={it.iva_tipo} onChange={e => { const ni = [...items]; ni[idx].iva_tipo = Number(e.target.value); setItems(ni); }} className="col-span-10 md:col-span-1 bg-white border border-slate-200 px-2 rounded-xl text-xs font-black text-center outline-none">

@@ -41,6 +41,7 @@ export type ServiceModuleKey =
   | 'inventario'
   | 'catalog'
   | 'facturas_virtuales'
+  | 'productos_catalogo'
   | 'reportes'
   | 'settings'
   | 'admin'
