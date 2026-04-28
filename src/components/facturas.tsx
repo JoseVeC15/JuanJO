@@ -64,7 +64,6 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   const [editingItem, setEditingItem] = useState<any | null>(null);
 
   const [uploading, setUploading] = useState(false);
-  const [isAIPolling, setIsAIPolling] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,28 +74,6 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
   useEffect(() => {
     if (activeTab !== 'sifen') setSifenScreen('bandeja');
   }, [activeTab]);
-
-  // Polling agresivo post-subida IA
-  useEffect(() => {
-    let interval: any;
-    if (isAIPolling) {
-      // Forzar refresco cada 3 segundos durante 30 segs
-      interval = setInterval(() => {
-        queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
-      }, 3000);
-
-      // Parar polling después de 30 segundos
-      const timeout = setTimeout(() => {
-        setIsAIPolling(false);
-        setUploadStatus('idle'); // Limpiar estado visual
-      }, 30000);
-
-      return () => {
-        clearInterval(interval);
-        clearTimeout(timeout);
-      };
-    }
-  }, [isAIPolling, activeTab, queryClient]);
 
   const deleteMutation = useMutation({
     mutationFn: async ({ id, type }: { id: string, type: 'gastos' | 'ingresos' }) => {
@@ -293,15 +270,11 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     try {
       let base64String = '';
       let mimeType = file.type;
-      let finalFileName = file.name;
 
       if (file.type === 'application/pdf') {
-        // Conversión mágica: PDF -> Imagen
         base64String = await convertPdfToImage(file);
-        mimeType = 'image/jpeg'; // Engañamos a n8n para que procese como imagen
-        finalFileName = file.name.replace(/\.pdf$/i, '.jpg');
+        mimeType = 'image/jpeg';
       } else {
-        // Manejo normal de imágenes
         const reader = new FileReader();
         base64String = await new Promise((resolve, reject) => {
           reader.onloadend = () => {
@@ -313,30 +286,19 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
         });
       }
 
-      const webhookUrl = activeTab === 'ingresos'
-        ? (import.meta as any).env?.VITE_N8N_WEBHOOK_URL_INGRESOS
-        : ((import.meta as any).env?.VITE_N8N_WEBHOOK_URL_GASTOS || (import.meta as any).env?.VITE_N8N_WEBHOOK_URL);
-
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const { error: fnError } = await supabase.functions.invoke('analyze-invoice', {
+        body: {
           user_id: user.id,
           image_base64: base64String,
           mime_type: mimeType,
-          file_name: finalFileName,
           type: activeTab === 'gastos' ? 'expense' : 'income',
-          category_intent: activeTab === 'gastos' ? 'gastos' : 'ingresos',
-          force_category: true
-        })
+        },
       });
 
-      if (response.ok) {
-        setUploadStatus('success');
-        setIsAIPolling(true); // Iniciar polling automático
-      } else {
-        setUploadStatus('error');
-      }
+      if (fnError) throw new Error(fnError.message);
+
+      setUploadStatus('success');
+      queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
     } catch (error) {
       console.error('Error procesando archivo:', error);
       setUploadStatus('error');
@@ -491,9 +453,9 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
               }}
               className={`flex items-center gap-2 text-white px-4 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl font-black text-[10px] lg:text-xs uppercase tracking-widest shadow-2xl transition-all hover:scale-105 active:scale-95 ${activeTab === 'gastos' ? 'bg-slate-900 shadow-slate-200' : 'bg-emerald-600 shadow-emerald-200'}`}
             >
-              {(uploading || isAIPolling) ? <Loader2 className="animate-spin" size={16} /> : <Scan size={16} />}
-              <span className="hidden sm:inline">{uploading ? 'Segundos...' : isAIPolling ? 'IA Procesando...' : 'Subir SET (IA)'}</span>
-              <span className="sm:hidden">{uploading ? '...' : isAIPolling ? 'IA...' : 'Subir'}</span>
+              {uploading ? <Loader2 className="animate-spin" size={16} /> : <Scan size={16} />}
+              <span className="hidden sm:inline">{uploading ? 'Analizando...' : 'Subir SET (IA)'}</span>
+              <span className="sm:hidden">{uploading ? '...' : 'Subir'}</span>
             </button>
           )}
         </div>
@@ -535,7 +497,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
                   {uploadStatus === 'success' && (
                     <div className="mt-6 flex flex-col items-center gap-4">
                       <p className="text-emerald-600 font-bold flex items-center justify-center gap-2">
-                        <CheckCircle size={18} /> ¡Documento enviado a n8n con éxito!
+                        <CheckCircle size={18} /> ¡Documento analizado y registrado por IA!
                       </p>
                       <button
                         onClick={() => setUploadStatus('idle')}
