@@ -111,7 +111,7 @@ export default function CentroCobros() {
           </div>
         ) : (
           filteredIngresos.map((factura) => {
-            const config = statusConfig[factura.estado] || fallbackStatus;
+            const config = statusConfig[factura.estado as EstadoIngreso] || fallbackStatus;
             const Icon = config.icon;
 
             return (

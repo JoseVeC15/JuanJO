@@ -170,7 +170,7 @@ export function generarPDFAutoimpreso(parametros: ParametrosAutoimpresoPDF) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
 
-    parametro.items.forEach((item) => {
+    parametros.items.forEach((item: ItemAutoimpreso) => {
         if (y > alto - 50) {
             doc.addPage();
             y = 20;

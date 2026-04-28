@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { useSupabaseData } from '../hooks/useSupabaseData';
 import { Plus, X, AlertCircle, CheckCircle, Search, FileText, Download, DollarSign, Settings2, Trash2 } from 'lucide-react';
 
 const TIPOS_DOC = {
@@ -13,7 +12,6 @@ const TIPOS_DOC = {
   6: 'Nota de Crédito'
 };
 
-const CONDICIONES = ['contado', 'credito'] as const;
 
 const ProductAutocomplete = ({ item, index, items, setItems, productos }: any) => {
    const [open, setOpen] = useState(false);
@@ -67,8 +65,6 @@ const ProductAutocomplete = ({ item, index, items, setItems, productos }: any) =
 export default function FacturacionAutoimpresor() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { profile } = useSupabaseData(); // Para ver si es admin o multiempresa, si aplica
-  
   // Flag desde el tenant o global (simplificado a un state temporal local si no hay DB de metadata)
   const [multimonedaEnabled, setMultimonedaEnabled] = useState(false); // Podría venir de global settings
 
@@ -82,6 +78,7 @@ export default function FacturacionAutoimpresor() {
     numero_punto: '001',
     numero_secuencia: '',
     timbrado: '',
+    vencimiento_timbrado: '',
     fecha_emision: new Date().toISOString().split('T')[0],
     condicion_venta: 'contado',
     cliente_razon_social: '',
@@ -114,6 +111,21 @@ export default function FacturacionAutoimpresor() {
     }
   });
 
+  const { data: perfilFiscal } = useQuery({
+    queryKey: ['perfil_fiscal', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('perfiles_fiscales')
+        .select('*')
+        .eq('user_id', user!.id)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user
+  });
+
   const { data: productosCatalogo } = useQuery({
     queryKey: ['productos_catalogo_list', user?.id],
     queryFn: async () => {
@@ -131,6 +143,11 @@ export default function FacturacionAutoimpresor() {
         tipo_documento: payload.tipo_documento,
         numero_documento: `${payload.numero_prefijo}-${payload.numero_punto}-${payload.numero_secuencia.padStart(7, '0')}`,
         timbrado: payload.timbrado,
+        vencimiento_timbrado: payload.vencimiento_timbrado || null,
+        emisor_razon_social: payload.emisor?.razon_social || null,
+        emisor_ruc: payload.emisor?.ruc || null,
+        emisor_direccion: payload.emisor?.direccion || null,
+        emisor_telefono: payload.emisor?.telefono || null,
         fecha_emision: payload.fecha_emision,
         condicion_venta: payload.condicion_venta,
         cliente_razon_social: payload.cliente_razon_social,
@@ -170,6 +187,23 @@ export default function FacturacionAutoimpresor() {
       const { error: errorItems } = await supabase.from('facturas_virtuales_items').insert(itemsPayload);
       if (errorItems) throw errorItems;
 
+      // Decrementar stock para items con código de producto
+      for (const item of payload.items) {
+        if (item.codigo) {
+          const { data: prod } = await supabase
+            .from('productos_catalogo')
+            .select('id, stock_actual')
+            .eq('codigo', item.codigo)
+            .maybeSingle();
+          if (prod) {
+            await supabase
+              .from('productos_catalogo')
+              .update({ stock_actual: Math.max(0, (prod.stock_actual || 0) - item.cantidad) })
+              .eq('id', prod.id);
+          }
+        }
+      }
+
       return facturaRow;
     },
     onSuccess: (_, variables) => {
@@ -177,7 +211,8 @@ export default function FacturacionAutoimpresor() {
       localStorage.setItem('sifen_auto_config', JSON.stringify({
          prefijo: variables.numero_prefijo,
          punto: variables.numero_punto,
-         timbrado: variables.timbrado
+         timbrado: variables.timbrado,
+         vencimiento_timbrado: variables.vencimiento_timbrado || ''
       }));
 
       queryClient.invalidateQueries({ queryKey: ['facturas_virtuales'] });
@@ -191,9 +226,21 @@ export default function FacturacionAutoimpresor() {
     }
   });
 
+  const anularFactura = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('facturas_virtuales')
+        .update({ estado: 'anulado' })
+        .eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['facturas_virtuales'] }),
+    onError: (err: any) => alert(`Error al anular: ${err.message}`)
+  });
+
   const resetForm = () => {
     // Recuperar ultima configuración guardada
-    let conf = { prefijo: '001', punto: '001', timbrado: '' };
+    let conf = { prefijo: '001', punto: '001', timbrado: '', vencimiento_timbrado: '' };
     const saved = localStorage.getItem('sifen_auto_config');
     if (saved) {
        try { conf = JSON.parse(saved); } catch (e) {}
@@ -220,6 +267,7 @@ export default function FacturacionAutoimpresor() {
       numero_punto: conf.punto,
       numero_secuencia: nextSeq,
       timbrado: conf.timbrado,
+      vencimiento_timbrado: conf.vencimiento_timbrado,
       fecha_emision: new Date().toISOString().split('T')[0],
       condicion_venta: 'contado',
       cliente_razon_social: '',
@@ -251,7 +299,13 @@ export default function FacturacionAutoimpresor() {
   const handleImprimir = async (factura: any) => {
       try {
           const { generarPdfAutoimpreso } = await import('../lib/pdf/autoimpresor');
-          generarPdfAutoimpreso(factura);
+          generarPdfAutoimpreso(factura, perfilFiscal ? {
+              razon_social: perfilFiscal.razon_social,
+              ruc: perfilFiscal.ruc,
+              nombre_fantasia: perfilFiscal.nombre_fantasia,
+              direccion: perfilFiscal.direccion,
+              telefono: perfilFiscal.telefono
+          } : undefined);
       } catch (err) {
           console.error("Error cargando generador PDF", err);
           alert("Ocurrió un error al generar el PDF.");
@@ -313,12 +367,15 @@ export default function FacturacionAutoimpresor() {
             <tbody className="divide-y divide-gray-50">
               {isLoading && <tr><td colSpan={5} className="p-10 text-center text-slate-400 font-medium">Cargando...</td></tr>}
               {!isLoading && facturas?.length === 0 && <tr><td colSpan={5} className="p-10 text-center text-slate-400 font-medium italic">No hay registros aún.</td></tr>}
-              {facturas?.filter((f:any) => f.cliente_ruc.includes(search) || f.numero_documento.includes(search)).map((f:any) => (
-                <tr key={f.id} className="hover:bg-slate-50/50 transition-colors">
+              {facturas?.filter((f:any) => (f.cliente_ruc || '').includes(search) || (f.numero_documento || '').includes(search)).map((f:any) => (
+                <tr key={f.id} className={`hover:bg-slate-50/50 transition-colors ${f.estado === 'anulado' ? 'opacity-50' : ''}`}>
                   <td className="p-5 font-bold text-slate-600 text-sm">{f.fecha_emision}</td>
                   <td className="p-5">
                     <p className="font-black text-slate-900 border border-slate-200 bg-white px-2 py-1 rounded inline-block text-xs">{f.numero_documento}</p>
-                    <p className="text-[10px] font-black text-indigo-500 uppercase mt-1 tracking-widest">{TIPOS_DOC[f.tipo_documento as keyof typeof TIPOS_DOC]}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">{TIPOS_DOC[f.tipo_documento as keyof typeof TIPOS_DOC]}</p>
+                      {f.estado === 'anulado' && <span className="text-[9px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full uppercase">Anulado</span>}
+                    </div>
                   </td>
                   <td className="p-5">
                      <p className="font-bold text-slate-800 truncate max-w-[200px]">{f.cliente_razon_social}</p>
@@ -329,12 +386,22 @@ export default function FacturacionAutoimpresor() {
                      {f.moneda !== 'PYG' && <p className="text-[9px] font-bold text-slate-400 text-right">TC: {f.tasa_cambio}</p>}
                   </td>
                   <td className="p-5 text-center">
-                    <button 
-                      onClick={() => handleImprimir(f)}
-                      className="px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all inline-flex items-center gap-2 font-bold text-xs"
-                    >
-                      <Download size={14} /> PDF
-                    </button>
+                    <div className="flex items-center gap-2 justify-center">
+                      <button
+                        onClick={() => handleImprimir(f)}
+                        className="px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white rounded-xl transition-all inline-flex items-center gap-2 font-bold text-xs"
+                      >
+                        <Download size={14} /> PDF
+                      </button>
+                      {f.estado !== 'anulado' && (
+                        <button
+                          onClick={() => { if(confirm('¿Anular este comprobante? Esta acción no se puede deshacer.')) anularFactura.mutate(f.id); }}
+                          className="px-3 py-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all font-bold text-xs"
+                        >
+                          Anular
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -382,10 +449,14 @@ export default function FacturacionAutoimpresor() {
                      </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                       <div className="space-y-4">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Timbrado (8 dígitos)</label>
                         <input type="text" maxLength={8} value={formData.timbrado} onChange={e => setFormData({...formData, timbrado: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-500" placeholder="12345678" />
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Venc. Timbrado</label>
+                        <input type="date" value={formData.vencimiento_timbrado} onChange={e => setFormData({...formData, vencimiento_timbrado: e.target.value})} className="w-full bg-slate-50 border border-slate-200 px-4 py-4 rounded-2xl font-bold outline-none focus:ring-2 focus:ring-indigo-500" />
                       </div>
                       <div className="space-y-4">
                         <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Fecha Emisión</label>
@@ -510,7 +581,7 @@ export default function FacturacionAutoimpresor() {
                              alert("Verifica Numero y Timbrado (8 digitos)");
                              return;
                            }
-                           mutationCreate.mutate({ ...formData, items, totales: calcularTotales() })
+                           mutationCreate.mutate({ ...formData, items, totales: calcularTotales(), emisor: perfilFiscal })
                          }}
                          disabled={mutationCreate.isPending || calcularTotales().total === 0}
                          className="w-full lg:w-auto bg-emerald-500 hover:bg-emerald-600 text-slate-900 px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50"

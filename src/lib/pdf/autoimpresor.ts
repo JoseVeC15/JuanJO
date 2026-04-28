@@ -117,8 +117,17 @@ const numeroALetras = (num: number, moneda: string = 'GUARANÍES') => {
     return Millones(enteros).trim() + ` ${moneda}`;
 };
 
-export const generarPdfAutoimpreso = (factura: any) => {
-    
+export const generarPdfAutoimpreso = (
+    factura: any,
+    emisor?: { razon_social?: string; ruc?: string; nombre_fantasia?: string; direccion?: string; telefono?: string }
+) => {
+    const emisorRazonSocial = emisor?.razon_social || factura.emisor_razon_social || 'EMISOR NO CONFIGURADO';
+    const emisorNombreFantasia = emisor?.nombre_fantasia || '';
+    const emisorRuc = emisor?.ruc || factura.emisor_ruc || '';
+    const emisorDireccion = emisor?.direccion || factura.emisor_direccion || '';
+    const emisorTelefono = emisor?.telefono || factura.emisor_telefono || '';
+    const vencTimbrado = factura.vencimiento_timbrado || '';
+
     // Format numbers
     const formatPy = (num: number) => num ? num.toLocaleString('es-PY') : '0';
 
@@ -177,9 +186,9 @@ export const generarPdfAutoimpreso = (factura: any) => {
                                         [
                                             {
                                                 stack: [
-                                                    { text: 'FINANCE PRO SA', fontSize: 18, bold: true, color: '#3f51b5', margin: [0, 10, 0, 5] },
-                                                    { text: 'SISTEMAS EMPRESARIALES', fontSize: 8, bold: true, margin: [0, 0, 0, 10] },
-                                                    { text: `Tel: +595981123456         Dirección: Edificio Central Of. 4`, fontSize: 8 }
+                                                    { text: emisorRazonSocial, fontSize: 18, bold: true, color: '#3f51b5', margin: [0, 10, 0, 5] },
+                                                    { text: emisorNombreFantasia, fontSize: 8, bold: true, margin: [0, 0, 0, 10] },
+                                                    { text: [emisorTelefono ? `Tel: ${emisorTelefono}` : '', emisorDireccion ? `  Dirección: ${emisorDireccion}` : ''].filter(Boolean).join(''), fontSize: 8 }
                                                 ],
                                                 border: [false, false, true, true],
                                                 margin: [5, 5, 5, 5],
@@ -190,8 +199,8 @@ export const generarPdfAutoimpreso = (factura: any) => {
                                                     { text: documentTitle, fontSize: 16, bold: true, margin: [0, 0, 0, 2] },
                                                     { text: factura.numero_documento, fontSize: 12, bold: true, margin: [0, 0, 0, 2] },
                                                     { text: `TIMBRADO: ${factura.timbrado}`, fontSize: 10, margin: [0, 0, 0, 2] },
-                                                    { text: `R.U.C: 80000001-2`, fontSize: 10, margin: [0, 0, 0, 2] },
-                                                    { text: `VIGENCIA: -`, fontSize: 8 } // Hardcoded vigencia placeholder
+                                                    { text: `R.U.C: ${emisorRuc}`, fontSize: 10, margin: [0, 0, 0, 2] },
+                                                    { text: vencTimbrado ? `VIGENCIA: ${vencTimbrado}` : '', fontSize: 8 }
                                                 ],
                                                 border: [false, false, false, true],
                                                 margin: [5, 5, 5, 5],

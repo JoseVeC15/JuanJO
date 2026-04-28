@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Upload, FileText, CheckCircle2, AlertCircle, 
   Search, ArrowRightLeft, Loader2, Download 
@@ -17,14 +17,12 @@ interface BankMovement {
 export default function ConciliacionBancaria() {
     const { ingresos, facturasGastos, loading } = useSupabaseData();
     const [fileContents, setFileContents] = useState<BankMovement[]>([]);
-    const [isProcessing, setIsProcessing] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        setIsProcessing(true);
         const reader = new FileReader();
         reader.onload = (event) => {
             const text = event.target?.result as string;
@@ -41,7 +39,6 @@ export default function ConciliacionBancaria() {
             }).filter(m => m.fecha && m.monto !== 0);
 
             setFileContents(parsed);
-            setIsProcessing(false);
         };
         reader.readAsText(file);
     };

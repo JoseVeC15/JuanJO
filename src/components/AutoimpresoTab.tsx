@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    FileText, Plus, X, Download, Search, Trash2, Edit2, Loader2,
-    Shield, CheckCircle, AlertCircle
+    FileText, Plus, X, Download, Search, Trash2, Loader2,
+    Shield
 } from 'lucide-react';
-import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,6 @@ import { generateNumeroDocumento } from '../lib/autoimpreso/utils';
 import {
     TIPO_COMPROBANTE_CONFIG,
     formatGs,
-    type FacturaAutoimpreso,
     type TipoComprobante
 } from '../data/sampleData';
 
@@ -23,7 +22,7 @@ interface AutoimpresoTabProps {
 }
 
 export default function AutoimpresoTab({ perfilFiscal, configSifen, isPeriodoBloqueado }: AutoimpresoTabProps) {
-    const { facturasAutoimpreso, loading: dataLoading } = useSupabaseData();
+    const { facturasAutoimpreso } = useSupabaseData();
     const { user } = useAuth();
     const queryClient = useQueryClient();
 
@@ -31,7 +30,6 @@ export default function AutoimpresoTab({ perfilFiscal, configSifen, isPeriodoBlo
     const [filterTipo, setFilterTipo] = useState<TipoComprobante | 'todos'>('todos');
     const [filterEstado, setFilterEstado] = useState<'todos' | 'emitido' | 'anulado'>('todos');
     const [showNewModal, setShowNewModal] = useState(false);
-    const [editingItem, setEditingItem] = useState<FacturaAutoimpreso | null>(null);
 
     const filteredData = facturasAutoimpreso.filter(f => {
         if (filterTipo !== 'todos' && f.tipo_comprobante !== filterTipo) return false;
@@ -144,7 +142,7 @@ export default function AutoimpresoTab({ perfilFiscal, configSifen, isPeriodoBlo
                         {filteredData.length === 0 ? (
                             <tr><td colSpan={8} className="p-20 text-center text-gray-400 font-medium italic">No hay comprobantes autoimpresos emitidos.</td></tr>
                         ) : filteredData.map((doc: any) => {
-                            const tipoConfig = TIPO_COMPROBANTE_CONFIG[doc.tipo_comprobante] || TIPO_COMPROBANTE_CONFIG.factura_comercial;
+                            const tipoConfig = TIPO_COMPROBANTE_CONFIG[doc.tipo_comprobante as TipoComprobante] || TIPO_COMPROBANTE_CONFIG.factura_comercial;
                             return (
                                 <tr key={doc.id} className="hover:bg-slate-50 transition-all cursor-default group">
                                     <td className="p-6">
@@ -227,7 +225,7 @@ export default function AutoimpresoTab({ perfilFiscal, configSifen, isPeriodoBlo
                                                             queryClient.invalidateQueries({ queryKey: ['facturas_autoimpreso', user?.id] });
                                                         }
                                                     }}
-                                                    className="w-8 h-8 flex items-center justify-center text-gray-400 hover:rose-500 transition-colors"
+                                                    className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-rose-500 transition-colors"
                                                     title="Anular"
                                                 >
                                                     <Trash2 size={16} />
@@ -558,7 +556,7 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
                             </button>
                         </div>
                         <div className="space-y-3">
-                            {items.map((item, idx) => (
+                            {items.map((item) => (
                                 <div key={item.id} className="flex items-center gap-2 p-3 bg-gray-50 rounded-xl">
                                     <input
                                         type="text"
@@ -582,7 +580,7 @@ function NewDocumentModal({ onClose, perfilFiscal, configSifen, onSuccess }: New
                                         {formatGs(item.cantidad * item.precio_unitario)}
                                     </div>
                                     {items.length > 1 && (
-                                        <button type="button" onClick={() => eliminarItem(item.id)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:rose-500 rounded-lg">
+                                        <button type="button" onClick={() => eliminarItem(item.id)} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-rose-500 rounded-lg">
                                             <X size={16} />
                                         </button>
                                     )}

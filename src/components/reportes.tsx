@@ -31,7 +31,7 @@ export default function Reportes() {
 
   const pieData = Object.entries(gastosPorCategoria).map(([name, value]) => ({
     name: getGastoLabel(name as any),
-    value,
+    value: value as number,
     color: getGastoColor(name as any)
   })).sort((a, b) => b.value - a.value);
 
