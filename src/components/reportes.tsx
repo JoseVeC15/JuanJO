@@ -11,14 +11,15 @@ import { resolveServiceProfile } from '../config/serviceProfiles';
 import { formatGs, formatGsShort, getGastoLabel, getGastoColor } from '../data/sampleData';
 
 export default function Reportes() {
-  const { facturasGastos, ingresos, loading, profile } = useSupabaseData();
+  const { facturasGastos, ingresos, loadingFacturas, loadingIngresos, profile } = useSupabaseData();
   const serviceProfile = resolveServiceProfile(profile);
   const reportPresetSet = new Set(serviceProfile.reportPresets);
 
-  if (loading) {
+  if (loadingFacturas || loadingIngresos) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="text-emerald-500 animate-spin" size={32} />
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <Loader2 className="text-emerald-500 animate-spin" size={36} />
+        <p className="text-gray-400 font-bold text-sm">Calculando tus reportes...</p>
       </div>
     );
   }

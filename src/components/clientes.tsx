@@ -14,7 +14,7 @@ import RucBuscador from './RucBuscador';
 export default function Clientes({ hideHeader = false, forceOpenAddModal = false, onModalOpenHandled }: any) {
     const { user } = useAuth();
     const navigate = useNavigate();
-    const { clientes, loading: loadingData } = useSupabaseData(); // useSupabaseData already provides clientes with stats
+    const { clientes, loadingClientes: loadingData } = useSupabaseData();
     const [search, setSearch] = useState("");
     const [showAddModal, setShowAddModal] = useState(false);
     const [saving, setSaving] = useState(false);

@@ -8,7 +8,7 @@ const corsHeaders = {
 
 const PROMPT_GASTO = `Analiza esta imagen de factura de compra/gasto. El contexto es Paraguay (moneda: Guaraníes PYG, sin decimales).
 
-Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta, sin explicaciones adicionales:
+Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta, sin texto adicional antes ni después:
 {
   "fecha_factura": "YYYY-MM-DD",
   "proveedor": "razón social del emisor/proveedor",
@@ -31,7 +31,7 @@ Reglas:
 
 const PROMPT_INGRESO = `Analiza esta imagen de factura de venta/ingreso. El contexto es Paraguay (moneda: Guaraníes PYG, sin decimales).
 
-Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta, sin explicaciones adicionales:
+Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta, sin texto adicional antes ni después:
 {
   "fecha": "YYYY-MM-DD",
   "cliente": "razón social del cliente/receptor",
@@ -65,54 +65,55 @@ serve(async (req) => {
       });
     }
 
-    const anthropicKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!anthropicKey) throw new Error('ANTHROPIC_API_KEY no configurada en secrets');
+    const geminiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiKey) throw new Error('GEMINI_API_KEY no configurada en secrets');
 
     const isGasto = type === 'expense';
-    const mediaType = (mime_type === 'image/png' || mime_type === 'image/gif' || mime_type === 'image/webp')
+    const mimeType = (['image/png', 'image/gif', 'image/webp', 'application/pdf'].includes(mime_type))
       ? mime_type
       : 'image/jpeg';
 
-    // Llamar a Claude para extraer datos de la factura
-    const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType, data: image_base64 },
-            },
-            {
-              type: 'text',
-              text: isGasto ? PROMPT_GASTO : PROMPT_INGRESO,
-            },
-          ],
-        }],
-      }),
-    });
+    // Llamar a Gemini 2.0 Flash
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: mimeType, data: image_base64 } },
+              { text: isGasto ? PROMPT_GASTO : PROMPT_INGRESO },
+            ],
+          }],
+          generationConfig: {
+            maxOutputTokens: 1024,
+            temperature: 0,
+            responseMimeType: 'application/json',
+          },
+        }),
+      }
+    );
 
-    if (!anthropicRes.ok) {
-      const errText = await anthropicRes.text();
-      throw new Error(`Claude API error ${anthropicRes.status}: ${errText}`);
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      throw new Error(`Gemini API error ${geminiRes.status}: ${errText}`);
     }
 
-    const anthropicData = await anthropicRes.json();
-    const rawText: string = anthropicData.content?.[0]?.text ?? '';
+    const geminiData = await geminiRes.json();
+    const rawText: string = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
 
-    // Extraer el JSON de la respuesta
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('La IA no devolvió un JSON válido');
+    if (!rawText) throw new Error('Gemini no devolvió contenido');
 
-    const extracted = JSON.parse(jsonMatch[0]);
+    // Extraer JSON — Gemini con responseMimeType json lo devuelve directamente
+    let extracted: any;
+    try {
+      extracted = JSON.parse(rawText);
+    } catch {
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('La IA no devolvió un JSON válido');
+      extracted = JSON.parse(jsonMatch[0]);
+    }
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
