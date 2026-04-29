@@ -15,12 +15,13 @@ import { formatGs, formatGsShort } from '../data/sampleData';
 import { DetailBox } from '../components/facturas/InvoiceWidgets';
 import { ItemCard } from '../components/facturas/ItemCard';
 import { EditInvoiceModal } from '../components/facturas/EditInvoiceModal';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 let pdfWorkerConfigured = false;
 async function convertPdfToImage(file: File): Promise<string> {
   const pdfjsLib = await import('pdfjs-dist');
   if (!pdfWorkerConfigured) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
     pdfWorkerConfigured = true;
   }
   const arrayBuffer = await file.arrayBuffer();
@@ -57,6 +58,7 @@ export default function GastosPage() {
   const [showOCR, setShowOCR] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [ocrError, setOcrError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // ── Mutations ────────────────────────────────────────────────
@@ -110,7 +112,7 @@ export default function GastosPage() {
     if (!validTypes.includes(file.type)) {
       toast.error('Solo se aceptan imágenes (JPG, PNG, WEBP) o PDF.'); return;
     }
-    setUploading(true); setUploadStatus('idle'); setShowOCR(true);
+    setUploading(true); setUploadStatus('idle'); setOcrError(null); setShowOCR(true);
     try {
       let base64String = '';
       let mimeType = file.type;
@@ -128,10 +130,16 @@ export default function GastosPage() {
       const { error: fnError } = await supabase.functions.invoke('analyze-invoice', {
         body: { user_id: user.id, image_base64: base64String, mime_type: mimeType, type: 'expense' },
       });
-      if (fnError) throw new Error(fnError.message);
+      if (fnError) {
+        let errMsg = fnError.message;
+        try { const b = await (fnError as any).context?.json?.(); if (b?.error) errMsg = b.error; } catch {}
+        throw new Error(errMsg);
+      }
       setUploadStatus('success');
       queryClient.invalidateQueries({ queryKey: ['facturas_gastos'] });
-    } catch {
+    } catch (err: any) {
+      console.error('OCR error:', err.message);
+      setOcrError(err.message ?? 'Error desconocido');
       setUploadStatus('error');
     } finally {
       setUploading(false);
@@ -317,9 +325,12 @@ export default function GastosPage() {
                 </div>
                 <p className="text-xl font-black text-gray-800">No se pudo leer la factura</p>
                 <p className="text-gray-400 font-medium">Asegurate de que la foto sea clara y bien iluminada.</p>
+                {ocrError && (
+                  <p className="text-[11px] font-mono text-rose-400 bg-rose-50 border border-rose-100 rounded-xl px-4 py-2 max-w-sm text-left break-all">{ocrError}</p>
+                )}
                 <div className="flex gap-3">
-                  <button onClick={() => fileInputRef.current?.click()} className="bg-rose-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest">Intentar de nuevo</button>
-                  <button onClick={() => { setShowOCR(false); setUploadStatus('idle'); }} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest">Cancelar</button>
+                  <button onClick={() => { setOcrError(null); setUploadStatus('idle'); fileInputRef.current?.click(); }} className="bg-rose-500 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest">Intentar de nuevo</button>
+                  <button onClick={() => { setShowOCR(false); setUploadStatus('idle'); setOcrError(null); }} className="bg-gray-100 text-gray-600 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest">Cancelar</button>
                 </div>
               </div>
             ) : (

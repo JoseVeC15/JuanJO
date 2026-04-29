@@ -12,6 +12,7 @@ import Clientes from './clientes';
 import {
   formatGs, formatGsShort, calculateSuggestedVAT10, calculateSuggestedVAT5
 } from '../data/sampleData';
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 const formatDateTime = (dateStr: string) => {
   if (!dateStr) return 'N/A';
@@ -230,7 +231,7 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
     try {
       const pdfjsLib = await import('pdfjs-dist');
       if (!pdfWorkerConfigured) {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
         pdfWorkerConfigured = true;
       }
 
@@ -295,12 +296,16 @@ export default function Facturas({ initialTab = 'gastos' }: FacturasProps) {
         },
       });
 
-      if (fnError) throw new Error(fnError.message);
+      if (fnError) {
+        let errMsg = fnError.message;
+        try { const b = await (fnError as any).context?.json?.(); if (b?.error) errMsg = b.error; } catch {}
+        throw new Error(errMsg);
+      }
 
       setUploadStatus('success');
       queryClient.invalidateQueries({ queryKey: [activeTab === 'gastos' ? 'facturas_gastos' : 'ingresos'] });
-    } catch (error) {
-      console.error('Error procesando archivo:', error);
+    } catch (err: any) {
+      console.error('OCR error:', err.message);
       setUploadStatus('error');
     } finally {
       setUploading(false);
