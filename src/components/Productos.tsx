@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, X, Search, Edit2, Trash2, PackageSearch, AlertCircle, ShoppingCart, Tag, Book, Layers, DollarSign } from 'lucide-react';
+import { toast } from '../lib/toast';
+import { confirmAsync } from '../lib/confirm';
 
 export default function Productos() {
   const { user } = useAuth();
@@ -45,7 +47,7 @@ export default function Productos() {
      const val = window.prompt(`Ingrese el nombre de la nueva ${title}:`);
      if (!val) return;
      const { data, error } = await supabase.from(table).insert({ user_id: user?.id, nombre: val }).select().single();
-     if (error) { alert("Error: " + error.message); return; }
+     if (error) { toast.error("Error: " + error.message); return; }
      queryClient.invalidateQueries({ queryKey: [table] });
      // Auto-select the newly created id depending on the table
      if (table === 'productos_marcas') setFormData(prev => ({...prev, marca_id: data.id}));
@@ -195,7 +197,7 @@ export default function Productos() {
                          {p.activo ? 'Inactivar' : 'Activar'}
                       </button>
                       <button onClick={() => handleEdit(p)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-xl transition-colors"><Edit2 size={16} /></button>
-                      <button onClick={() => { if(window.confirm('¿Borrar registro maestro? No se recomienda si ya posee facturas asociadas.')) deleteMutation.mutate(p.id) }} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={16} /></button>
+                      <button onClick={async () => { const ok = await confirmAsync({ message: '¿Borrar este producto? No se recomienda si ya tiene facturas asociadas.', confirmLabel: 'Borrar', danger: true }); if (ok) deleteMutation.mutate(p.id); }} className="p-2 text-rose-400 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={16} /></button>
                     </div>
                   </td>
                 </tr>

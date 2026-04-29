@@ -103,7 +103,7 @@ export default function IngresosPage() {
   const processFile = useCallback(async (file: File) => {
     if (!user) return;
     if (isPeriodoBloqueado(new Date().toISOString())) {
-      alert('Periodo CERRADO. No se pueden subir documentos.'); return;
+      toast.error('Periodo CERRADO. No se pueden subir documentos.'); return;
     }
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
     if (!validTypes.includes(file.type)) {
