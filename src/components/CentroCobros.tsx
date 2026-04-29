@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import { formatGs, EstadoIngreso } from '../data/sampleData';
 import { Clock, CheckCircle2, AlertCircle, FileText, Search } from 'lucide-react';
+import { toast } from '../lib/toast';
 import { motion } from 'framer-motion';
 
 const statusConfig: Record<EstadoIngreso, { label: string; color: string; bg: string; icon: any }> = {
@@ -143,7 +144,7 @@ export default function CentroCobros() {
                     <span className="text-xs font-bold text-slate-700">{factura.fecha_vencimiento || 'N/A'}</span>
                   </div>
                   <button 
-                    onClick={() => factura.estado !== 'cobrada' ? handleMarkAsPaid(factura.id) : alert('Factura ya cobrada')}
+                    onClick={() => factura.estado !== 'cobrada' ? handleMarkAsPaid(factura.id) : toast.info('Esta factura ya fue cobrada.')}
                     className={`text-xs font-black uppercase tracking-tighter px-4 py-2 rounded-xl transition-colors ${
                       factura.estado === 'cobrada' 
                         ? 'text-slate-400 bg-slate-50 cursor-default' 
