@@ -20,14 +20,14 @@ Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta, sin text
   "iva_5": 0,
   "exentas": 0,
   "concepto_ocr": "descripción breve de los productos/servicios",
-  "tipo_gasto": "servicios|tecnologia|materiales|alquiler|transporte|alimentacion|impuestos|otros"
+  "tipo_gasto": "equipamiento_compra|alquiler_equipo|transporte|alimentacion|software_licencias|subcontratacion|material_produccion|marketing|oficina|capacitacion|impuestos|otros"
 }
 
 Reglas:
 - Todos los montos deben ser números enteros (sin puntos ni comas).
 - Si un campo no es visible, usa null.
 - El número de timbrado tiene exactamente 8 dígitos.
-- tipo_gasto debe ser uno de los valores listados.`;
+- tipo_gasto debe ser uno de los valores listados. Si no estÃ¡s seguro, usa "otros".`;
 
 const PROMPT_INGRESO = `Analiza esta imagen de factura de venta/ingreso. El contexto es Paraguay (moneda: Guaraníes PYG, sin decimales).
 
@@ -49,6 +49,44 @@ Reglas:
 - Todos los montos deben ser números enteros (sin puntos ni comas).
 - Si un campo no es visible, usa null.
 - condicion_venta debe ser "contado" o "credito".`;
+
+const VALID_TIPOS_GASTO = new Set([
+  'equipamiento_compra',
+  'alquiler_equipo',
+  'transporte',
+  'alimentacion',
+  'software_licencias',
+  'subcontratacion',
+  'material_produccion',
+  'marketing',
+  'oficina',
+  'capacitacion',
+  'impuestos',
+  'otros',
+]);
+
+function normalizeTipoGasto(value: unknown): string {
+  const raw = String(value || '').toLowerCase().trim();
+  if (VALID_TIPOS_GASTO.has(raw)) return raw;
+
+  const aliases: Record<string, string> = {
+    servicios: 'subcontratacion',
+    servicio: 'subcontratacion',
+    tecnologia: 'software_licencias',
+    software: 'software_licencias',
+    materiales: 'material_produccion',
+    material: 'material_produccion',
+    alquiler: 'alquiler_equipo',
+    combustible: 'transporte',
+    viaticos: 'alimentacion',
+    comida: 'alimentacion',
+    publicidad: 'marketing',
+    formacion: 'capacitacion',
+    educacion: 'capacitacion',
+  };
+
+  return aliases[raw] || 'otros';
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -138,7 +176,7 @@ serve(async (req) => {
           iva_5: Number(extracted.iva_5) || 0,
           exentas: Number(extracted.exentas) || 0,
           concepto_ocr: extracted.concepto_ocr || '',
-          tipo_gasto: extracted.tipo_gasto || 'otros',
+          tipo_gasto: normalizeTipoGasto(extracted.tipo_gasto),
           es_deducible: true,
           estado: 'pendiente_clasificar',
           processed_by_n8n: true,
